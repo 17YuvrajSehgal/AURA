@@ -4,8 +4,6 @@ import os
 import string
 
 import nltk
-import numpy as np
-import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -26,6 +24,7 @@ def preprocess_texts(texts):
         tokens = word_tokenize(text.lower())
         tokens = [t for t in tokens if t not in stop_words and t not in string.punctuation]
         cleaned = " ".join(tokens)
+        # logging.info(f"File {i + 1}: {len(tokens)} tokens after cleaning: {cleaned[:100]}")
         if cleaned.strip():
             preprocessed.append(cleaned)
 
@@ -52,11 +51,6 @@ def find_similar_terms(seed_term, tfidf_vector, terms, top_n=5):
     return [terms[i] for i in similar_idx]
 
 
-def get_keyword_score(tfidf_matrix, terms, keywords):
-    term_indices = [np.where(terms == k)[0][0] for k in keywords if k in terms]
-    return tfidf_matrix[:, term_indices].sum()
-
-
 def extract_evaluation_criteria(texts, dimension_seeds):
     preprocessed = preprocess_texts(texts)
     tfidf_matrix, terms, vectorizer = compute_tfidf_matrix(preprocessed)
@@ -70,40 +64,44 @@ def extract_evaluation_criteria(texts, dimension_seeds):
         for seed in seeds:
             keyword_set.update(find_similar_terms(seed, tfidf_matrix, terms))
 
-        score = get_keyword_score(tfidf_matrix, terms, keyword_set)
-
+        score = sum(vectorizer.vocabulary_.get(k, 0) for k in keyword_set)
         raw_scores[dim] = {"keywords": list(keyword_set), "score": score}
         total_score += score
 
-    E_raw = []
     for dim, info in raw_scores.items():
         weight = info["score"] / total_score if total_score > 0 else 0
-        E_raw.append({
-            "dimension": dim,
-            "keywords": info["keywords"],
-            "raw_score": info["score"],
-            "normalized_weight": weight
-        })
+        E.append((dim, info["keywords"], weight))
 
-    return E_raw
+    return E
 
 
-# === Updated: Load .md files from processed directory ===
+# Base folder where raw guidelines are stored
 script_dir = os.path.dirname(os.path.abspath(__file__))
-base_processed_dir = os.path.join(script_dir, "..", "data", "conference_guideline_texts", "processed")
-pattern = os.path.join(base_processed_dir, "*.md")
+base_raw_dir = os.path.join(script_dir, "..", "..", "data", "conference_guideline_texts", "raw")
 
-all_guideline_files = glob.glob(pattern)
-logging.info(f"Found {len(all_guideline_files)} processed .md files.")
+# Conference subfolders
+conference_types = ["acm_conferences", "non_acm_conferences"]
+
+all_guideline_files = []
+
+# Collect all final.txt files from each conference type
+for conf_type in conference_types:
+    folder = os.path.join(base_raw_dir, conf_type)
+    pattern = os.path.join(folder, "**", "final.txt")
+    files = glob.glob(pattern, recursive=True)
+    logging.info(f"Found {len(files)} files in {conf_type}")
+    all_guideline_files.extend(files)
+
+logging.info(f"Total guideline files found: {len(all_guideline_files)}")
 
 # Read the contents
 conference_texts = []
 for path in all_guideline_files:
     with open(path, encoding="utf-8", errors="ignore") as f:
         content = f.read()
+        # logging.info(f"RAW [{path}]: {repr(content[:100])}")  # Preview first 100 characters
         conference_texts.append(content)
 
-# === Evaluation criteria seeds ===
 seed_keywords = {
     "reproducibility": ["reproduce", "script", "environment", "data"],
     "documentation": ["readme", "manual", "guide"],
@@ -114,21 +112,9 @@ seed_keywords = {
 }
 
 if not any(conference_texts):
-    logging.error("No content found. Please check your input directory.")
+    logging.error("No content found. Injecting fallback test content.")
 
 evaluation_criteria = extract_evaluation_criteria(conference_texts, seed_keywords)
-logging.info(f"Evaluation criteria extracted:\n{evaluation_criteria}")
+logging.info(f"Evaluation criteria: {evaluation_criteria}")
 
-# Convert evaluation_criteria to DataFrame
-df = pd.DataFrame(evaluation_criteria)
-
-# Optional: Convert keyword lists to comma-separated strings for cleaner CSV
-df["keywords"] = df["keywords"].apply(lambda kw: ", ".join(kw))
-
-# Save to CSV
-output_path = os.path.join(script_dir, "..", "data", "algorithm_1_output", "evaluation_criteria.csv")
-os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-df.to_csv(output_path, index=False)
-
-logging.info(f"Saved evaluation results to: {output_path}")
+# todo : add output method to save to csv

@@ -83,7 +83,7 @@ def extract_evaluation_criteria(texts, dimension_seeds):
 
 # === Read actual files instead of sample text ===
 script_dir = os.path.dirname(os.path.abspath(__file__))
-base_processed_dir = os.path.join(script_dir, "..", "data", "conference_guideline_texts", "processed")
+base_processed_dir = os.path.join(script_dir, "..","..", "data", "conference_guideline_texts", "processed")
 pattern = os.path.join(base_processed_dir, "*.md")
 
 all_guideline_files = glob.glob(pattern)
@@ -136,7 +136,7 @@ auto_seed_keywords = generate_seed_keywords_from_examples(dimension_examples)
 df_auto = extract_evaluation_criteria(conference_texts, auto_seed_keywords)
 
 # === Save to CSV ===
-output_path_auto = os.path.join(script_dir, "..", "data", "algorithm_1_output", "algorithm_1_artifact_evaluation_criteria.csv")
-os.makedirs(os.path.dirname(output_path_auto), exist_ok=True)
-df_auto.to_csv(output_path_auto, index=False)
-logging.info(f"Saved enhanced evaluation results to: {output_path_auto}")
+output_path = os.path.join(script_dir, "..", "..", "data", "algorithm_1_output", "algorithm_1_artifact_evaluation_criteria.csv")
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+df_auto.to_csv(output_path, index=False)
+logging.info(f"Saved enhanced evaluation results to: {output_path}")
