@@ -114,11 +114,7 @@ seed_keywords = {
 }
 
 if not any(conference_texts):
-    logging.warning("No content found. Injecting fallback test content.")
-    conference_texts = [
-        "This artifact must include source code and a README file. To reproduce results, Docker and scripts are required.",
-        "Documentation should be detailed. Reproducibility is important. Code should be tested and runnable.",
-    ]
+    logging.error("No content found. Please check your input directory.")
 
 evaluation_criteria = extract_evaluation_criteria(conference_texts, seed_keywords)
 logging.info(f"Evaluation criteria extracted:\n{evaluation_criteria}")
