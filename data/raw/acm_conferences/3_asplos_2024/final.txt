@@ -1,0 +1,178 @@
+On Artifact Evaluation
+It is a common struggle to reproduce experimental results and reuse research code from scientific papers. Voluntary artifact evaluation (AE), introduced successfully at program languages, systems and machine learning conferences, promotes reproducibility of experimental results and encourages code and data sharing to help the community quickly validate and compare approaches. AE enables this by providing authors structured workflows and a common Artifact Appendix to share code and results, and by having an independent committee of evaluators validate the experimental results, and assign artifact evaluation badges.
+
+Authors of accepted papers are invited to formally describe supporting materials (code, data, models, workflows, results) using the standard Artifact Appendix template and submit it together with the materials for evaluation. Here is the standard Artifact Appendix template:
+
+ % LaTeX template for Artifact Evaluation V20240722
+ %
+ % Prepared by Grigori Fursin with contributions from Bruce Childers,
+ %   Michael Heroux, Michela Taufer and other colleagues.
+ %
+ % See examples of this Artifact Appendix in
+ %  * ASPLOS'24 "PyTorch 2: Faster Machine Learning Through Dynamic Python Bytecode Transformation and Graph Compilation":
+ %      https://dl.acm.org/doi/10.1145/3620665.3640366
+ %  * SC'17 paper: https://dl.acm.org/citation.cfm?id=3126948
+ %  * CGO'17 paper: https://www.cl.cam.ac.uk/~sa614/papers/Software-Prefetching-CGO2017.pdf
+ %  * ACM ReQuEST-ASPLOS'18 paper: https://dl.acm.org/citation.cfm?doid=3229762.3229763
+ %
+ % (C)opyright 2014-2024 cTuning.org
+ %
+ % CC BY 4.0 license
+ %
+
+ \documentclass{sigplanconf}
+
+ \usepackage{hyperref}
+
+ \begin{document}
+
+ \special{papersize=8.5in,11in}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ % When adding this appendix to your paper,
+ % please remove above part
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ \appendix
+ \section{Artifact Appendix}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Abstract}
+
+ {\em Obligatory. Summarize your artifacts (including algorithms, models, data sets, software and hardware)
+ and how they help to reproduce the key results from your paper.}
+
+ \subsection{Artifact check-list (meta-information)}
+
+ {\em Obligatory. Use just a few informal keywords in all fields applicable to your artifacts
+ and remove the rest. This information is needed to find appropriate reviewers and gradually
+ unify artifact meta information in Digital Libraries.}
+
+ {\small
+ \begin{itemize}
+   \item {\bf Algorithm: }
+   \item {\bf Program: }
+   \item {\bf Compilation: }
+   \item {\bf Transformations: }
+   \item {\bf Binary: }
+   \item {\bf Model: }
+   \item {\bf Data set: }
+   \item {\bf Run-time environment: }
+   \item {\bf Hardware: }
+   \item {\bf Run-time state: }
+   \item {\bf Execution: }
+   \item {\bf Metrics: }
+   \item {\bf Output: }
+   \item {\bf Experiments: }
+   \item {\bf How much disk space required (approximately)?: }
+   \item {\bf How much time is needed to prepare workflow (approximately)?: }
+   \item {\bf How much time is needed to complete experiments (approximately)?: }
+   \item {\bf Publicly available?: }
+   \item {\bf Code licenses (if publicly available)?: }
+   \item {\bf Data licenses (if publicly available)?: }
+   \item {\bf Workflow automation framework used?: }
+   \item {\bf Archived (provide DOI)?: }
+ \end{itemize}
+ }
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Description}
+
+ \subsubsection{How to access}
+
+ {\em Obligatory}
+
+ \subsubsection{Hardware dependencies}
+
+ \subsubsection{Software dependencies}
+
+ \subsubsection{Data sets}
+
+ \subsubsection{Models}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Installation}
+
+ {\em Obligatory}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Experiment workflow}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Evaluation and expected results}
+
+ {\em Obligatory}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Experiment customization}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Notes}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ \subsection{Methodology}
+
+ Submission, reviewing and badging methodology:
+
+ \begin{itemize}
+   \item \url{https://www.acm.org/publications/policies/artifact-review-and-badging-current}
+   \item \url{https://cTuning.org/ae}
+ \end{itemize}
+
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ % When adding this appendix to your paper,
+ % please remove below part
+ %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ \end{document}
+
+
+
+ Note that this submission is voluntary and will not influence the final decision regarding the papers. The goal is to help the authors validate experimental results from their accepted papers by an independent AE Committee in a collaborative way while helping readers find articles with available, functional, and validated artifacts!
+
+The papers that successfully go through AE will receive a set of ACM badges of approval printed on the papers themselves and available as meta information in the ACM Digital Library (it is now possible to search for papers with specific badges in ACM DL). Authors of such papers will need to include an Artifact Appendix of up to 2 pages describing their artifact in the camera-ready paper.
+
+
+Author-created artifacts relevant to this paper have been placed on a publicly accessible archival repository. A DOI or link to this repository along with a unique identifier for the object is provided.
+
+
+The artifacts associated with the research are found to be documented, consistent, complete, exercisable, and include appropriate evidence of verification and validation.
+
+
+The main results of the paper have been obtained in a subsequent study by a person or team other than the authors, using, in part, artifacts provided by the author.
+
+Preparing your Artifact Appendix
+The authors are expected to prepare and submit an Artifact Appendix with the paper, that describes all the software, hardware and data set dependencies, key results to be reproduced, and how to prepare, run and validated experiments. The authors are encouraged to use the following tex template for the Artifact Appendix, similar to previous to AE in previous years.  This guide provides an explanation of the different fields in the Artifact Appendix.
+
+We encourage the authors to check out the AE FAQs, the Artifact Reviewing Guide, the SIGPLAN Empirical Evaluation Guidelines, and the NeurIPS reproducibility checklist for creating the best possible artifacts for submission! You can find examples of artifacts from previous conferences at this link.
+
+Preparing your experimental workflow
+You can skip this step if you want to share your artifacts without the validation of experimental results - in such case your paper can still be entitled for the "artifact available" badge!
+
+We strongly recommend you to provide at least some scripts to build your workflow, all inputs to run your workflow, and some expected outputs to validate results from your paper. You can then describe the steps to evaluate your artifact using Jupyter Notebooks or plain ReadMe files.
+
+Making artifacts available to evaluators
+Most of the time, the authors make their artifacts available to the evaluators via GitHub, GitLab, BitBucket or similar private or public service. Public artifact sharing allows "open evaluation" which we have successfully validated at prior conferences. It allows the authors to quickly fix encountered issues during evaluation before submitting the final version to archival repositories.
+
+Other acceptable methods include:
+
+Using zip or tar files with all related code and data, particularly when your artifact should be rebuilt on reviewers' machines (for example to have a non-virtualized access to a specific hardware).
+
+Using Docker, Virtual Box and other containers and VM images.
+
+Arranging remote access to the authors' machine with the pre-installed software - this is an exceptional cases when rare or proprietary software and hardware is used. You will need to privately send the access information to the AE chairs.
+
+Note that your artifacts will receive the ACM "artifact available" badge only if they have been placed on any publicly accessible archival repository such as Zenodo, FigShare, and Dryad. You must provide a DOI automatically assigned to your artifact by these repositories in your final Artifact Appendix.
+
+Submitting artifacts
+Write a brief abstract describing your artifact, the minimal hardware and software requirements, how it supports your paper, how it can be validated and what the expected result is. Do not forget to specify if you use any proprietary software or hardware! This abstract will be used by evaluators during artifact bidding to make sure that they have an access to appropriate hardware and software and have required skills.
+
+Submit the artifact abstract and the PDF of your paper with the Artifact Appendix attached using the AE submission website provided by the event.
+
+Preparing your camera-ready paper
+If you have successfully passed AE with at least one of the three AE badges, you will need to add up to 2 pages of your artifact appendix to your camera ready paper while removing all unnecessary or confidential information. This will help readers better understand what was evaluated and how.
+
+If your paper is published in the ACM Digital Library, you do not need to add reproducibility stamps - ACM will add them to your camera-ready paper and will make this information available for search! In other cases, AE chairs will tell you how to add stamps to the first page of your paper.
+
+Acknowledgment
+The content on this page has been adapted from pages of previous artifact evaluation efforts at ASPLOS (2020, 2021, 2022, 2023).

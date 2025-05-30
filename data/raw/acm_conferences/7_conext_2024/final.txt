@@ -1,0 +1,563 @@
+CoNEXT 2024 Artifact Evaluation
+CoNEXT acknowledges the importance of artifacts such as software, hardware, data, and documentation that accompany a scientific paper. These artifacts are critical for validating the results presented in the paper and enhancing the reproducibility of the research. Therefore, the CoNEXT conference will run an optional artifact evaluation process, to evaluate the availability and functionality of the artifacts associated with the corresponding papers. The process will also evaluate the reproducibility of the paper’s key results and claims with the help of these artifacts.
+
+All authors are encouraged to opt-in to artifact evaluation during paper submission.
+
+Questions can be directed to sbmoon_at_kaist.ac.kr and gykim_at_sungshin.ac.kr
+
+Important Dates
+Window 1 (November submission papers):
+Submission deadline / begin of evaluation period: May 21, 2024 (11:59am AoE)
+Artifact decisions announced: June 18, 2024
+
+Window 2 (November submission papers accepted after one-shot revision):
+Submission deadline / begin of evaluation period: July 26, 2024 (11:59am AoE)
+Artifact decisions announced: August 23, 2024
+
+Window 3 (June submission papers):
+Submission deadline / begin of evaluation period: October 23, 2024 (11:59am AoE)
+Artifact decisions announced: November 27, 2024
+
+Window 4 (June submission papers accepted after one-shot revision):
+Submission deadline / begin of evaluation period: January 24, 2025 (11:59am AoE) Artifact decisions announced: February 21, 2025
+
+Note1: For an artifact to be considered, at least one contact author for the submission must be reachable via email and respond to questions in a timely manner during the evaluation period.
+
+Note2: Authors can hand in artifacts of papers that were accepted in mid-September or earlier cycles. For papers already accepted and published in PACMNET, AE badges will be added to earlier issues of PACMNET.
+
+The Process
+Artifact evaluation promotes the reproducibility of experimental results and encourages code and data sharing to help the community quickly validate and compare alternative approaches. Authors of accepted papers are invited to formally describe supporting materials (code, data, models, workflows, results) using the standard Artifact Appendix template and submit it together with the materials for evaluation.
+
+Appendix template:
+% LaTeX template for Artifact Evaluation V20240722
+%
+% Prepared by Grigori Fursin with contributions from Bruce Childers,
+%   Michael Heroux, Michela Taufer and other colleagues.
+%
+% See examples of this Artifact Appendix in
+%  * ASPLOS'24 "PyTorch 2: Faster Machine Learning Through Dynamic Python Bytecode Transformation and Graph Compilation":
+%      https://dl.acm.org/doi/10.1145/3620665.3640366
+%  * SC'17 paper: https://dl.acm.org/citation.cfm?id=3126948
+%  * CGO'17 paper: https://www.cl.cam.ac.uk/~sa614/papers/Software-Prefetching-CGO2017.pdf
+%  * ACM ReQuEST-ASPLOS'18 paper: https://dl.acm.org/citation.cfm?doid=3229762.3229763
+%
+% (C)opyright 2014-2024 cTuning.org
+%
+% CC BY 4.0 license
+%
+
+\documentclass{sigplanconf}
+
+\usepackage{hyperref}
+
+\begin{document}
+
+\special{papersize=8.5in,11in}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% When adding this appendix to your paper,
+% please remove above part
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+\section{Artifact Appendix}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Abstract}
+
+{\em Obligatory. Summarize your artifacts (including algorithms, models, data sets, software and hardware)
+and how they help to reproduce the key results from your paper.}
+
+\subsection{Artifact check-list (meta-information)}
+
+{\em Obligatory. Use just a few informal keywords in all fields applicable to your artifacts
+and remove the rest. This information is needed to find appropriate reviewers and gradually
+unify artifact meta information in Digital Libraries.}
+
+{\small
+\begin{itemize}
+  \item {\bf Algorithm: }
+  \item {\bf Program: }
+  \item {\bf Compilation: }
+  \item {\bf Transformations: }
+  \item {\bf Binary: }
+  \item {\bf Model: }
+  \item {\bf Data set: }
+  \item {\bf Run-time environment: }
+  \item {\bf Hardware: }
+  \item {\bf Run-time state: }
+  \item {\bf Execution: }
+  \item {\bf Metrics: }
+  \item {\bf Output: }
+  \item {\bf Experiments: }
+  \item {\bf How much disk space required (approximately)?: }
+  \item {\bf How much time is needed to prepare workflow (approximately)?: }
+  \item {\bf How much time is needed to complete experiments (approximately)?: }
+  \item {\bf Publicly available?: }
+  \item {\bf Code licenses (if publicly available)?: }
+  \item {\bf Data licenses (if publicly available)?: }
+  \item {\bf Workflow automation framework used?: }
+  \item {\bf Archived (provide DOI)?: }
+\end{itemize}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Description}
+
+\subsubsection{How to access}
+
+{\em Obligatory}
+
+\subsubsection{Hardware dependencies}
+
+\subsubsection{Software dependencies}
+
+\subsubsection{Data sets}
+
+\subsubsection{Models}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Installation}
+
+{\em Obligatory}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Experiment workflow}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Evaluation and expected results}
+
+{\em Obligatory}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Experiment customization}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Notes}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Methodology}
+
+Submission, reviewing and badging methodology:
+
+\begin{itemize}
+  \item \url{https://www.acm.org/publications/policies/artifact-review-and-badging-current}
+  \item \url{https://cTuning.org/ae}
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% When adding this appendix to your paper,
+% please remove below part
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+
+Note that this submission is voluntary and will not influence the final decision regarding the papers. We want to help the authors validate experimental results from their accepted papers by an independent AE Committee in a collaborative way while helping readers find articles with available, functional, and validated artifacts.
+
+The papers that successfully go through AE will receive a set of ACM badges of approval printed on the papers themselves and available as meta information in the ACM Digital Library (it is now possible to search for papers with specific badges in ACM DL).
+
+Authors can apply for the following badges:
+
+Artifact Available
+SIGCOMM
+Author-created artifacts relevant to this paper have been placed on a publically accessible archival repository. A DOI or link to this repository, along with a unique identifier for the object is provided.
+
+Artifact Evaluated - Functional
+SIGCOMM
+The artifacts associated with the paper are of a quality that significantly exceeds minimal functionality. That is, they have all the qualities of the Artifacts Evaluated – Functional level, but, in addition, they are very carefully documented and well-structured to the extent that reuse and repurposing is facilitated. In particular, norms and standards of the research community for artifacts of this type are strictly adhered to.
+
+Results Reproduced
+SIGCOMM
+The main results of the paper have been obtained in a subsequent study by a person or team other than the authors, using, in part, artifacts provided by the author.
+
+Artifact Preparation
+You need to prepare the Artifact Appendix describing all software, hardware and data set dependencies, key results to be reproduced, and how to prepare, run and validate experiments. Though it is relatively intuitive and based on our past AE experience, we strongly encourage you to check out the recommendations, such as the Artifact Appendix guide:
+
+ Artifact Checklist
+ Here we provide a few informal suggestions to help you fill in the Unified Artifact Appendix with the Reproducibility Checklist for artifact evaluation while avoiding common pitfalls. We've introduced this appendix to unify the description of experimental setups and results across different conferences.
+
+ Abstract
+ Briefly and informally describe your artifacts including minimal hardware, software and other requirements, how they support your paper and what are they key results to be reproduced. Note that evaluators will use artifact abstracts to bid on artifacts. The AE chairs will also use it to finalize artifact assignments.
+
+ Checklist
+ Together with the artifact abstract, this check-list will help us make sure that evaluators have appropriate competency and an access to the technology required to evaluate your artifacts. It can also be used as meta information to find your artifacts in Digital Libraries.
+
+ ![] (https://raw.githubusercontent.com/ctuning/artifact-evaluation/master/docs/image-general-workflow1.png)
+
+ Fill in whatever is applicable with some informal keywords and remove unrelated items (please consider questions below just as informal hints that reviewers are usually concerned about):
+
+ Algorithm: Are you presenting a new algorithm?
+ Program: Which benchmarks do you use (PARSEC, NAS, EEMBC, SPLASH, Rodinia, LINPACK, HPCG, MiBench, SPEC, cTuning, etc)? Are they included or should they be downloaded? Which version? Are they public or private? If they are private, is there a public analog to evaluate your artifact? What is the approximate size?
+ Compilation: Do you require a specific compiler? Public/private? Is it included? Which version?
+ Transformations: Do you require a program transformation tool (source-to-source, binary-to-binary, compiler pass, etc)? Public/private? Is it included? Which version?
+ Binary: Are binaries included? OS-specific? Which version?
+ Model: Do you use specific models (GPT-J, BERT, MobileNets ...)? Are they included? If not, how to download and install? What is their approximate size?
+ Data set: Do you use specific data sets? Are they included? If not, how to download and install? What is their approximate size?
+ Run-time environment: Is your artifact OS-specific (Linux, Windows, MacOS, Android, etc) ? Which version? Which are the main software dependencies (JIT, libs, run-time adaptation frameworks, etc); Do you need root access?
+ Hardware: Do you need specific hardware (supercomputer, architecture simulator, CPU, GPU, neural network accelerator, FPGA) or specific features (hardware counters to measure power consumption, SUDO access to CPU/GPU frequency, etc)? Are they publicly available?
+ Run-time state: Is your artifact sensitive to run-time state (cold/hot cache, network/cache contentions, etc.)
+ Execution: Any specific conditions should be met during experiments (sole user, process pinning, profiling, adaptation, etc)? How long will it approximately run?
+ Metrics: Which metrics will be evaluated (execution time, inference per second, Top1 accuracy, power consumption, etc).
+ Output: What is the output of your key experiments (console, file, table, graph) and what are your key results (exact output, numerical results, empirical characteristics, etc)? Are expected results included?
+ Experiments: How to prepare experiments and reproduce results (README, scripts, IPython/Jupyter notebook, MLCommons CM automation language, containers etc)? Do not forget to mention the maximum allowable variation of empirical results!
+ How much disk space required (approximately)?: This can help evaluators and end-users to find appropriate resources.
+ How much time is needed to prepare workflow (approximately)?: This can help evaluators and end-users to estimate resources needed to evaluate your artifact.
+ How much time is needed to complete experiments (approximately)?: This can help evaluators and end-users to estimate resources needed to evaluate your artifact.
+ Publicly available?: Will your artifact be publicly available? If yes, we may spend an extra effort to help you with the documentation.
+ Code licenses (if publicly available)?: If you workflows and artifacts will be publicly available, please provide information about licenses. This will help the community to reuse your components.
+ Code licenses (if publicly available)?: If you workflows and artifacts will be publicly available, please provide information about licenses. This will help the community to reuse your components.
+ Workflow frameworks used? Did authors use any workflow framework which can automate and customize experiments?
+ Archived?: Note that the author-created artifacts relevant to this paper will receive the ACM "artifact available" badge *only if* they have been placed on a publicly accessible archival repository such as Zenodo, FigShare or Dryad. A DOI will be then assigned to their artifacts and must be provided here! Personal web pages, Google Drive, GitHub, GitLab and BitBucket are not accepted for this badge. Authors can provide the DOI for their artifacts at the end of the evaluation.
+ Description
+ How to access
+ Describe the way how reviewers will access your artifacts:
+
+ Clone a repository from GitHub, GitLab or any similar service
+ Download a package from a public website
+ Download a package from a private website (you will need to send information how to access your artifacts to AE chairs)
+ Access artifact via private machine with pre-installed software (only when access to rare or publicly unavailable hardware is required or proprietary software is used - you will need to send credentials to access your machine to the AE chairs)
+ Please describe approximate disk space required after unpacking your artifact.
+
+ Hardware dependencies
+ Describe any specific hardware and specific features required to evaluate your artifact (vendor, CPU/GPU/FPGA, number of processors/cores, interconnect, memory, hardware counters, etc).
+
+ Software dependencies
+ Describe any specific OS and software packages required to evaluate your artifact. This is particularly important if you share your source code and it must be compiled or if you rely on some proprietary software that you can not include to your package. In such case, we strongly suggest you to describe how to obtain and to install all third-party software, data sets and models.
+
+ Note that we are trying to obtain AE licenses for some commonly used proprietary tools and benchmarks - you will be informed in case of positive outcome.
+
+ Data sets
+ If third-party data sets are not included in your packages (for example, they are very large or proprietary), please provide details about how to download and install them.
+
+ In case of proprietary data sets, we suggest you provide reviewers a public alternative subset for evaluation.
+
+ Models
+ If third-party models are not included in your packages (for example, they are very large or proprietary), please provide details about how to download and install them.
+
+ Installation
+ Describe the setup procedures for your artifact (even when containers are used).
+
+ Experiment workflow
+ Describe the experimental workflow and how it is implemented and executed, i.e. some OS scripts, IPython/Jupyter notebook, MLCommons CM automation language, etc.
+
+ Check examples of reproduced papers.
+
+ Evaluation and expected result
+ Describe all the steps necessary to reproduce the key results from your paper. Describe expected results including maximum allowable variation of empirical results. See the SIGPLAN Empirical Evaluation Guidelines:
+
+
+
+ Empirical Evaluation Guidelines
+
+
+ The programming languages research community often develops ideas whose worth is evaluated empirically. Compiler optimizations, static and dynamic analyses, program synthesizers, testing tools, memory management algorithms, new language features, and other research developments each depend on some empirical evidence to demonstrate their effectiveness. This reality raises some important questions. What kind of empirical evidence yields the most reliable conclusions? What are the best practices for putting together an empirical evaluation in PL research? Do PL research papers published in top venues always follow these best practices?
+
+ To answer these questions, in August of 2017 the SIGPLAN Executive Committee formed the ad hoc committee on Programming Language Research Empirical Evaluations. The committee is chaired by Steve Blackburn, and its members include Matthias Hauswirth, Emery Berger, and Michael Hicks. Shriram Krishnamurthi has acted as an external collaborator. The committee brings together expertise on empirical evaluation methodology, experience in running workshops and publishing papers on that topic, experience introducing artifact evaluation into SIGPLAN conferences, and experience chairing the PCs of major SIGPLAN conferences.
+
+ Preliminary Result: Empirical Evaluation Checklist
+ Since its formation, the committee has examined the literature to identify common forms of empirical evaluation applied to the various kinds of PL research. This examination has identified inadequacies that regularly arise, even in papers published recently in highly regarded venues, including PLDI, POPL, ASPLOS, OOPSLA, and ICFP.
+
+ The committee has organized and categorized its findings, producing a 1-page best-practices checklist.
+
+ This checklist is organized into seven categories, each with associated examples for illustration. Categories are meant to be comprehensive, applying to the breadth of possible empirical evaluations. Examples in each category highlight specific, important areas in which best practice was frequently not followed. These are meant to be useful and illustrative, but they are neither comprehensive nor applicable to every evaluation.
+
+ The goal of the checklist is to help authors produce stronger scholarship, and to help reviewers evaluate such scholarship more consistently. Importantly, the checklist is is meant to support informed judgment, not supplant it. The committee’s hope is that this checklist can put all members of the community literally on the same page.
+
+ Request for Feedback
+ The current checklist dates from October 26, 2018. It and the FAQ below have incorporated feedback we have received since the initial checklist was released in January; thanks to those who commented! We continue to solicit feedback and suggestions for improvement. We are particularly interested in
+
+ Clarifications on category and example descriptions
+ Suggestions for new categories and/or examples, or consolidations. For the former, we would request specific references to the published literature demonstrating the issue
+ Particularly good empirical evaluations
+ Feedback can be provided via this Google Form (preferred) or via email to Steve Blackburn.
+
+ Frequently Asked Questions
+ Why a checklist?
+ Our goal is to help ensure that current, accepted best practices are followed. Per the Checklist Manifesto, checklists help to do exactly this. Our interest is the good practices for carrying out empirical evaluations as part of PL research. While some practices are clearly wrong, many require careful consideration: Not every example under every category in the checklist applies to every evaluation – expert judgment is required. The checklist is meant to assist expert judgment, not substitute for it. ‘Failure isn’t due to ignorance. According to best-selling author Atul Gawande, it’s because we haven’t properly applied what we already know.’ We’ve kept the list to a single page to make it easier to use and refer back to.
+
+ Why now?
+ When best practices are not followed, there is a greater-than-necessary risk that the benefits reported by an empirical evaluation are illusory, which harms further progress and stunts industry adoption. The members of the committee have observed many recent cases in which practices in the present checklist are not followed. Our hope is that this effort will help focus the community on presenting the most appropriate evidence for a stated claim, where the form of this evidence is based on accepted norms.
+
+ Is use of the checklist going to be formally integrated into SIGPLAN conference review processes?
+ There are no plans to do so, but in time, doing so may make sense.
+
+ How do you see authors using this checklist?
+ We believe the most important use of the checklist is to assist authors in carrying out a meaningful empirical evaluation.
+
+ How do you see reviewers using this checklist?
+ We also view the checklist as a way to remind reviewers of important elements of a good empirical evaluation, which they can take into account when carrying out their assessment. However, we emphasize that proper use of the checklist requires nuance. Just because a paper has every box checked doesn’t mean it should be accepted. Conversely, a paper with one or two boxes unchecked may still merit acceptance. Even whether a box is checked or not may be subject to debate. The point is to organize a reviewer’s thinking about an empirical evaluation to reduce the chances that an important aspect is overlooked. When a paper fails to check a box, it deserves some scrutiny in that category.
+
+ How did you determine which items to include?
+ The committee examined a sampling of papers from the last several years of ASPLOS, ICFP, OOPSLA, PLDI, and POPL, and considered those that contained some form of empirical evaluation. We also considered past efforts examining empirical work (Gernot Heiser’s “Systems Benchmarking Crimes”, the “Pragmatic Guide to Assessing Empirical Evaluations”, and the “Evaluate Collaboratory”). Through regular discussions over several months, we identified common patterns and anti-patterns, which we grouped into the present checklist. Note that we explicitly did not intend for the checklist to be exhaustive; rather, it reflects what appears to us to be common in PL empirical evaluations.
+
+ Why did you organize the checklist as a series of categories, each with several examples?
+ The larger categories represent the general breadth of evaluations we saw, and the examples are intended to be helpful in being concrete, and common. For less common empirical evaluations, other examples may be relevant, even if not presented in the checklist explicitly. For instance, for work studying human factors, the Adequate Data Analysis category might involve examples focusing on the use of statistical tests to relate outcomes in a control group to those in an experimental group. More on this kind of work below.
+
+ Why did you use checkboxes instead of something more nuanced, like a score?
+ The boxes next to each item are not intended to require a binary “yes/no” decision. In our own use of the list, we have often marked entries as partially filling a box (e.g., with a dash to indicate a “middle” value) or by coloring it in (e.g., red for egregious violation, green for pass, yellow for something in the middle).
+
+ I disagree with the choice of some checklist items; can you justify their inclusion?
+ One concern we have heard multiple times is that the example previously titled “threats to validity” in Category 1, Clearly Stated Claims is not useful. The given reason is that “threats to validity” sections in software engineering papers often mention threats of little significance while ignoring real threats. This is unfortunate, but does not eliminate the need to clearly scope claims, highlighting important limitations. For science to progress, we need to be honest about what we have achieved. Papers often make, or imply, overly strong claims. One way this is done is to ignore important limitations. But doing so discourages or undervalues subsequent work that overcomes those limitations because that progress is not appreciated. Progress comes in steps, rarely in leaps, and we need those steps to be solid and clearly defined.
+
+ Another concern is that our recommendation (under the category Principled Benchmark Choice) that standard benchmark suites are to be preferred, when available and appropriate, might lead to work that overfits to that benchmark. While this is a problem in theory, and is well known from the machine learning community, our experience is that PL work more often has the opposite problem. Papers we looked at often subset a benchmark, or cherry-picked particular programs. Doing so calls results into question generally, and makes it hard to compare related systems across papers. We make progress more clearly when we can measure it. Good benchmark suites are important, since only with them can we make generalizable progress. Developing them is something that our community should encourage.
+
+ What about human factors or other areas that require empirical evaluation?
+ PL research sometimes involves user studies, and these are different in character than, say, work that evaluates a new compiler optimization or test generation strategy. Because user studies are currently relatively infrequent in the papers we examined, we have not included them among the category examples. It may be that new, different examples are required for such studies, or that the present checklist will evolve to contain examples drawn from user studies. Nonetheless, the seven category items are broadly applicable and should be useful to authors of any empirical evaluation for a SIGPLAN conference.
+
+ How does the checklist relate to the artifact evaluation process?
+ Artifact evaluation typically occurs after reviewing a paper, to check that the claims and evidence given in the paper match reality, in the artifact. The checklist is meant to be used by reviewers while judging the paper, and by authors when carrying out their research and writing their paper.
+
+ How will this checklist evolve over time?
+ Our manifesto is: Usage should determine content. We welcome feedback from users of the checklist to indicate how frequently they use certain checklist items or how often papers reviewed adhere to them. We also welcome feedback pointing to papers that motivate the inclusion of new items. As the community increasingly adheres to the guidelines present in the checklist, the need for their inclusion may diminish. We also welcome feedback on presentation: please share points of confusion about individual items, so we can improve descriptions or organization.
+
+
+
+
+
+
+ , the NeurIPS reproducibility checklist and the AE FAQ for more details.
+
+ Experiment customization
+ It is optional but can be useful for the community if you describe all the knobs to customize and tune your experiments and maybe even trying them with a different data sets, benchmark/applications, machine learning models, software environment (compilers, libraries, run-time systems) and hardware.
+
+ Reusability
+ Please describe your experience if you decided to participate in our pilot project to add the non-intrusive MLCommons Collective Mind interface (CM) to your artifacts. Note that it will be possible to prepare and run your experiments with or without this interface!
+
+ Notes
+ You can add informal notes to draw the attention of evaluators.
+
+ Artifact reviewing guide:
+
+
+Artifact evaluation
+This document provides the guidelines to evaluate artifacts at ACM and IEEE conferences.
+
+Overview
+Shortly after the artifact submission deadline, the AE committee members will bid on artifacts they would like to evaluate based on their competencies and the information provided in the artifact abstract such as software and hardware dependencies while avoiding possible conflicts of interest.
+
+Within a few days, the AE chairs will make the final selection of evaluators to ensure at least two or more evaluators per artifact.
+
+Evaluators will then have approximately 1 months to review artifacts via HotCRP, discuss with the authors about all encountered issues and help them fix all the issues. Remember that our philosophy of artifact evaluation is not to fail problematic artifacts but to help the authors improve their public artifacts, pass evaluation and improve their Artifact Appendix.
+
+In the end, the AE chairs will decide on a set of the standard ACM reproducibility badges (see below) to award to a given artifact based on all reviews and the authors' responses. Such badges will be printed on the 1st page of the paper and will be available as meta information in the ACM Digital Library
+
+Authors and reviewers are encouraged to check the AE FAQ and contact chairs and the community via our dedicated AE google group in case of questions or suggestions.
+
+ACM reproducibility badges
+Reviewers must read a paper and then thoroughly go through the Artifact Appendix to evaluate shared artifacts. They should then describe their experience at each stage (success or failure, encountered problems and how they were possibly solved, and questions or suggestions to the authors), and give a score on scale -1 .. +1:
+
++1 if exceeded expectations
+0 if met expectations (or inapplicable)
+-1 if fell below expectations
+Artifacts available
+Are all artifacts related to this paper publicly available?
+Note that it is not obligatory to make artifacts publicly available!
+
+
+
+The author-created artifacts relevant to this paper will receive an ACM "artifact available" badge only if they have been placed on a publicly accessible archival repository such as Zenodo, FigShare, and Dryad.
+
+A DOI will be then assigned to their artifacts and must be provided in the Artifact Appendix!
+
+Notes:
+
+ACM does not mandate the use of above repositories. However, publisher repositories, institutional repositories, or open commercial repositories are acceptable only if they have a declared plan to enable permanent accessibility! Personal web pages, GitHub, GitLab and BitBucket are not acceptable for this purpose.
+Artifacts do not need to have been formally evaluated in order for an article to receive this badge. In addition, they need not be complete in the sense described above. They simply need to be relevant to the study and add value beyond the text in the article. Such artifacts could be something as simple as the data from which the figures are drawn, or as complex as a complete software system under study.
+The authors can provide the DOI at the very end of the AE process and use GitHub or any other convenient way to access their artifacts during AE.
+Artifacts functional
+Are all components relevant to evaluation included in the package?
+Well documented? Enough to understand, install and evaluate artifact?
+Exercisable? Includes scripts and/or software to perform appropriate experiments and generate results?
+Consistent? Artifacts are relevant to the associated paper and contribute in some inherent way to the generation of its main results?
+
+
+Note that proprietary artifacts need not be included. If they are required to exercise the package then this should be documented, along with instructions on how to obtain them. Proxies for proprietary data should be included so as to demonstrate the analysis.
+
+The artifacts associated with the paper will receive an "Artifacts Evaluated - Functional" badge only if they are found to be documented, consistent, complete, exercisable, and include appropriate evidence of verification and validation.
+
+We usually ask the authors to provide a small/sample data set to validate at least some results from the paper to make sure that their artifact is functional.
+
+Results reproduced
+Was it possible to validate the key results from the paper using provided artifacts?
+
+
+You should report any unexpected artifact behavior to the authors (depends on the type of artifact such as unexpected output, scalability issues, crashes, performance variation, etc).
+
+The artifacts associated with the paper will receive a "Results reproduced" badge only if the key results of the paper have been obtained in a subsequent study by a person or team other than the authors, using artifacts provided by the author.
+
+Some variation of empirical and numerical results is tolerated. In fact it is often unavoidable in computer systems research - see "how to report and compare empirical results" in the AE FAQ page, the SIGPLAN Empirical Evaluation Guidelines, and the NeurIPS reproducibility checklist.
+
+Since it may take weeks and even months to rerun some complex experiments such as deep learning model training, we are discussing a staged AE where we will first validate that artifacts are functional before the camera ready paper deadline, and then use a separate AE with the full validation of all experimental results with open reviewing and without strict deadlines. We successfully validated a similar approach at the MLCommons open reproducibility and optimization challenges) and there is a related initiative at the NeurIPS conference.
+
+
+
+
+
+ the NeurIPS reproducibility checklist:
+
+ The Machine Learning Reproducibility Checklist (v2.0, Apr.7 2020)
+ For all models and algorithms presented, check if you include:
+  A clear description of the mathematical setting, algorithm, and/or model.
+  A clear explanation of any assumptions.
+  An analysis of the complexity (time, space, sample size) of any algorithm.
+ For any theoretical claim, check if you include:
+  A clear statement of the claim.
+  A complete proof of the claim.
+ For all datasets used, check if you include:
+  The relevant statistics, such as number of examples.
+  The details of train / validation / test splits.
+  An explanation of any data that were excluded, and all pre-processing step.
+  A link to a downloadable version of the dataset or simulation environment.
+  For new data collected, a complete description of the data collection process, such as
+ instructions to annotators and methods for quality control.
+ For all shared code related to this work, check if you include:
+  Specification of dependencies.
+  Training code.
+  Evaluation code.
+  (Pre-)trained model(s).
+  README file includes table of results accompanied by precise command to run to produce
+ those results.
+ For all reported experimental results, check if you include:
+  The range of hyper-parameters considered, method to select the best hyper-parameter
+ configuration, and specification of all hyper-parameters used to generate results.
+  The exact number of training and evaluation runs.
+  A clear definition of the specific measure or statistics used to report results.
+  A description of results with central tendency (e.g. mean) & variation (e.g. error bars).
+  The average runtime for each result, or estimated energy cost.
+  A description of the computing infrastructure used.
+ Reproduced from: www.cs.mcgill.ca/~jpineau/ReproducibilityChecklist-v2.0.pdf
+ This version (v. 2.0), is renamed the Machine Learning Paper
+ Paper Reproducibility Checklist, and is designed to be used
+ simultaneously with the ML Code Submission checklist (ADD
+ LINK). This change clearly acknowledge that the paper and
+ the code are two separate research artefacts, each with their
+ own checklist.
+ A few practical suggestions for using the checklist during a
+ paper submission process (conference or journal):
+ - For each question, have 2 answer fields.
+ - The first one is categorical, with choices: {Yes, No, Not applicable}.
+ - The second one is for a free-form comment.
+ - The main role of the second field is to allow users to provide
+ more detailed information, when it is not a clear yes/no
+ distinction, or for the reasons why it is not applicable.
+ - If the checklist is used during paper submission for a
+ conference, given the time pressure that often accompanies
+ such deadlines, it is recommended to require an initial
+ submission of the checklist at an earlier date, such as with
+ the abstract submission (e.g. 1 week earlier), while allowing
+ authors to update the checklist up to the paper deadline.
+ For a detailed analysis of the use of version 2.1 of the ML
+ reproducibility checklist at NeurIPS 2019:
+
+ AE FAQs:
+
+ Artifact Evaluation FAQ
+ Click here to see the table of contents.
+ Frequently Asked Questions
+ If you have questions or suggestions which are not addressed here, please feel free to contact us via public AE google group.
+
+ What is the difference between Repeatability, Reproducibility and Replicability?
+ We use the following definitions adopted by ACM and NISO:
+
+ Repeatability (Same team, same experimental setup)
+
+ The measurement can be obtained with stated precision by the same team using the same measurement procedure, the same measuring system, under the same operating conditions, in the same location on multiple trials. For computational experiments, this means that a researcher can reliably repeat her own computation.
+
+ Reproducibility (Different team, different experimental setup)
+
+ The measurement can be obtained with stated precision by a different team using the same measurement procedure, the same measuring system, under the same operating conditions, in the same or a different location on multiple trials. For computational experiments, this means that an independent group can obtain the same result using the author's own artifacts.
+
+ Replicability (Different team, same experimental setup)
+
+ The measurement can be obtained with stated precision by a different team, a different measuring system, in a different location on multiple trials. For computational experiments, this means that an independent group can obtain the same result using artifacts which they develop completely independently.
+
+ Do I have to open source my software artifacts?
+ No, it is not strictly necessary and you can provide your software artifact as a binary. However, in case of problems, reviewers may not be able to fix it and will likely give you a negative score.
+
+ Is Artifact evaluation blind or double-blind?
+ AE is a single-blind process, i.e. authors' names are known to the evaluators (there is no need to hide them since papers are accepted), but names of evaluators are not known to authors. AE chairs are usually used as a proxy between authors and evaluators in case of questions and problems.
+
+ How to pack artifacts?
+ We do not have strict requirements at this stage. You can pack your artifacts simply in a tar ball, zip file, Virtual Machine or Docker image. You can also share artifacts via public services including GitHub, GitLab and BitBucket.
+
+ Please see our submission guide for more details.
+
+ Is it possible to provide a remote access to a machine with pre-installed artifacts?
+ Only in exceptional cases, i.e. when rare hardware or proprietary software/benchmarks are required, or VM image is too large or when you are not authorized to move artifacts outside your organization. In such case, you will need to send the access information to the AE chairs via private email or SMS. They will then pass this information to the evaluators.
+
+ Can I share commercial benchmarks or software with evaluators?
+ Please check the license of your benchmarks, data sets and software. In case of any doubts, try to find a free alternative. In fact, we strongly suggest you provide a small subset of free benchmarks and data sets to simplify the evaluation process.
+
+ Can I engage with the community to evaluate my artifacts?
+ Based on the community feedback, we allow open evaluation to let the community validate artifacts which are publicly available at GitHub, GitLab, BitBuckets, etc, report issues and help the authors to fix them.
+
+ Note, that in the end, these artifacts still go through traditional evaluation process via the AE committee. We successfully validated at ADAPT'16 and CGO/PPoPP'17!
+
+ How to automate, customize and port experiments?
+ From our past experience reproducing research papers, the major difficulty that evaluators face is the lack of a common and portable workflow framework in ML and systems research. This means that each year they have to learn some ad-hoc scripts and formats in nearly all artifacts without even reusing such knowledge the following year.
+
+ Things get even worse if an evaluator would like to validate experiments using a different compiler, tool, library, data set, operating systems or hardware rather than just reproducing quickly outdated results using VM and Docker images - our experience shows that most of the submitted scripts are not easy to change, customize or adapt to other platform.
+
+ That is why we collaborate with the open MLCommons taskforce on automation and reproducibility and ACM to develop a portable automation framework to make it easier to reproduce experiments across continuously changing software, hardware and data.
+
+ Do I have to make my artifacts public if they pass evaluation?
+ No, you don't have to and it may be impossible in the case of commercial artifacts. Nevertheless, we encourage you to make your artifacts publicly available upon publication, for example, by including them in a permanent repository (required to receive the "artifact available" badge) to support open science as outlined in our vision.
+
+ Furthermore, if you make your artifacts publicly available at the time of submission, you may profit from the "public review" option, where you are engaged with the community to discuss, evaluate and use your software. See such examples here (search for "public evaluation").
+
+ How to report and compare empirical results?
+ News: Please check the SIGPLAN Empirical Evaluation Guidelines and the NeurIPS reproducibility checklist.
+
+ First of all, you should undoubtedly run empirical experiments more than once (we still encounter many cases where researchers measure execution time only once). and perform statistical analysis.
+
+ There is no universal recipe how many times you should repeat your empirical experiment since it heavily depends on the type of your experiments, platform and environment. You should then analyze the distribution of execution times as shown in the figure below:
+
+  If you have more than one expected value (b), it means that you have several run-time states in your system (such as adaptive frequency scaling) and you can not use average and reliably compare empirical results.
+
+ However, if there is only one expected value for a given experiment (a), then you can use it to compare multiple experiments. This is particularly useful when running experiments across different platforms from different users as described in this article.
+
+ You should also report the variation of empirical results together with all expected values. Furthermore, we strongly suggest you to pre-record results from your platform and provide a script to automatically compare new results with the pre-recorded ones. Otherwise, evaluators can spend considerable amount of time digging out and validating results from "stdout".
+
+ For example, see how new results are visualized and compared against the pre-recorded ones using some dashboard in the CGO'17 artifact.
+
+ How to deal with numerical accuracy and instability?
+ If the accuracy of your results depends on a given machine, environment and optimizations (for example, when optimizing BLAS, DNN, etc), you should provide a script to automatically report unexpected loss in accuracy above provided threshold as well as any numerical instability.
+
+ How to validate models or algorithm scalability?
+ If you present a novel parallel algorithm or some predictive model which should scale across a number of cores/processors/nodes, we suggest you to provide an experimental workflow that could automatically detect the topology of a user machine, validate your models or algorithm scalability, and report any unexpected behavior.
+
+ Is there any page limit for my Artifact Evaluation Appendix?
+ There is no limit for the AE Appendix at the time of the submission for Artifact Evaluation.
+
+ However, there is currently a 2 page limit for the AE Appendix in the camera-ready CGO, PPoPP, ASPLOS and MLSys papers. There is no page limit for the AE Appendix in the camera-ready SC paper. We also expect that there will be no page limits for AE Appendices in the journals willing to participate in the AE initiative.
+
+ Where can I find a sample HotCRP configuration to set up AE?
+ Please, check out our PPoPP'19 HotCRP configuration for AE in case you need to set up your own HotCRP instance.
+
+
+
+
+
+
+
+ Before submitting artifacts for evaluation. You can find the examples of Artifact Appendices in the last year’s reproduced papers.
+
+We strongly recommend you to provide at least some scripts to build your workflow, all inputs to run your workflow, and some expected outputs to validate results from your paper. You can then describe the steps to evaluate your artifact using Jupyter Notebooks or plain README files. You can skip this step if you want to share your artifacts without the validation of experimental results - in such case your paper can still be entitled for the “artifact available” badge.
+
+Artifact Submission
+After you receive the notification that your paper has been accepted to CoNEXT 2024, please submit the artifact abstract, the camera-ready PDF of your paper, and the Artifact Appendix at the AE submission website: https://conext24artifacts.hotcrp.com
+
+The (brief) abstract should describe your artifact, the minimal hardware and software requirements, how it supports your paper, how it can be validated and what the expected result is. Do not forget to specify if you use any proprietary software or hardware. This abstract will be used by evaluators during artifact bidding to make sure that they have access to appropriate hardware and software and have required skills.
+
+Most of the time, the authors make their artifacts available to the evaluators via an online repository service (such as GitHub, GitLab, or BitBucket). Other acceptable methods include: Using zip or tar files with all related code and data, particularly when your artifact should be rebuilt on reviewers’ machines (for example to have a non-virtualized access to a specific hardware). Using Docker, Virtual Box and other containers and VM images. Arranging remote access to the authors’ machine with the pre-installed software - this is an exceptional case when rare or proprietary software and hardware is used. You will need to communicate access information (e.g. a SSH key) to the AEC members via HotCRP Note that your artifacts will receive the ACM “artifact available” badge only if they have been placed on any publicly accessible archival repository such as Zenodo, FigShare, and Dryad. You must provide a DOI automatically assigned to your artifact by these repositories in your final Artifact Appendix.
+
+Artifact Review
+Reviewers will need to read a paper and then thoroughly go through the Artifact Appendix step-by-step to evaluate a given artifact based on a set of reviewing guidelines.
+
+The review will be organized in two phases:
+
+1. The first week of the artifact evaluation is mainly dedicated to sorting out technical and setup issues. During this phase, reviewers are strongly encouraged to communicate with the authors about encountered technical issues immediately (and anonymously) via the HotCRP submission website to give the authors time to resolve all problems.
+
+2. The remaining time of the artifact evaluation is dedicated to the actual reproduction of results. During remaining time of the review, reviewers will investigate and evaluate the artifacts in more detail.
+
+Note that our philosophy of artifact evaluation is not to fail problematic artifacts but to help the authors improve their artifacts (at least publicly available ones) and pass the evaluation. In the end, AE chairs will decide on a set of the standard ACM reproducibility badges to award to a given artifact based on all reviews as well as the authors’ responses.

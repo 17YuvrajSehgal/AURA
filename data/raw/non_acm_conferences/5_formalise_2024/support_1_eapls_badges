@@ -1,0 +1,96 @@
+EAPLS Artifact Badges  - May 2021
+EAPLS provides three separate badges related to artifact review associated with research articles in EAPLS sponsored venues:
+
+
+Artifacts Evaluated (two levels),
+
+Artifacts Available, and
+
+Results Validated (two levels).
+
+Anybody organising a scientific event in the scope of EAPLS is free to use these badges. In return, we appreciate EAPLS being mentioned as a sponsor of the event, possibly with the EAPLS logo displayed on the event website.
+Badges are independent: one, two or three badges can be applied to any given paper, according to the review procedures developed by each venue.
+Disclaimer: the EAPLS badging scheme is based on and consistent with the ACM initiative. Upon an agreement with ACM, EAPLS adopted the design of the ACM badges Version 1.1 (August 24, 2020). However, ACM is not involved in the implementation or evaluation process in any way on behalf of EAPLS. See https://www.acm.org/publications/policies/artifact-review-and-badging-current
+
+
+for more details on the ACM’s badging scheme and overall initiative.
+
+
+Acknowledgements:  the EAPLS Board thanks the graphic designer Valentina Di Noi (https://it.linkedin.com/in/valentina-di-noi-) for the artwork.
+
+Artifacts Evaluated
+
+
+The artifacts associated with the paper have successfully passed the review procedures developed by the venue (so, they need to be made available to reviewers). It is not required that artifacts are made publicly available. Two levels are distinguished for this badge (at most one of them can be applied to any given paper):
+
+
+1.1 Artifacts Functional
+
+
+
+
+
+
+The artifacts associated with the paper are documented, consistent, complete, exercisable, and include appropriate evidence of verification.
+
+
+Glossary
+
+
+Documented: An inventory of artifacts is included, and sufficient description to enable the artifacts to be exercised is included.
+
+Consistent: The artifacts are relevant to the associated paper, and significantly contribute to the generation of its main results.
+
+Complete: As far as possible, all components relevant to the associated paper are included.
+
+Exercisable: Software (including scripts) used to generate the results in the associated paper can be successfully executed, and included data can be accessed and appropriately manipulated.
+
+
+1.2 Artifacts (Functional and) Reusable
+
+
+
+
+
+The artifacts associated with the paper: (i) have all the qualities of the “Artifacts Functional” level; (ii) are very carefully documented and well-structured to the extent that reuse and repurposing is facilitated; and (iii) strictly adhere to norms and standards of the research community for artifacts of this type.
+
+
+
+Artifacts Available
+
+
+There is just one level for this badge:
+
+
+
+
+
+
+The artifacts associated with the paper have been made permanently available for retrieval on a publically accessible archival repository which has a declared plan to enable permanent accessibility. Institutional repositories, as well as open repositories (e.g., Zenodo, Software heritage, figshare or Dryad) are acceptable. A DOI or link to this repository along with a unique identifier for the object is provided. Artifacts need to be relevant to the study and add value beyond the text in the article.
+
+
+
+
+Results Validated
+
+
+The main results of the paper have been successfully obtained by a person or team other than the author(s). Namely: (i) the results must be in agreement to within a tolerance deemed acceptable for experiments of the given type; and (ii) differences in the results should not change the main claims made in the paper. Two levels are distinguished for this badge (at most one of them can be applied to any given paper):
+
+
+
+3.1 Results Reproduced
+
+
+
+
+The main results reported in the paper have been obtained in a subsequent study by a person or team other than the author(s), using (in part) artifacts provided by the author(s).
+
+
+
+3.2 Results Replicated
+
+
+
+
+
+The main results reported in the paper have been independently obtained in a subsequent study by a person or team other than the author(s), without the use of author(s)-supplied artifacts.

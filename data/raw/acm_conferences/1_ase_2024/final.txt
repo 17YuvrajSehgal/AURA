@@ -1,0 +1,95 @@
+Call for Artifacts
+
+The artifact evaluation track aims to review, promote, share, and catalog the research artifacts of accepted papers to the Research, Industry showcase, NIER, and Tool demonstration tracks of the current edition of ASE (2024) and the last year (ASE 2023). Authors can submit an artifact for the Artifacts Available and Artifacts Reusable badges. Our primary goal will be to help authors make their artifacts available and reusable. Definitions for all badges can be found on ACM Artifact Review and Badging Version 1.1.
+
+
+
+Available: Author-created artifacts relevant to their paper have been placed on a publicly accessible archival repository. A DOI or link to this repository along with a unique identifier for the object is provided.
+
+This badge is applied to papers in which associated artifacts have been made permanently available for retrieval.
+Artifacts do not need to have been formally evaluated in order for an article to receive this badge. In addition, they need not be complete in the sense described above. They simply need to be relevant to the study and add value beyond the text in the article. Such artifacts could be something as simple as the data from which the figures are drawn or as complex as a complete software system under study.
+
+
+Reusable: The artifacts associated with the research are found to be complete, exercisable, and include appropriate evidence of verification and validation. In addition, they are very carefully documented and well-structured to the extent that reuse and repurposing is facilitated. In particular, norms and standards of the research community for artifacts of this type are strictly adhered to. The reusable artifacts must meet the following requirements.
+
+Documented: At a minimum, an inventory of artifacts is included, and sufficient description is provided to enable the artifacts to be exercised.
+Consistent: The artifacts are relevant to the associated paper and contribute in some inherent way to generating its main results.
+Complete: To the extent possible, all components relevant to the paper in question are included. (Proprietary artifacts need not be included. If they are required to exercise the package, then this should be documented, along with instructions on how to obtain them. Proxies for proprietary data should be included so as to demonstrate the analysis.)
+Exercisable: Included scripts and / or software used to generate the results in the associated paper can be successfully executed, and Authors are strongly encouraged to target their artifact submissions for Reusable as the purpose of artifact badges is, among other things, to facilitate reuse and repurposing, which may not be achieved at the Functional level.
+Notes:
+
+We do not mandate the use of specific repositories. Publisher repositories (such as the ACM Digital Library), institutional repositories, or open commercial repositories (e.g., figshare) are acceptable. In all cases, repositories used to archive data should have a declared plan to enable permanent accessibility. Personal web pages are not acceptable for this purpose.
+
+Guidelines
+Authors must perform the following steps to submit an artifact:
+
+Prepare the artifact
+Make the artifact available
+Document the artifact
+Submit the artifact
+1. Prepare the artifact
+Both executable and non-executable artifacts may be submitted.
+
+Executable artifacts consist of a tool or software system. For these artifacts, authors should
+
+Prepare an installation package so that the tool can be installed and run in the evaluator’s environment. Consider using a Docker (or VirtualBox VM) image for this process and submit the image. In particular, if the artifact contains or requires the use of a special tool or any other non-trivial piece of software, the authors must provide a VirtualBox VM image or a Docker container image with a working environment containing the artifact and all the necessary tools.
+Provide enough associated instruction, code, and data so that an average CS professional can build, install, and run the code within a reasonable time frame. If installation and configuration require more than 30 minutes, the artifact is unlikely to be accepted on practical grounds simply because the PC will not have sufficient time to evaluate it.
+Non-executable artifacts only contain data and documents that can be used with a simple text editor, a PDF viewer, or some other common tool (e.g., a spreadsheet program in its basic configuration). These artifacts can be submitted as a single, optionally compressed package file (e.g., a tar, zip, or tar.gz file).
+
+Prepare instructions and list the tools that are required to open the files.
+Clearly describe and explain the features (e.g., columns) in the dataset and the schema of the dataset.
+List the usage scenarios.
+2. Document the artifact
+The authors need to write and submit documentation explaining how to obtain, unpack, and use their artifacts in detail. The artifact submission must only describe the technicalities of the artifacts and uses of the artifact that are not already described in the paper. The submission should include the following:
+
+A LICENSE file describing the distribution rights. For submissions aiming for the Available badge, the license needs to ensure public availability. In the spirit of Open Science, we recommend adopting an open source license for executable artifacts and a data license for non-executable artifacts.
+A README file (in Markdown, plain text, or PDF format) that describes the artifact with all appropriate sections from the following:
+Data (for artifacts that focus on data or include a nontrivial dataset): cover aspects related to understanding the context, data provenance, ethical and legal statements (as long as relevant), and storage requirements.
+Setup (for executable artifacts): Provide clear instructions for how to prepare the artifact for execution. This includes:
+Hardware: performance, storage, and device type (e.g., GPUs) requirements.
+Software: Docker or VM requirements, or operating system and package dependencies if not provided as a container or VM. Providing a Dockerfile or image, or at least confirming the tool’s installation in a container, is strongly encouraged. Any deviation from standard environments needs to be reasonably justified.
+Usage (for executable artifacts): Provide clear instructions for how to reuse the artifact presented in the paper. Include:
+Detailed comments and instructions about how to reuse the artifact, giving an example of usage.
+Clear instructions to test the installation. For instance, it may describe what command to run and what output to expect to confirm that the code is installed and operational.
+Detailed commands to replicate the major results from the paper (optional).
+Usage (for non-executable artifacts): Address all the requirements to use the artifact.
+Include all the processing steps. For example, to reuse a dataset, is any specific pre-processing required?
+Detailed comments and a usage example to reuse the artifact.
+Clear instructions for downloading and accessing the artifact, including the tools to open it.
+3. Make the artifact available
+The authors need to make the packaged artifact available so that the PC can access it. Artifacts must be made available via an archival repository.
+
+Temporary drives (e.g., Dropbox, Google Drive) are considered to be non-persistent, the same as individual websites of the submitting authors, as these are prone to changes.
+There are several permanent archival repositories that can be used. An example is Software Heritage (see their submission guide), which provides long-term availability of software source code. Other solutions include Figshare and Zenodo. Please note that platforms that do not guarantee long-term archival, which presently includes GitHub, do not qualify.
+Obtain the assigned DOI for the artifact.
+4. Submit the artifact
+Submit a short abstract (maximum two pages) that has subsections with all the following titles:
+
+Paper title
+Link to the accepted paper. The paper should be made available so the reviewers can access it.
+Purpose: a brief description of what the artifact does.
+Badge: A list of badge(s) the authors are applying for, as well as the reasons why the authors believe that the artifact deserves that badge(s).
+Technology skills assumed by the reviewer evaluating the artifact.
+Provenance: where the artifact can be obtained.
+Instructions: Provide a list of instructions on how the reviewers should access the artifact, including a list of tools required. Please also mention if running your artifact requires any specific Operating Systems or other, unusual environments, including GPUs. If the data is very large or requires a special tool to open, the instructions should be submitted with the artifact. The submission should also include the explanation and schema of the dataset and its usage scenarios. If reviewers have to spend more than 30 minutes installing the tool, it is unlikely that the artifact will be accepted.
+All submissions must be in PDF format and conform, at the time of submission, to the ACM Proceedings Template: https://www.acm.org/publications/proceedings-template.
+
+LaTeX users must use the \documentclass[sigconf,review]{acmart} option.
+
+The abstracts should be submitted using the following link: https://ase24artifact.hotcrp.com/
+
+By submitting your article to an ACM Publication, you are hereby acknowledging that you and your co-authors are subject to all ACM Publications Policies, including ACM’s new Publications Policy on Research Involving Human Participants and Subjects. Alleged violations of this policy or any ACM Publications Policy will be investigated by ACM and may result in a full retraction of your paper, in addition to other potential penalties, as per ACM Publications Policy.
+
+Please ensure that you and your co-authors obtain an ORCID ID, so you can complete the publishing process for your accepted paper. ACM has been involved in ORCID from the start and we have recently made a commitment to collect ORCID IDs from all of our published authors. The collection process has started and will roll out as a requirement throughout 2022. We are committed to improve author discoverability, ensure proper attribution and contribute to ongoing community efforts around name normalization; your ORCID ID will help in these efforts.
+
+Review
+The ASE artifact evaluation track uses a single-anonymous review process. All artifacts will receive three reviews.
+
+Three PC members will review each abstract. If PC members do not find sufficient substantive evidence for the availability or reusability of the artifact according to the definitions of the badges, the abstract will be rejected.
+
+Important Dates:
+Aug 25, 2024: Artifact submissions deadline
+Aug 27 - Sep 8 2024: Review period
+Sep 9 - 11, 2024: Author Response period
+Sep 12 - Sep 20, 2024: Discussion
+Sep 22, 2024: Notification

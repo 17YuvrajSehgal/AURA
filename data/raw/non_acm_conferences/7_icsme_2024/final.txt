@@ -1,0 +1,93 @@
+Artifact Evaluation Track and ROSE Festival
+ICSME 2024
+Program
+Goal and Scope
+The ICSME 2024 Joint Artifact Evaluation Track and ROSE (Recognizing and Rewarding Open Science in SE) Festival is a special track that aims to promote, reward, and celebrate open science in Software Engineering research. Authors of accepted papers to all ICSME, SCAM, and VISSOFT tracks (excluding journal first) can submit their artifacts for evaluation. Papers will be given the IEEE Open Research Object or Research Object Reviewed badges if their corresponding artifacts meet certain conditions (see below).
+
+What Artifacts are Accepted?
+Artifacts of interest include (but are not limited to) the following (or combinations of them):
+
+Data repositories, which are data (e.g., logging data, system traces, survey raw data) that can be used for multiple software engineering approaches.
+Automated experiments that replicate the study in the accepted paper.
+Software, which are implementations of systems or algorithms potentially useful in other studies.
+Frameworks, which are tools and services illustrating new approaches to software engineering that could be used by other researchers in different contexts.
+Qualitative artifacts such as interview scripts and survey templates. Also, interview transcripts and survey results are very valuable, provided that the authors can share them (e.g., interviews may contain sensitive information about a company).
+Software engineering-specific machine learning models, e.g., pre-trained models that can be used to solve software engineering problems.
+This list is not exhaustive, so the authors are asked to email the chairs before submitting if their proposed artifact is not on this list. For additional types of artifacts, please see here.
+
+What Are the Criteria for “Open Research Object” or “Research Object Reviewed” Badges?
+Open Research Object Badje	
+Open Research Object
+
+A paper will be awarded the IEEE “Open Research Object” badge if the following two criteria are fulfilled:
+
+Its artifact is placed in a publicly accessible archival repository, and a DOI or link to this persistent repository is provided.
+Its artifact is properly documented, at the minimum with a README file explaining the meaning of each file and its content.
+Research Object Reviewed Badge	
+Research Object Reviewed
+
+A paper will be awarded the IEEE “Research Object Reviewed” badge if its artifact is documented, consistent, complete, exercisable, and includes appropriate evidence of verification and validation. Moreover, the documentation and structure of the artifact should be good enough so that reuse and repurposing are facilitated. The following are the meanings of the various above-mentioned terms:
+
+Documented: At a minimum, an inventory of artifacts is included, and sufficient description is provided to enable the artifacts to be exercised.
+Consistent: The artifacts are relevant to the associated paper, and contribute in some inherent way to the generation of its main results.
+Complete: To the extent possible, all components relevant to the paper in question are included. (Proprietary artifacts need not be included. If they are required to exercise the package, then this should be documented, along with instructions on how to obtain them. Proxies for proprietary data should be included so as to demonstrate the analysis.)
+Exercisable: Included scripts and/or software used to generate the results in the associated paper can be successfully executed, and included data can be accessed and appropriately manipulated.
+One important clarification concerning the “Exercisable” property. Executing scripts/programs to demonstrate the artifact and/or to generate results should not require the availability of proprietary software, as well as of very specific hardware that is unusual to be available in most software engineering labs. For example, concerning visualization-related artifacts, we cannot expect PC members to have Virtual/Mixed Reality visors or other augmented reality devices (e.g., Hololens) available. In such cases, either the user should be able to (partially) reproduce the results using conventional hardware (e.g., screens), or videos should be attached to the artifacts to show how their execution will behave. As far as the reproduction of ML models’ training is concerned, the submitters might assume that some PC members may have suitable hardware (e.g., GPUs) available, yet it might be good to have artifacts for which one might only experiment with the inference phase and, only optionally, the training phase.
+
+A paper can be given both badges if the artifact is open, exercisable, well-structured, and well-documented to allow reuse and repurposing. IEEE has two other categories, “Results Reproduced” and “Results Replicated”, but they only apply if a subsequent study has been conducted by a person or team other than the authors to ensure that the main findings remain. As the artifact evaluation process is not as comprehensive as a subsequent study, similar to ICSME 2023, we only assign papers with the “Open Research Object” and “Research Object Reviewed” badges.
+
+If you want to learn more about open science, the badging system, and the importance of creating open research objects, you can read here and here
+
+Call for Artifact Contributions
+Authors of accepted papers to all ICSME, SCAM, and VISSOFT 2024 tracks (except for journal-first) are invited to submit artifacts that enable the reproducibility and replicability of their results to the artifact evaluation track. Depending on the assessment, we will award badges to be displayed in those papers to recognize their contributions to open science.
+
+All awarded artifacts will be invited to present at The ROSE Festival (Recognizing and Rewarding Open Science in SE). The ROSE Festival is a special session within ICSME where researchers can receive public credit for facilitating and participating in open science.
+
+The ICSME artifact evaluation track uses a single-anonymous review process.
+
+Best Artifact Award
+There will be a Best Artifact Award for each venue (ICSME, VISSOFT, SCAM) to recognize the effort of authors creating and sharing outstanding research artifacts. The winners of the awards will be decided during the ROSE Festival.
+
+Submission and Review
+All submissions, reviewing, and notifications for this track will be via the ICSME 2024 EasyChair conference management system (“Artifact Evaluation” Track). Authors must submit the following:
+
+Title and authors of the accepted paper.
+An abstract containing:
+A simple description of the artifact to be evaluated (1 paragraph);
+A link to the paper’s preprint;
+The link to the artifact to be evaluated (see the steps below to prepare this link);
+The badge(s) to claim, i.e., “Open Research Object” and/or “Research Object Reviewed”, briefly explaining why the artifact is eligible for such badges;
+Skills and knowledge required by a reviewer to properly review and execute the artifacts (e.g., programming languages, pieces of technology, etc.);
+Requirements to run the artifact (RAM, disk, packages, specific devices, operating system, etc). As we have explained before, such requirements should be “reasonable” for software engineering researchers.
+Authors of the papers accepted to the tracks must perform the following steps to submit an artifact:
+
+Step 1: Documenting the Artifact
+Authors need to provide documentation explaining how to obtain the artifact package, how to unpack the artifact, how to get started, and how to use the artifacts in sufficient detail. The documentation must describe only the technicalities and uses of the artifacts that are not already described in the paper. The artifact should contain the following documents (in markdown plain text format within the root folder):
+
+A README.md main file describing what the artifact does and how and where it can be obtained (with hidden links and access password if necessary). There should be a clear description, step-by-step, of how to reproduce the results presented in the paper. Reviewers should not need to figure out on their own what the input is for a specific step or what output is produced (and where). All usage instructions should be explicitly documented in the step-by-step instructions of the README.md file. Provide an explicit mapping between the results and claims reported in the paper and the steps listed in README.md for easy traceability.
+For artifacts that contain any kind of code, the README.md file should contain two special sections: one for requirements, describing all necessary software/hardware prerequisites, and one for installation, with instructions including notes illustrating a very basic usage example or a method to test the installation. This could be, for instance, information on what output to expect that confirms that the code is installed and working; and that the code is doing something interesting and useful. Include, at the end of the installation section, the configuration for which the installation was tested.
+The README.md file should contain a link to the accepted paper. The paper pdf itself can be within the artifact’s repository or in an external service (e.g., ArXiv).
+A LICENSE.md file describing the distribution rights. Note that to score “Open Research Object” badge, then that license needs to be an open-source license compliant with OSI.
+Step 2: Preparing the Artifact
+There are two options depending on the nature of the artifacts: Installation Package or Simple Package. In both cases, the configuration and installation of the artifact should take less than 30 minutes. Otherwise, the artifact is unlikely to be endorsed simply because the committee will not have sufficient time to evaluate it.
+
+Installation Package: If the artifact consists of a tool or software system, then the authors need to prepare an installation package (or an installation procedure) so that the tool can be installed and run in the evaluator’s environment. Provide enough associated instruction, code, and data such that a person with a CS background, with a reasonable knowledge of scripting, build tools, etc., could install, build, and run the code. If the artifact contains or requires the use of a special tool or any other non-trivial piece of software, the authors must provide a VirtualBox VM image or a Docker image with a working environment containing the artifact and all the necessary tools. Similarly, if the artifact requires specific hardware, it should be clearly documented in the requirements (see Step 1 – Documenting the Artifact). Note that we expect that the artifacts will have been vetted on a clean machine before submission.
+
+Simple Package: If the artifact contains only documents that can be used with a simple text editor, a PDF viewer, or some other common tool (e.g., a spreadsheet program in its basic configuration), the authors can just save all documents in a single package file (zip or tar.gz).
+
+Step 3: Making the Artifact Available for Review
+Authors need to make the packaged artifact (installation package or simple package) available so that the Evaluation Committee can access it.
+
+For the “Open Research Object badge”: If the authors are aiming for the Open Research Object badge, the artifact needs to be (i) placed in a publicly accessible archival repository (and have a DOI), and (ii) the link to the artifact needs to be included in the Camera Ready (CR) version of the paper (for tracks that the CR deadline is before the artifact submission, the link should be already in the CR). When generating the DOI, the authors should use “all version” links (as opposed to a specific version of the artifact) so that, when the artifact is updated, the DOI does not change.
+
+Note that links to individual websites or links to temporary drives (e.g. Google) are non-persistent, and thus artifacts placed in such locations will not be considered for the available badge. Examples of persistent storage that offer DOI are IEEE Data Port, Zenodo, figshare, and Open Science Framework. For installation packages, authors can use CodeOcean, a cloud-based computational reproducibility platform that is fully integrated with IEEE Xplore. Other suitable providers can be found here. Institutional repositories are acceptable. In all cases, repositories used to archive data should have a declared plan to enable permanent accessibility.
+
+One relatively simple way to make your packaged artifact publicly accessible:
+
+Create a GitHub repository.
+Register the repository at Zenodo.org. For details on that process, see Citable Code Guidelines.
+Make a release at Github, at which time Zenodo will automatically grab a copy of that repository and issue a Digital Object Identifier (DOI) e.g. https://doi.org/10.5281/zenodo.4308746.
+For the “Research Object Reviewed”: Artifacts do not necessarily have to be publicly accessible for the review process if the goal is only the “Research Object Reviewed” badge. In this case, the authors are asked to provide a private link or a password-protected link.
+
+Submission Link
+Please use the following link: https://easychair.org/my/conference?conf=icsme2024

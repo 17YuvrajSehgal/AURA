@@ -1,0 +1,51 @@
+QEST 2023 will include the possibility of an artifact evaluation (AE) procedure for all types of papers. There will be a single round of the AE: For tool papers (regular and short), artifact evaluation is compulsory (see the call for papers); for research papers (regular and short), it is voluntary. All accepted papers with accepted artifacts will receive a badge. Artifact evaluation in QEST follows similar lines to the Functional category of the Artifact Review and Badging system of the ACM v1.1.
+
+Artifacts and Evaluation Criteria
+An artifact is any additional material (software, data sets, machine-checkable proofs, etc.) that supports the claims made in the paper and, in ideal case, makes them fully replicable. In case of a tool, a typical artifact consists of the binary or source code of the tool, its documentation, the input files (e.g., models analysed or input data) used for the tool evaluation in the paper, and a configuration file or document describing the parameters used to obtain the results. The AE Committee will read the corresponding paper and evaluate the submitted artifact w.r.t. the following criteria:
+
+consistency with and replicability of results in the paper,
+completeness,
+documentation and ease of use.
+Mandatory Artifact Evaluation for Tool Papers
+Tool papers (both short and regular) are required to be accompanied by an artifact. The results of the evaluation will be taken into consideration in the paper reviewing discussion and may influence the decision to accept or reject the paper. Note however that the fact that not all experiments may be reproducible (e.g., due to high computational demands) does not imply rejection of the paper. Papers that succeed in the artifact evaluation and are accepted will receive a badge that can be shown on the title page of the corresponding paper.
+
+Artifact Evaluation for Research Papers
+Authors of reseaerch papers are also invited to submit an artifact. In this case, the submission is voluntary. The results of the evaluation will be taken into consideration in the paper reviewing discussion. However, the results of AE do not imply the acceptance/rejection of the paper. We are aware of the fact that some parts of the paper may not be found reproducible (e.g., due to computational demands or technical difficulties). The primary goal of the artifact evaluation is to give positive feedback to the authors and reward replicable research. Authors of successful artifacts will receive a badge that can be shown on the title page of the accepted paper. Artifact evaluation in QEST follows similar lines to the Functional category of the Artifact Review and Badging system of the ACM v1.1.
+
+Artifact Submission
+An artifact submission consists of
+
+an abstract that summarizes the artifact and its relation to the paper,
+a .pdf file of the paper (uploaded via EasyChair), and
+a link to the artifact itself (see the Guidelines for Artifacts below).
+The artifact itself should contain
+
+a text file named License.txt that contains the license for the artifact (it is required that the license at least allows the Artifact Evaluation Committee to evaluate the artifact w.r.t. the criteria mentioned above),
+a text file called Readme.txt that contains detailed, step-by-step instructions on how to use the artifact to replicate the results in the paper, and
+information about the host platform on which you prepared and tested your VM image (OS, RAM, number of cores, CPU frequency) and the expected execution time, in the Readme.txt file.
+The artifact submission is handled via EasyChair (select QEST 2023 - Artifact Evaluation track). Artifacts have to be submitted in the AE track, with the same title and authors as the submitted paper.
+
+Reference from Paper to Artifact
+We recommend that authors of papers for which an artifact is submitted, include a paragraph at the end of their paper, just before the references, along the lines of:
+
+\paragraph{Data availability.} An artifact [very brief description of artifact contents/purpose] has been submitted to the QEST 2023 artifact evaluation.
+
+This reminds the paper reviewers that the artifact will be independently reviewed; and if the paper is accepted, this paragraph can be updated to refer to the artifact at its archived location and DOI.
+
+Guidelines for Artifacts
+To submit an artifact, please prepare a virtual machine (VM) or a docker image of your artifact. The image must be kept accessible via a working web link throughout the entire evaluation process. The URL of the image must be submitted within the artifact submission in the EasyChair Artifact Evaluation track (see Artifact Submission above).
+
+As the basis of the VM image, please choose a commonly used Linux distribution that has been tested with the virtual machine software. For preparation of the VM image please use VirtualBox and save the VM image as an Open Virtual Appliance (OVA) file.
+
+Please include the prepared URL in the appropriate field of the artifact submission and check its public accessibility. To ensure the integrity of the submitted artifacts, please compute the SHA checksum of the artifact file and provide it within the artifact submission. A checksum can be obtained by running sha1sum (Linux, macOS), or File Checksum Integrity Verifier (Microsoft Windows).
+
+Finally, we would like the authors to take into account the following guidelines when preparing the artifact:
+
+Document in detail how to replicate most, or ideally all, of the (experimental) results of the paper using the artifact.
+Try to keep the evaluation process simple through easy-to-use scripts and provide detailed documentation assuming minimum expertise of users.
+The artifact should not require the user to install additional software before running, that is, all required packages etc. have to be installed on the provided VM image.
+For experiments that require a large amount of resources (hardware or time), it is recommended to provide a way to replicate a subset of the results of the paper with reasonably modest resources (RAM, number of cores), so that the results can be reproduced on common laptop hardware in a reasonable amount of time. Do include the full set of experiments as well (for those reviewers with sufficient hardware or time), just make it optional. Please indicate in the EasyChair submission form how much memory a reviewer will need to run your artifact (at least to replicate the chosen subset).
+Members of the Artifact Evaluation Committee and the PC are asked to use the artifact for the sole purpose of evaluating the contribution associated with the artifact.
+
+Possibility for exemption
+In case your artifact cannot comply with these guidelines, please do not hesitate to contact the Artifact Evaluation Co-chairs in advance before the artifact submission deadline. For example, if the VM would have to contain some restrictively-licensed software such as Matlab, etc.

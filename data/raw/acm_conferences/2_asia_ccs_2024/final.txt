@@ -1,0 +1,392 @@
+Call for Artifacts
+A scientific paper consists of a constellation of artifacts that extend beyond the document itself: software, hardware, evaluation data and documentation, raw survey results, mechanized proofs, models, test suites, benchmarks, and so on. In some cases, the quality of these artifacts is as important as that of the document itself. Last year, CCS introduced an artifact evaluation process to promote the development of high-quality artifacts and recognize their authors. Building on last year’s success, CCS will again run an optional artifact evaluation process this year.
+
+The artifact evaluation process will consider the availability and functionality of artifacts associated with their corresponding papers, along with the reproducibility of the paper’s key results and claims with these artifacts. Artifact evaluation is single blind. Artifacts will be held in confidence by the evaluation committee. While the committee strongly encourages the authors of CCS papers to make their artifacts publicly available, the artifact evaluation process is open to artifacts that are not.
+
+All accepted CCS papers are encouraged to participate in artifact evaluation. See Submitting an Artifact for details on the submission process.
+
+Questions about the process can be directed to the CCS Artifact Evaluation Chair.
+
+Updates
+August 28: Extended third cycle artifact registration and submission dates.
+April 9: Extended first cycle artifact registration and submission dates.
+April 9: Clarified the schedule for artifacts that accompany papers for which “minor revisions” are requested. See the revised schedule below.
+Important Dates and Links
+First Artifact Review Cycle
+For artifacts associated with papers:
+accepted with or without shepherding in the First Paper Review Cycle
+Artifact submission site
+Notification for paper authors: Wednesday, April 3, 2024
+Artifact registration deadline: Friday, April 12, 2024 (AoE) Monday, April 15, 2024 (AoE) [extended!]
+Artifact submission deadline: Friday, April 19, 2024 (AoE) Monday, April 22, 2024 (AoE) [extended!]
+Answering AEC evaluator questions: April 22–May 17, 2024
+Artifact decisions announced: Friday, May 24, 2024
+Second Artifact Review Cycle
+For artifacts associated with papers:
+accepted with or without shepherding in the Second Paper Review Cycle
+accepted after minor revisions in the First Paper Review Cycle
+Artifact submission site
+Notification for paper authors: Thursday, July 4, 2024
+Artifact registration deadline: Friday, July 12, 2024 (AoE)
+Artifact submission deadline: Friday, July 19, 2024 (AoE)
+Answering AEC evaluator questions: July 22–August 16, 2024
+Artifact decisions announced: Friday, August 23, 2024
+Third Artifact Review Cycle
+For artifacts associated with papers:
+accepted after minor revisions in the Second Paper Review Cycle
+Artifact submission site
+Notification for paper authors: Thursday, August 22, 2024
+Artifact registration deadline: Friday, August 30, 2024 (AoE) Tuesday, September 3, 2024 (AoE) [extended!]
+Artifact submission deadline: Friday, September 6, 2024 (AoE) Tuesday, September 10, 2024 (AoE) [extended!]
+Answering AEC evaluator questions: September 9–October 4, 2024
+Artifact decisions announced: Friday, October 11, 2024
+For an artifact to be considered, at least one contact author for the submission must be reachable via email and respond to questions in a timely manner during the evaluation period.
+
+Artifact Evaluation Organizers
+Chair
+Eric Eide, University of Utah
+Committee Members
+The list of Artifact Evaluation Committee members can be found at the "Artifact Evaluation Committee" page.
+
+Artifact Evaluation Overview
+Benefits and Goals
+The dissemination of artifacts benefits our science and engineering as a whole. Their availability encourages replicability and reproducibility and enables authors to build on top of each others’ work. It can help more unambiguously resolve questions about cases not considered by the original authors. It also confers direct and indirect benefits to the authors themselves.
+
+The goal of artifact evaluation is to incentivize authors to invest in their broader scientific community by producing artifacts that illustrate their claims, enable others to validate those claims, and accelerate future scientific progress by providing a platform for others to start from. A paper with artifacts that have passed the artifact evaluation process is recognized by badges that appear on the paper’s first page. In addition, a paper with artifacts may include an appendix that details those artifacts, highlighting the importance of those artifacts to the contributions of the work overall.
+
+For each CCS 2024 review cycle, artifact evaluation will begin only after the paper acceptance decisions for that review cycle have been made. Artifact evaluation is optional, although we hope that the authors of all accepted papers will participate.
+
+Evaluation Criteria and Badges
+For each paper with submitted artifacts, members of the Artifact Evaluation Committee (AEC) will read the paper and judge how well the submitted artifacts conform to the expectations set by the paper. In brief, the AEC expects that high-quality artifacts will be:
+
+consistent with the paper,
+as complete as possible,
+documented well, and
+easy to reuse, facilitating further research.
+At artifact-submission time, a submitter will choose the criteria by which their artifacts will be evaluated. The criteria correspond to three kinds of badges that can be awarded to a paper under the ACM’s Artifact Review and Badging Policy, Version 1.1. An artifact can satisfy the criteria of one, two, or all three of the following types of badges:
+
+Artifacts Available. To earn this badge, the AEC must judge that the artifacts associated with the paper have been made available for retrieval, permanently and publicly. Valid hosting options include institutional repositories and third-party digital repositories that have a declared plan to enable permanent accessibility, e.g., Zenodo, FigShare, Dryad, or Software Heritage. In particular, making the artifacts available solely through personal web pages, GitHub, GitLab, or a similar software-development site is not adequate for receiving this badge. Other than making the artifacts available, this badge does not mandate any further requirements on functionality, correctness, or documentation.
+
+Artifacts Evaluated. To earn this badge, the AEC must judge that the artifacts conform to the expectations set by the paper in terms of functionality, usability, and relevance. In short, do the artifacts work and are they useful for producing outcomes associated with the paper? The AEC will consider four aspects of the artifacts in particular. (i) Documented: are the artifacts sufficiently documented to enable them to be exercised by readers of the paper? (ii) Consistent: are the artifacts relevant to the paper, and do they contribute in some inherent way to the generation of its main results? (iii) Complete: do the submitted artifacts include all of the key components described in the paper? (iv) Exercisable: do the submitted artifacts include the scripts and data needed to run the experiments described in the paper, and can the software be successfully executed? The Artifacts Evaluated badge has two levels. Artifacts that are judged to satisfy the above criteria will be awarded the Artifacts Evaluated—Functional badge. Artifacts that are judged to significantly exceed the minimum standards for the above criteria, to the point that the artifacts facilitate reuse and repurposing by others, may instead be awarded the Artifacts Evaluated—Reusable badge.
+
+Results Reproduced. To earn this badge, the AEC must judge that they can use the submitted artifacts to obtain the main results presented in the paper. In short, is it possible for the AEC to independently repeat the experiments and obtain results that support the claims made by the paper? The goal of this effort is not to reproduce the results exactly, but instead to generate results independently within an allowed tolerance such that the main claims of the paper are validated.
+
+Process
+Authors are invited to submit their artifacts shortly after their papers have been accepted for publication at CCS. For CCS 2024, there are three rounds of artifact evaluation, to accommodate papers that are accepted at different points in time.
+
+First Paper Review Cycle
+If your paper is accepted, with or without shepherding, submit your artifact to the First Artifact Review Cycle.
+If your paper is accepted after completing minor revisions, submit your artifact to the Second Artifact Review Cycle.
+Second Paper Review Cycle
+If your paper is accepted, with or without shepherding, submit your artifact to the Second Artifact Review Cycle.
+If your paper is accepted after completing minor revisions, submit your artifact to the Third Artifact Review Cycle.
+You must submit your artifacts according to the time that your paper is accepted, as described above. You cannot “postpone” the review of your paper’s artifacts until a later cycle.
+
+Because the time between paper acceptance and artifact submission is short, the Artifact Evaluation Chair encourages authors to starting prepare their artifacts for evaluation while their papers are still under consideration by the Program Committee. See the guidelines for packaging artifacts later in this document.
+
+After each artifact submission deadline, members of the AEC will download each artifact package, read the accepted paper, install the artifacts (where relevant), and finally evaluate the artifacts. AEC members may communicate with artifact authors—through HotCRP to maintain the evaluators’ anonymity—to resolve minor issues and ask clarifying questions. Authors must respond to messages from the AEC in a timely manner for their artifacts to be effectively considered.
+
+The AEC will complete its evaluation and notify authors of the outcomes. Authors can use the time between notification and the camera-ready deadline to incorporate feedback and artifact details into the camera-ready versions of their papers. This is intended to allow authors to include the feedback from the AEC, at their option.
+
+When the AEC judges that an artifact meets the criteria for one or more of the badges listed above, those badges will appear on the final version of the associated paper. In addition, the authors of the paper will be encouraged to add an Artifact Appendix to their publication. The goal of the appendix is to describe and document the artifact in a standard format. The template for the appendix will be made available to authors following artifact evaluation.
+
+Artifact Details
+The AEC will try to accept any kind of digital artifact that authors wish to submit: software, datasets, survey results, test suites, mechanized proofs, etc. Paper proofs will not be accepted, because the AEC lacks the time and often the expertise to carefully review paper proofs. Physical objects, e.g., computer hardware, cannot be accepted due to the difficulty of making the objects available to members of the AEC. (If your artifact requires special hardware, consider if/how you can make it available to evaluators online.)
+
+Participating in artifact evaluation does not require you to publish your artifacts (although it is highly encouraged). The submission of an artifact does not give the AEC permission to make its content public. AEC members will be instructed that they may not publicize any part of your artifact during or after completing evaluation, and they will not retain any part of it after evaluation. Thus you are free to include models, data files, proprietary binaries, etc. in your artifact.
+
+Some artifacts may attempt to perform malicious or destructive operations by design. These cases should be boldly and explicitly flagged in detail in the README so the AEC can take appropriate precautions before installing and running these artifacts. Please contact the Artifact Evaluation Chair if you believe that your artifacts fall into this category.
+
+Review and Anonymity
+Artifact evaluation is “single blind.” The identities of artifact authors will be known to members of the AEC, but authors will not know which members of the AEC have reviewed their artifacts.
+
+To maintain the anonymity of artifact evaluators, the authors of artifacts should not embed any analytics or other tracking in the websites for their artifacts for the duration of the artifact-evaluation period. If you cannot control this, do not access this data. This is important to maintain the confidentiality of the evaluators. In cases where tracing is unavoidable, authors should notify the Artifact Evaluation Chair in advance so that AEC members can take adequate safeguards.
+
+Submitting an Artifact
+
+Registration and Submission
+Be sure to submit your artifacts by the deadline corresponding to when your paper is accepted, as described earlier in this call. You cannot “postpone” the review of your paper’s artifacts until a later cycle/deadline.
+
+Submitting the artifacts associated with your CCS paper is a two-step process.
+
+Registration. By the appropriate artifact registration deadline, submit the abstract and PDF of your accepted CCS paper, as well as topics, conflicts, and any “optional bidding instructions” for potential evaluators via the artifact submission site.
+
+First round artifact submission site
+Second round submission site to be announced.
+Third round submission site to be announced.
+Submission. Follow these steps to complete your artifact submission:
+
+By the appropriate artifact submission deadline, provide a stable URL or (if that is not possible) upload an archive of your artifacts.
+If the URL is access-protected, provide the credentials needed to access it.
+Select the criteria/badges that the AEC should consider while evaluating your artifacts.
+Special note: For your artifacts be considered for the “Artifacts Available” badge, the URL included in your submission must point to the artifacts in a suitable digital repository: notably, not GitHub. See the discussion of using Zenodo, below.
+You will not be able to change the URL, archive, or badge selections after the artifact submission deadline.
+Finally, for your artifact to be considered, check the “ready for review” box before the submission deadline.
+The AEC recommends that you create a single web page at a stable URL that contains your artifact package. (Again, see the discussion of using Zenodo for this purpose.) The AEC may contact you with questions about your artifacts if your submitted materials are unclear.
+
+
+Packaging Artifacts
+The goal of the Artifact Evaluation Committee is to judge whether the artifacts that you submit conform to the expectations set by your paper in the context of the criteria associated with the badges you have selected. The effort that you put into packaging your artifacts has a direct impact on the committee’s ability to make well-informed decisions. Please package your artifacts with care to make it as straightforward and easy as possible for the AEC to understand and evaluate their quality.
+
+A complete artifact package must contain:
+
+the accepted version of your CCS paper
+the artifact itself
+instructions!
+Your artifact package must include an obvious “README” that describes your artifact and provides a road map for evaluation. The README should contain or point to suitable instructions and documentation, to save committee members the burden of reverse-engineering the authors’ intentions. (A tool without a quick tutorial is generally very difficult to use. Similarly, a dataset is useless without some explanation on how to browse the data.) For software artifacts, the README should—at a minimum—provide instructions for installing and running the software on relevant inputs. For other types of artifacts, describe your artifact and detail how to “use” it in a meaningful way.
+
+Importantly, make your claims about your artifacts concrete. This is especially important if you think that these claims differ from the expectations set up by your paper. The AEC is still going to evaluate your artifacts relative to your paper, but your explanation can help to set expectations up front, especially in cases that might frustrate the evaluators without prior notice. For example, tell the AEC about difficulties they might encounter in using the artifact, or its maturity relative to the content of the paper.
+
+Authors should consider using one or more of the following methods to package the software components of their artifacts (although the AEC is open to other reasonable formats as well):
+
+Source code: If your artifact has few dependencies and can be installed easily on several operating systems, you may submit source code and build scripts. However, if your artifact has a long list of dependencies, please use one of the other formats below.
+Container/virtual machine: A Docker image or virtual machine containing the software application already set up with the right toolchain and intended runtime environment. For example:
+For raw data, the container/VM would contain the data and the scripts used to analyze it.
+For a mobile phone application, the container/VM would have a phone emulator installed.
+For mechanized proofs, the container/VM would contain the right version of the relevant theorem prover.
+CloudLab or Chameleon experiment: CloudLab, Chameleon, and similar platforms provide facilities for packaging entire computational environments and making them accessible to others.
+Binary installer: Indicate exactly which platform and other run-time dependencies your artifact requires.
+Live instance on the web: Ensure that it is available for the duration of the artifact evaluation process.
+Internet-accessible hardware: If your artifact requires special hardware (e.g., SGX or another trusted execution environment), or if your artifact is actually a piece of hardware, please make sure that AEC members can somehow access the device. VPN-based or SSH-based access to the device might be an option.
+Screencast: A detailed screencast of the tool along with the results, especially if one of the following special cases applies:
+The artifact needs proprietary/commercial software or proprietary data that is not easily available or cannot be distributed to the committee.
+The artifact requires significant computation resources (e.g., more than 24 hours of execution time to produce the results) or requires huge data sets.
+The artifact requires specific hardware or software that is not generally available in a typical lab and where no access can be provided in a reasonable way.
+As previously described, in all cases, artifacts must be provided in a manner that is appropriate for single-blind review by members of the AEC (i.e., anonymous reviewers).
+
+Using Zenodo
+
+We recommend that you make your artifacts available to the AEC as a record in Zenodo. You are not required to use Zenodo, but doing so can help you meet the criteria of the “Artifacts Available” badge.
+
+Zenodo is an online archival facility allows scientists to preserve and share digital “records” that contain software, data, and other kinds of documents. A Zenodo record includes metadata, a collection of files, and a persistent Digital Object Identifier (DOI). Once created, a record cannot be deleted, but its author can create new versions of the record at any time. Together, these properties make Zenodo well suited to the artifact evaluation process.
+
+You can use Zenodo whether or not you intend to make your artifacts publicly available. (To receive the “Artifacts Available” badge, of course, your artifacts must be public.)
+
+If you intend to publish your artifacts, which is the preferred option, you can set the visibility of your artifacts’ record to “Public.” Note that this will generate a Zenodo DOI that is permanently public.
+
+If you do not want to make your artifacts publicly available, you can set the visibility of your artifacts’ record to “Restricted.” You will need to grant access to individual users (in particular, members of the AEC) who want access to your artifacts’ record.
+
+Three additional points are worth noting. First, Zenodo has extensive online documentation. Second, Zenodo provides a sandbox environment where you can practice before creating records for your actual artifacts. Third, the Zenodo application for GitHub can greatly ease the task of “exporting” repositories on GitHub to records within Zenodo.
+
+Further Advice
+There are several sources of good advice about preparing artifacts for evaluation. These two are particularly noteworthy:
+
+Artifact Evaluation: Tips for Authors by Rohan Padhye:
+
+Artifact Evaluation: Tips for Authors
+A number of software research conferences such as ICSE, ISSTA, PLDI, POPL, OOPSLA, SOSP, and USENIX Security incorporate an artifact evaluation (AE) process: authors of (conditionally) accepted papers can optionally submit their tools, code, data, and scripts for independent validation of the claims in their paper by an artifact evaluation committee (AEC). Papers with accepted artifacts get stamped with one or more badges. Personally, I’m a big fan of the AE process, as it promotes reproducible and reusable research.
+
+But what makes a good artifact? Although there exist many great resources for writing good papers, as well as for writing good rebuttals, I haven’t found anything similar for submitting artifacts for evaluation. This is my attempt at filling the gap.
+
+In this post, I would like to share some insights that I gained while participating in two artifact evaluation committees (PLDI 2018 and PLDI 2019) as well as while submitting two artifacts of my own* (ISSTA 2019 and OOPSLA 2019). I am by no means an expert on this topic. However, I’ve identified some common pain points that make the AE process annoying for both authors and reviewers. Some of the insights in this post stem from my own past mistakes. I hope that this post helps future authors (and perhaps even reviewers and chairs) in ensuring that AE goes smoothly.
+
+This post is heavily biased towards PL/SE/Systems-ish artifacts that involve tools, scripts, benchmarks, and experiments, since I’ve had most experience with such type of artifacts.
+
+* One of these won a Distinguished Artifact Award!
+
+Tip 1: Submit a friendly package
+Require the fewest dependencies
+Do not expect the AEC to have lots of physical resources
+Tip 2: Estimate human + compute time and declare it upfront
+Tip 3: Explain side-effects before they occur
+Tip 4: Enable quick turnaround (via approximation if needed)
+Tip 5: Support hotfixing and failure recovery
+Tip 6: Cross-reference claims from the paper (and explain what’s missing)
+Tip 7: Produce results in a standard human-readable format
+Tip 8: Use consistent terminology
+Tip 9: Make your artifact reusable
+Tip 10: Join an Artifact Evaluation Committee
+Other considerations
+More Resources
+Join the Discussion!
+Tip 1: Submit a friendly package
+The first decision you would need to make is how to package your artifact. There are two sub-parts to this tip:
+
+Require the fewest dependencies
+This one is obvious. Don’t expect the AEC to install dozens of different dependencies in order to run your artifact. Do not force the reviewers to use a particular OS either. It is usually okay to have your package depend on technologies that are widely available for multiple platforms, such as Git, Java, Python, Docker, and/or VirtualBox—though you should try to require at most one or two of these. A good practice is to package your entire artifact inside a VM or Docker container, so that you can manage fine-grained dependencies yourself.
+
+Do not expect the AEC to have lots of physical resources
+This one is less obvious. It is probably not the best idea to submit humongous artifacts (e.g. over 100GB in size) or that require vast amounts of compute resources (e.g. 32 cores with over 256GB RAM). The exact threshold for okay versus not okay probably depends on the type of conference and what “commodity hardware” means at the time of submission. If you think you are on the borderline, it is a good idea to ask the chairs what is considered acceptable. Most artifacts that I’ve worked with can be packaged in under 10GB, require less than 16GB of RAM, and can be run on a single core machine (even if the authors used a different setup themselves).
+
+If your artifact requires a bunch of data that is already publicly available online—for example, a benchmark suite consisting of open-source software—then you could avoid packaging such data in the artifact and instead provide scripts that will download the benchmarks at run-time. This doesn’t reduce the overall storage requirement for the AEC, but reduces the bloat in the initial submission. It allows the AEC to get your artifact up and running much quicker in order to report issues with basic functionality. Not packaging external resources into your artifact also lets you avoid getting into trouble with conflicting licensing requirements, should you want to make your artifacts publicly available eventually.
+
+If the nature of your artifact requires you to run on special hardware—for example, your paper may be about exploiting massive parallelism or benchmarking GPUs or circumventing SGX—then it is sometimes okay to provide your own hardware to the AEC. One strategy that I’ve seen work in the past is to provide remote SSH access to a server that you host, where the home directory has all the scripts and data necessary to reproduce experiments listed in a paper. As authors, it is your job to ensure that the server(s) meet all the resource requirements. Ask your chairs if this is allowed; you may have to provide a crypographic hash of the entire home directory at submission time to prove that you haven’t modified its contents after the deadline. Gotcha: If you provide access to a single server, make sure that multiple AEC reviewers can interact with your artifact concurrently. A good solution for this is to provide scripts which when run generate files only in a specific output directory and nowhere else; that way, each reviewer can choose a unique directory name. Another important consideration here is that the AEC identities must usually remain anonymous to support blind reviewing; you should take steps to prove to the AE chairs that you are not tracking the AEC’s logins in any way.
+
+Tip 2: Estimate human + compute time and declare it upfront
+One of the most important things to keep in mind when submitting an artifact is the AEC’s time. Reviewing an artifact takes considerably longer than reviewing a paper, and it is very hard work. Respect the AEC’s time and do everything in your power to prevent the reviewers from having to stare at your artifact for hours wondering if they are doing the right thing.
+
+A simple way to address this issue is to clarify the amount of human-time and compute-time required for every single step in your artifact’s README. In fact, I recommend providing an outline of each step with an estimate of human / compute time before going into the details. Here is an excerpt of a sample artifact README:
+
+Artifact FooBar
+# Overview
+* Getting Started (10 human-minutes + 5 compute-minutes)
+* Build Stuff (2 human-minutes + 1 compute-hour)
+* Run Experiments (5 human-minutes + 3 compute-hours)
+* Validate Results (30 human-minutes + 5 compute-minutes)
+* How to reuse beyond paper (20 human-minutes)
+
+# Getting Started (10 human-minutes + 5 compute-minutes)
+* Follow the instructions at XYZ to run our VM/container (10 minutes read).
+* Run `./install.sh` and go grab a coffee (5 minutes to install).
+  - You will see no output while the script runs.
+  - The script accesses the internet to download external dependencies such as Qux and Baz.
+  - Once complete, it will have created a directory called `stuff`.
+  - If this command fails, you can delete the `stuff` directory and try again.
+...
+
+# Build Stuff (2 human-minutes + 1 compute-hour)
+* Run `./build.sh stuff` and get some lunch -- this should take ~1 hour to complete.
+  - You should see a progress bar while the command runs.
+  - Once complete, it will have created a `BUILD` directory.
+  - If the `BUILD` directory already exists, it will be overwritten.
+...
+
+The example above also shows some elements from our next tip…
+
+Tip 3: Explain side-effects before they occur
+In the artifact’s README, whenever you ask the reviewer to perform an action, such as executing a command or script, clarify what side-effects that command will have. For example, does it create or modify any files? Does it create any new directories? Are the filenames dependent on the command-line arguments that you provide? Will the command try to access the internet? Will running the command lead to large amounts of additional disk space being used? What output should you expect if everything goes fine?
+
+Such information helps AE reviewers sanity check. It also prevents errors in one step cascading to subsequent steps because the reviewer did not realize that some step failed. Cascading errors makes for very hard debugging, especially when the AE process allows only a fixed number of rebuttal opportunities. Try to help reviewers identify failing steps quickly.
+
+Also, do not penalize reviewers for running the same command multiple times. Ideally, every step in the README should be idempotent.
+
+Tip 4: Enable quick turnaround (via approximation if needed)
+Many papers report results of experiments that can take very long to compute. For example, one of the artifacts that I submitted myself required 2 CPU-years to run the whole suite of experiments. Naturally, you cannot and should not expect the AEC reviewers to spend so many compute resources.
+
+A good way around this is to provide alternative experiment configurations, which can run with much fewer resources, even if they provide only approximate results. I usually aim for less than 24 hours of compute on a single-core CPU. For example, you could provide the following in your artifact README:
+
+# Run Experiments (~3 compute-hours)
+* Run `./exp.sh 6 30m 1` to run our tool on only *6 benchmarks* for *30 minutes each* with only *1 repetition*.
+  - This command takes only **3 hours** to run in total, and produces results that approximate the results shown in the paper.
+  - Since there is only 1 repetition, there will be no error bars in the final plots.
+  - Results will be saved in a directory called `results`.
+
+* Run `./exp.sh 20 24h 10` to replicate the full experiments in the paper
+  - This command takes **200 days** to run 10 reps of all 20 benchmarks for 24 hours each.
+  - Feel free to tweak the args to produce results with intermediate quality, depending on the time that you have.
+  - Results will be saved in a directory called `results`.
+When providing means to produce approximate results, some AEC reviewers may not be satisfied that they can validate all the claims in your paper, because it necessarily requires weeks or months to reproduce the tables or plots that you have in the paper. In such cases, you could provide the results of the long-running experiments in your aritfact package as a sort of pre-baked data-set. Make sure that the the output of fresh-baked approximate experiments (as shown above) is in exactly the same format as your pre-baked data set. That way, you could increase the reviewer’s confidence that had they performed the full set of experiments, they would have seen results similar to that shown in the paper.
+
+Tip 5: Support hotfixing and failure recovery
+No matter how hard you try or how many of your collegues you recruit to test your artifact, you can expect something to go wrong for at least one of the reviewers. Usually, the reviewer is missing some dependency, has limited resources (e.g. memory), or is running an OS or other platform that requires a slightly different configuration which you did not anticipate.
+
+Fret not, as most AE processes provide a mechanism for reviewers to communicate issues relating to basic functionality of the artifact with authors, and receive remote tech support. In most cases, authors can identify the issue and quickly patch the artifact on their local machine.
+
+Now, how do you send this fix over to the AEC? One way would be to repackage the entire artifact again and ask the AEC to re-download this giant 10GB file and load up another VM, etc. A much better solution would be to support hotfixing, i.e., patching the artifact while it is live and running on the reviewer’s machine.
+
+There are many ways to do this and I don’t want to go into details for each method here. For Docker, you could post your container images to Docker Hub and have the reviewers simply docker pull. Or you could embed a Git repository of your scripts/tools in the package that you send and simply have the reviewers perform a git pull. Either way, the important thing is to support the hotfixing mechanism before you submit the first version. This is often a step that authors forget to do in their initial submission.
+
+That said, hotfixing is not useful if your artifact cannot deal with failure recovery. A good artifact is one which can recover from crashes in any step of the README. For example, let’s say the command ./install.sh downloads items into the stuff directory, and this command crashes due to a bug in your aritfact. You’ve now identified a fix, pushed changes, and asked the reviewers to pull the latest version of the artifact, bug-free. A simple strategy would simply be to ask the reviewers to delete the stuff directory and run the command again. In short, try to avoid any steps in your artifact causing global, irreversible changes, which cannot be hotfixed.
+
+Tip 6: Cross-reference claims from the paper (and explain what’s missing)
+One of the main purposes of artifact evaluation is to enable the AEC to independently validate claims made in the paper. For this purpose, do not just ask the AEC to run a bunch of scripts and say “QED”. It is important to list down items from the paper and cross-reference them with data from the artifact. For example, your README could say:
+
+# Validate Results (30 human-minutes + 5 compute-minutes)
+
+The output of the experiments will validate the following claims:
+- Table 1: `results/tab1.csv` reproduces Table 1 on Page 5.
+- Figure 2: `results/plot2.pdf` reproduces the plot in Figure 2 on Page 8.
+- Page 7, para 3: "We outperform the baseline by 2x". See `results/comparison.csv`, where the second column (our performance) should have a value that is twice as much as the third column (baseline).
+
+Our artifact does not validate the following claims:
+- On Page 8, we say X, but this cannot be validated without access to specialized hardware/people, so we leave it out of scope of artifact evaluation.
+
+...
+Tip 7: Produce results in a standard human-readable format
+If you have plots in the paper, then it is generally a good idea to auto-generate plots from the results of experiments, instead of asking the AEC to stare at log files and compare numbers from these logs with figures in the paper. If you do the latter, then adjust the estimation for “human-minutes” accordingly, as it takes longer for humans to read text than to read figures. Conversely, when reproducing tables from the paper, it is easier for a reviewer to read CSVs or ASCII-formatted tables rather than to read LaTeX-formatted tables in source form. Avoid auto-generating LaTeX, even if you did this for your paper. As a general rule of thumb, prefer standard human-readable formats (e.g. CSV or MarkDown) rather than custom human-readable formats (e.g. arbitrary log files) or formats intended for machines (e.g. JSON or XML).
+
+Tip 8: Use consistent terminology
+It is not uncommon for authors to rename tools, techniques, theorems, and other named or acronymized entities just a day or two before paper submission. This often leads to aritfacts and papers disagreeing on standard terminology, since the core of the artifacts are often developed before the paper is finalized and submitted. When submitting artifacts for AE, remember to refactor the artifact to use the same terminology used in the paper. Sometimes, this is not possible—for example, if your artifact contains pre-baked results of experiments that were run before you decided on a terminology. In such cases, include some explanation of old vs new terminology in your artifact README before you discuss how to run scripts or read provided files.
+
+Tip 9: Make your artifact reusable
+The point of AE is not just to get a badge on your paper. Well, it sort of is, but there should also be a larger goal: to make your research reusable for others*. This means that the research artifacts you produce should be easily reusable on datasets/inputs/workloads that are NOT part of the evaluation presented in your paper. To that end, I recommend including a section on “how to reuse beyond the paper” in your artifact README. This section need only describe the steps to run a single instance of your research tool or system for a small use case. Including such a section also forces you to ensure that your artifact has an understandable user interface, be it something as simple as sensible command-line arguments and readable success/error messages. Some conferences provide explicit badges for reusability. Even if not, completing this section will give the AEC more confidence that your artifact is not something that has been overfitted for the evaluation in the submitted paper.
+
+* This may not be applicable to some types of artifacts such as mechanized proofs or results of empirical studies.
+
+Tip 10: Join an Artifact Evaluation Committee
+This tip is more strategic than tactical: it may not help you if your AE deadline is coming up soon. However, if you are a graduate student or early-stage researcher, try to get on the AEC of a conference in your area*. It’s a lot of work, but a great way to get exposure to artifacts produced by other researchers. Not only will it help you in submitting your own artifacts for evaluation in the future, but it could also inspire you to refine the way you do research.
+
+* Many AECs are formed via open invitation for applications – typically you submit a short bio about yourself via a Google Form or similar [Exhibit A, Exhibit B]. If you don’t find one of these, look for conferences scheduled for about 3-6 months in the future that do not have an AEC finalized and email the AE chairs to find out how they will form the committee (chairs: apologies for the spam that I’m going to send your way). My guess is that they will be happy to talk to motivated grad students / researchers who are interested in such roles, especially if you have prior publications or AE experience.
+
+Other considerations
+On the topic of virtualization, Pierlauro Sciarelli, a PhD candidate at the Barcelona Supercomputing Center, adds:
+
+If the research papers are presenting benchmarks, it is extremely difficult to predict the overhead introduced by virtualization: the throughput can be extremely varying depending on architecture/operating system/configuration and a lot of other variables; paradoxically the discrepancies could invalidate the whole effort of presenting an artifact. One solution for trying mitigating the virtualization effects would be to include proposals of kernel patching, but that’s really something that no evaluator would like to do (and maybe not even the authors). There are tools such as Singularity and Shifter that can help solving the mentioned problems as they are allowing to efficiently run a docker image with native performances. However, as both software are “very [sensitive]” to automatic conversion of docker images, it should be the author’s duty to test that containers are properly working with those tools (or other similar ones).
+
+Tej Chajed from MIT adds that it is important for authors to actually test the artifact using the instructions provided:
+
+It’s extremely frustrating as a reviewer to copy-paste a command from the artifact README only to have it not work, which is easily fixed by testing the entire artifact.
+
+If you have experience with artifact evaluation yourself and have more tips to add, some insights regarding other types of artifacts (e.g. survey data, user studies, or mechanized proofs), or if you vehemently disagree with anything in this post, please let me know via email or twitter.
+
+
+HOWTO for AEC Submitters by Dan Barowy, Charlie Curtsinger, Emma Tosch, John Vilk, and Emery Berger:
+
+HOWTO for AEC Submitters
+(http://bit.ly/HOWTO-AEC)
+(Last updated June 2023)
+
+Dan Barowy (dbarowy@cs.williams.edu) - now at Williams College
+Charlie Curtsinger (charlie@cs.umass.edu) - now at Grinnell College
+Emma Tosch (etosch@cs.umass.edu) - now at Northeastern University
+John Vilk (jvilk@cs.umass.edu) - now at Stripe
+of the PLASMA group (http://plasma.cs.umass.edu) at University of Massachusetts Amherst
+with encouragement and support from Emery Berger (emery@cs.umass.edu)
+
+After serving on several Artifact Evaluation Committees and winning two Distinguished Artifact Awards, we put together this HOWTO document to help you submit an artifact that will pass the AEC process with flying colors.
+
+How to Build a Good Software Artifact
+
+Provide documentation with your artifact.  We recommend that you prepare a Getting Started Guide.  It should explain:
+how to download your artifact
+how to install your artifact
+how to run your artifact
+how to compare your artifact’s outputs to outputs described in your paper.
+Explicitly enumerate your claims in both your paper and in your artifact’s documentation.
+Provide a VM if possible, and when appropriate.  VMs aid reproducibility because they help control for nuisance factors that are not central to an author’s claims, significantly facilitating the review process.  Nonetheless, reviewers may need to accept performance tradeoffs for VMs (e.g., because of the absence of special hardware).  These tradeoffs are acceptable as long as authors explain to reviewers how and why they should adjust their expectations.
+Provide step-by-step instructions, but make it easy for reviewers to supply their own inputs to your artifact.  When reviewers can “play” with your artifact, it gives them confidence that your ideas were implemented robustly.
+
+Source Code
+
+If you are not bound by a nondisclosure agreement, make every effort to supply reviewers with source code.  Good reviewers may read and modify your source code to learn the true capabilities of your artifact.
+Document your code.  You should sufficiently explain what is going on so that people who want to build on your work can do so.
+If you discuss a new algorithm or unique implementation approach in your paper, have a reference to its implementation in the source code.
+If you are pointing to a remote repository, make sure to create a stable AEC branch. If there are major changes between AEC submission and the decision deadline, reviewers may end up looking at code that breaks the build. We understand that bugs happen, and pushing bug fixes to your AEC branch is fine. However, if your source code and/or analyses are significantly different from paper, make sure you document those differences so reviewers know what to expect.
+
+Virtual Machines
+
+Use a familiar window manager, if you need one at all. Remember that not all reviewers will have a middle mouse button.
+Ship your VM in a portable format (OVA or OVF) so reviewers can use whatever virtualization software they already have installed.
+Delete snapshots from your VM, unless these are an important part of the artifact evaluation.
+Document the folder structure of the VM. e.g., point out where the artifact’s source code is, benchmark source code is, input data is, expected output data is, etc. A good strategy is to have a terminal open at startup, in the appropriate directory.
+
+Automated Benchmarks
+
+If your benchmarks take more than a trivial amount of time to run, please inform reviewers how long they should take with the hardware you used. Provide a shorter evaluation script that reviewers can use to make sure everything is working.
+Make it clear what the specifications of the hardware were that you used, and whether these hardware resources are adequately simulated in a virtual machine environment.
+If performance claims cannot be reproduced in a virtual environment, consider adding instructions describing how to run the benchmarks on bare metal.
+You should make it easy to reproduce all of the data for your paper, ideally with a single batch script or mouse click.
+If your paper includes figures such as tables or charts, you should make it easy to reproduce those figures without having to manually create charts in Excel. There are many packages available for producing graphs programmatically:
+R has built-in graphing functionality, but the ggplot package provides much more flexible graphing functionality.
+Python has a compatible ggplot package, or you can use matplotlib directly.
+JavaScript has many graphing libraries, including D3 and Google Charts.
+
+
+
+Example Artifacts
+
+One of our artifacts (Doppio, http://doppiojvm.org) received the Distinguished Artifact Award at PLDI 2014: http://plasma-umass.github.io/doppio-demo/
+Another one of our artifacts received a Distinguished Artifact Award (FlashRelate, PLDI 2015) and is described in detail here, along with links to videos, etc. This artifact is as an example where a VM is not appropriate because of restrictions on redistributing proprietary software. The document was not only useful for the AEC process; it was also sent as guidance to the Excel team. http://www.cs.williams.edu/~dbarowy/pldi_aec_2015/readme.html
+The ECOOP 2014 Distinguished Artifact Award winner was scalacg; the full description of how to use and verify it (presumably included with the artifact submission) is here: http://karimali.pl/scalacg/
+Two extremely well put together artifacts are Adapton (PLDI 2014): https://bitbucket.org/khooyp/adapton.ocaml and JSNice (POPL 2015): http://www.srl.inf.ethz.ch/jsniceartifact/index.html (see also http://jsnice.org)
+
+We are happy to add pointers to other Distinguished Artifact Award winners or other exemplary artifacts to include here.
+
+
+If you have any questions about how best to package your artifact, contact the Artifact Evaluation Chair.
+
+Acknowledgments
+The artifact evaluation process at CCS 2024 is a continuation of the process at CCS 2023 and was inspired by the processes at multiple prior conferences including USENIX Security, SOSP, and several ACM SIGPLAN conferences. Visit artifact-eval.org for information about the origins of the artifact evaluation process. Visit secartifacts.github.io for a summary of artifact evaluation efforts at many security conferences.
+
+Attachment
+The template for the appendix: ccs2024-ae.zip.

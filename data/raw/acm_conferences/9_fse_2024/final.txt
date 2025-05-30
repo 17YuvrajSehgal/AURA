@@ -1,0 +1,104 @@
+ArtifactsFSE 2024
+Call for Artifacts
+Call for Artifacts
+For FSE 2024, artifact badges can be earned for papers published at FSE 2024 (Evaluated - Functional, Evaluated - Reusable, and Available). Badges can also be earned for papers published previously (at FSE or elsewhere) where the main results of the papers were obtained in a subsequent study by people other than the authors (Replicated and Reproduced). For more information on the classification and the evaluation criteria, see the ACM Artifact Review and Badging guide.
+
+Badges for Papers Published at FSE 2024
+Authors of papers accepted to the FSE 2024 Technical and Industrial Tracks are invited to submit artifacts associated with those papers to the FSE Artifact Track for evaluation as candidate Artifacts Evaluated - Functional, Artifacts Evaluated - Reusable, and Artifacts Available. Of the two ‘Artifact Evaluated’ badges (‘Functional’ and ‘Reusable’), only one is assigned to each paper. Additionally, the ‘Artifact Available’ badge is independent of the evaluation process. Please see details at https://www.acm.org/publications/policies/artifact-review-and-badging-current. If those artifact(s) are accepted, they will each receive the badges below on the front page of the authors’ paper and in the proceedings.
+
+Evaluated - Functional	Evaluated - Reusable	Available
+artifacts_functional	artifacts_reusable	artifacts_available
+The artifacts associated with the research are found to be documented, consistent, complete, exercisable, and include appropriate evidence of verification and validation.	Functional + the artifacts associated with the paper are of a quality that significantly exceeds minimal functionality. They are very carefully documented and well-structured to the extent that reuse and repurposing is facilitated. In particular, norms and standards of the research community for artifacts of this type are strictly adhered to.	Author-created artifacts relevant to this paper have been placed on a publically accessible archival repository. A DOI or link to this repository along with a unique identifier for the object is provided.
+
+Papers with such badges contain reusable products that other researchers can use to bootstrap their own research. Experience shows that such papers earn increased citations and greater prestige in the research community. Artifacts of interest include (but are not limited to) the following.
+
+Software, which are implementations of systems or algorithms potentially useful in other studies.
+Data repositories, which are data (e.g., logging data, system traces, survey raw data) that can be used for multiple software engineering approaches.
+Frameworks, which are tools and services illustrating new approaches to software engineering that could be used by other researchers in different contexts.
+This list is not exhaustive, so the authors are asked to email the chairs before submitting if their proposed artifact is not on this list.
+
+There is no need to anonymize the submission. If you apply for the AVAILABLE badge, please make sure you provide a link to a persistent repository (not the anonymous repository submitted with your paper). We strongly encourage the authors to use persistent repositories such as FigShare and Zenodo, which will assign a DOI to the artifact and make it easier for others to cite the artifact in the future. GitHub is also acceptable and the authors should add a Git tag to specify the version to be reviewed. Temporary drives (e.g., Dropbox, Google Drive) are discouraged, since they are likely to be accidentally removed. The authors should also clearly specify the link to the repository in their paper.
+
+Badges for Replicated or Reproduced Papers
+If a SE paper is published in an ACM proceeding and its main results have been obtained in a subsequent study by a person or team other than the authors, this paper is eligible for a Replicated or Reproduced badge.
+
+Replicated	Reproduced
+results_replicated	results_reproduced
+Available + the main results of the paper have been independently obtained in a subsequent study by a person or team other than the authors, without the use of author-supplied artifacts.	Available + main results of the paper have been obtained in a subsequent study by a person or team other than the authors, using, in part, artifacts provided by the author.
+
+Examples: If Asha published a paper with artifacts in 2023, and Tim published a reproduction in 2024 using the artifacts, then Asha can now apply for the Reproduced badge on the 2023 paper. If Cameron published a paper in 2018 with no artifacts, and Miles published a paper with artifacts in 2024 that replicated the main results obtained by Cameron, then Cameron can apply for the Results Replicated badge on the 2018 paper.
+
+Both the original authors and the team who reproduces the work can submit to apply for the badge. If the artifact is accepted:
+
+Badges in the original publication will be added subject to the publisher’s agreement. In other words, one can only add the badges provided the publisher of the earlier paper allows it.
+If time permits, the submitters will be invited to give short talks on this work at FSE’24. This will be subject to the availability of time in the conference program. Note that there is no proceeding publication for Artifact papers. If an invitation is accepted, one submitter must register for the conference to give this talk.
+Important Dates
+Artifact Submission Deadline: 30 April 2024
+Artifact Notification: 30 May 2024
+Best Artifact Awards
+There will be two FSE 2024 Best Artifact Awards to recognize the effort of authors creating and sharing outstanding research artifacts.
+
+Submission for Replicated and Reproduced Badges
+For Replicated and Reproduced badges, authors will need to offer appropriate documentation that their artifacts have reached that stage. The Easychair site will be used for submission (https://easychair.org/conferences/?conf=artifactsfse24), which will be a two pages (max) abstract in PDF format describing the artifact. The abstract should include the paper title, the purpose of the research artifact, the badge(s) you are claiming, and the technology skills assumed by the reviewer evaluating the artifact. Please also mention if running your artifact requires specific operating systems or other environments.
+
+TITLE: A (Partial)? (Replication|Reproduction) of XYZ. Please add the term partial to your title if only some of the original work could be replicated/reproduced.
+WHO: name the original authors (and paper) and the authors that performed the replication/reproduction. Include contact information and mark one author as the corresponding author. IMPORTANT: Please also include a web link to a publically available URL directory containing (a) the original paper (that is being reproduced) and (b) any subsequent paper(s)/documents/reports that do the reproduction.
+WHAT: describe the “thing” being replicated/reproduced;
+WHY: clearly state why that “thing” is interesting/important;
+HOW: say how it was done first;
+WHERE: describe the replication/reproduction. If the replication/reproduction was only partial, then explain what parts could be achieved or had to be missed.
+DISCUSSION (if applicable): What aspects of this “thing” made it easier/harder to replicate/reproduce. What are the lessons learned from this work that would enable more replication/reproduction in the future for other kinds of tasks or other kinds of research.
+Two PC members will review each abstract, possibly reaching out to the authors of the abstract or original paper. Abstracts will be ranked as follows.
+
+If PC members do not find sufficient substantive evidence for replication/reproduction, the abstract will be rejected.
+Any abstract that is judged to be unnecessarily critical towards others in the research community will be rejected (*).
+The remaining abstracts will be sorted according to (a) how interesting they are to the community and (b) their correctness.
+The top-ranked abstracts will be invited to give lightning talks.
+(*) Please note that our goal is to foster a positive environment that supports and rewards researchers for conducting replications and reproductions. To that end, it is important to encourage an atmosphere where presentations pay due respect to both work that is being reproduced/replicated and reproductions/replications. Criticism of other work related to the reproduction/replication is acceptable only as part of a balanced and substantive discussion of prior accomplishments.
+
+Submission for Functional, Reusable, and Available Badges
+Only authors of papers accepted to the 2024 Research Track can submit candidate Functional, Reusable, and Available artifacts. Authors should use the Easychair site (https://easychair.org/conferences/?conf=artifactsfse24) for submission. In the submission form, authors must specify a link to access the archival repository of the artifact, and the technical skills and environments expected to review the artifact.
+
+Authors must perform the following steps to submit an artifact:
+
+Preparing the artifact.
+Making the artifact publicly available (by using repositories granting public access).
+Documenting the artifact.
+Submitting the artifact.
+1. Preparing the Artifact
+There are two options depending on the nature of the artifacts: Installation Package or Simple Package. In both cases, the configuration and installation of the artifact should take less than 30 minutes. Otherwise, the artifact is unlikely to be endorsed simply because the committee will not have sufficient time to evaluate it.
+
+Installation Package. If the artifact consists of a tool or software system, then the authors need to prepare an installation package so that the tool can be installed and run in the evaluator’s environment. Provide enough associated instruction, code, and data such that some CS person with a reasonable knowledge of scripting, build tools, etc. could install, build, and run the code. If the artifact contains or requires the use of a special tool or any other non-trivial piece of software the authors must provide a VirtualBox VM image or a Docker container image with a working environment containing the artifact and all the necessary tools.
+
+We expect that the artifacts have been vetted on a clean machine before submission.
+
+Simple Package. If the artifact only contains documents that can be used with a simple text editor, a PDF viewer, or some other common tool (e.g., a spreadsheet program in its basic configuration) the authors can just save all documents in a single folder.
+
+2. Making the Artifact Available
+The authors need to make the packaged artifact (Installation Package or Simple Package) available so that the Evaluation Committee can access it. Using DOIs to identify published objects is required. We request all authors to use Zenodo (https://zenodo.org/) to generate the DOI that points to the specific version with which the results of the paper can be reproduced, and provide the DOI in their abstract submission. It is important to use a DOI that points to the specific version with which the results of the paper can be reproduced (for Zenodo: do not use the “always latest” DOI).
+
+If the authors are aiming for the Available badge, the artifact needs to be publicly accessible. In other cases, the artifacts do not necessarily have to be publicly accessible for the review process. In this case, the authors are asked to provide a private link or a password-protected link. In any case, we encourage the authors to use permanent repositories dedicated to data sharing where no registration is necessary for those accessing the artifacts (e.g., please avoid using services such as GoogleDrive and Dropbox).
+
+3. Documenting the Artifact
+The authors need to write and submit documentation explaining how to obtain the artifact package, how to unpack the artifact, how to get started, and how to use the artifacts in more detail. The artifact submission must only describe the technicalities of the artifacts and uses of the artifact that are not already described in the paper.
+
+The submission should contain the following documents (in plain text or pdf format) in the repository:
+
+A README main file describing what the artifact does and where it can be obtained (with hidden links and access password if necessary). Also, there should be a clear description of how to repeat/replicate/reproduce the results presented in the paper. Artifacts that focus on data should, in principle, cover aspects relevant to understand the context, data provenance, ethical and legal statements (as long as relevant), and storage requirements. Artifacts that focus on software should, in principle, cover aspects relevant to how to install and use it (and be accompanied by a small example).
+A REQUIREMENTS file for artifacts that focus on software. This file should, in principle, cover aspects of hardware environment requirements (e.g., performance, storage or non-commodity peripherals) and software environments (e.g., Docker, VM, and operating system) but also, if relevant, a requirements.txt with explicit versioning information (e.g. for Python-only environments). Any deviation from standard environments needs to be reasonably justified.
+A STATUS file stating what kind of badge(s) the authors are applying for as well as the reasons why the authors believe that the artifact deserves that badge(s).
+A LICENSE file describing the distribution rights. Note that to score “available” or higher, then that license needs to be some form of open-source license. Details are also under the respective badges and the FSE 2024 open science policy.
+An INSTALL file with installation instructions. These instructions should include notes illustrating a very basic usage example or a method to test the installation. This could be, for instance, on what output to expect that confirms that the code is installed and working; and the code is doing something interesting and useful.
+A copy of the accepted paper in PDF format.
+4. Submitting the Artifact
+By April 30 2024, please submit your research artifact at the EasyChair site. The Evaluation Committee may contact the authors within the reviewing period to request clarifications on the basic installation and start-up procedures or to resolve simple installation problems. Instructions will further be sent to the authors (and reviewers) along the reviewing process.
+
+AUTHORS TAKE NOTE: The official publication date is the date the proceedings are made available in the ACM Digital Library. This date may be up to two weeks prior to the first day of the conference. The official publication date affects the deadline for any patent filings related to published work.
+
+Given the short review time available, the authors are expected to respond within a 48-hour period. Authors may update their research artifacts after submission only for changes requested by reviewers in the reviewing phase. Authors submitting an open-source repository link are expected to give a tag to time-stamp their submission.
+
+Finally, further information will be constantly made available on this website.
+
+In case of questions, please do not hesitate to contact the chairs.
+
+Looking forward to welcoming you soon!

@@ -1,0 +1,40 @@
+Artifacts at CHI 2024
+February 8, 2024
+How we gather metadata about artifacts associated with CHI 2024 Papers, like datasets, software, and experimental protocols, is changing in order to make these artifacts more visible and discoverable alongside our published papers.  In the past, we collected artifacts as a single compressed file called supplements, which had limited metadata, limited discoverability, and inconsistent structure.  ACM’s new artifact workflow is a significant step forward in more effectively archiving the artifacts that underpin our publications.
+
+Archiving artifacts
+Archiving artifacts alongside our publications is important to improving the transparency, reusability, and extensibility of our work.  We encourage all authors who have research artifacts to upload them using the Final Submission form in PCS, even if the artifact also exists in an online repository like GitHub, BitBucket, or institutional repositories.  Uploading artifacts alongside your paper ensures that these artifacts will be permanently archived in the ACM Digital Library, provides an archival snapshot of your artifact at the time of publication, and makes this discoverable in the same place as your publication.  You can still include links to external repositories, but archiving your artifacts alongside your publications adds additional discoverability and ensures permanent availability. If you have files that exceed upload limits, these can be processed by contacting publications@chi2024.acm.org.
+
+New Artifact Metadata
+When you submit your publication-ready materials for CHI 2024 papers, you’ll see new fields in the Final Submission form for uploading your artifacts.  Provide each artifact individually, including the type for each file from the dropdown menu in PCS.  If you have more than five artifacts, please contact publications@chi2024.acm.org for assistance. In 2024, we will support Video, Audio, Software, Datasets, Presentation Slides, and Other artifact types.
+
+Video
+You can upload additional video artifacts, which are different to the video presentation and video preview you can already provide.  This could be a video demonstration of a hardware prototype, a video walkthrough of a virtual world, or any other videos that underpin your publication.
+
+Audio
+You can upload audio files as artifacts that support your publication.  This could be recordings of sounds critical to your paper, audio recordings of oral data, or any other audio that underpins your publication.
+
+Software
+You can upload the software that supports your publication.  This could be experimental software, software that runs simulations, code that reproduces analysis, or any other software artifact that underpins your publication.
+
+Datasets
+You can upload datasets that support your publication.  This could be logs from empirical work, data used in your analysis, transcripts, or any other data that underpins your publication.
+
+Presentation Slides
+You can upload presentation slides that support your publication.  This could be the presentation which you will give at the conference, or any presentation that underpins your publication.
+
+Other
+There are many artifacts not covered by the current categories supported by ACM, but that are still valuable to include with your publication.  This could be survey and interview protocols, details of experiment pre-registration, technical diagrams like CAD files, 3D models, or any other artifact that underpins your publication.
+
+Artifact Available Badges
+Image of the available artefact badge
+Any author who provides artifacts using the form in PCS will be awarded an Artifact Available badge for their CHI 2024 paper.  The artifact Available badge asserts that author created artifacts relevant to the publication are available in an archival repository. These badges are not externally reviewed, and do not need to be comprehensive how they underpin the associated publication. Papers with the “artifact Available” badge include this icon in the ACM Digital Library, are searchable and filterable by this badge, and have this metadata embedded within the article landing page to improve discoverability.
+
+The Future of Artifacts at CHI
+This new artifact metadata is just the first step towards a better approach to how we archive, disseminate, and use the artifacts associated with CHI publications.  There is still a lot of work to keep improving how we archive these artifacts.
+
+For example, it’s not clear what artifacts look across the diverse kinds of contributions that have a home at CHI.  Not all methods or applications areas have obvious artifacts or open science practices already established.  Some research is tightly coupled with confidentiality and may require new and creative approaches to make open artifacts possible  However, this is an opportunity for everyone to take a holistic look at what artifacts they produce, how these can be meaningfully prepared for sharing and reuse, and what open science looks like for their work.
+
+One of the most common artifacts in the ACM Digital Library is software, but this is a complex and changing space when it comes to archiving and sharing software and code.  There are a lot of open challenges around portability, changing hardware and software dependencies over time, and often limited resources to package software for reuse.  Ensuring long term functioning and usability of software artifact is still an open and active area of work.
+
+We hope this expanding functionality around artifacts can encourage the already established movement of open science, and help our community to consider broadly what open science looks like for our work.
