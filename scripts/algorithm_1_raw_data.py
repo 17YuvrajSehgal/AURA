@@ -24,7 +24,7 @@ def preprocess_texts(texts):
         tokens = word_tokenize(text.lower())
         tokens = [t for t in tokens if t not in stop_words and t not in string.punctuation]
         cleaned = " ".join(tokens)
-        #logging.info(f"File {i + 1}: {len(tokens)} tokens after cleaning: {cleaned[:100]}")
+        # logging.info(f"File {i + 1}: {len(tokens)} tokens after cleaning: {cleaned[:100]}")
         if cleaned.strip():
             preprocessed.append(cleaned)
 
@@ -77,10 +77,7 @@ def extract_evaluation_criteria(texts, dimension_seeds):
 
 # Base folder where raw guidelines are stored
 script_dir = os.path.dirname(os.path.abspath(__file__))
-base_raw_dir = os.path.join(script_dir, "..", "data","conference_guideline_texts","raw")
-base_processed_dir = os.path.join(script_dir, "..", "data","conference_guideline_texts","processed")
-
-base_directory = base_raw_dir
+base_raw_dir = os.path.join(script_dir, "..", "data", "conference_guideline_texts", "raw")
 
 # Conference subfolders
 conference_types = ["acm_conferences", "non_acm_conferences"]
@@ -89,7 +86,7 @@ all_guideline_files = []
 
 # Collect all final.txt files from each conference type
 for conf_type in conference_types:
-    folder = os.path.join(base_directory, conf_type)
+    folder = os.path.join(base_raw_dir, conf_type)
     pattern = os.path.join(folder, "**", "final.txt")
     files = glob.glob(pattern, recursive=True)
     logging.info(f"Found {len(files)} files in {conf_type}")
@@ -102,7 +99,7 @@ conference_texts = []
 for path in all_guideline_files:
     with open(path, encoding="utf-8", errors="ignore") as f:
         content = f.read()
-        #logging.info(f"RAW [{path}]: {repr(content[:100])}")  # Preview first 100 characters
+        # logging.info(f"RAW [{path}]: {repr(content[:100])}")  # Preview first 100 characters
         conference_texts.append(content)
 
 seed_keywords = {
@@ -123,4 +120,3 @@ if not any(conference_texts):
 
 evaluation_criteria = extract_evaluation_criteria(conference_texts, seed_keywords)
 logging.info(f"Evaluation criteria: {evaluation_criteria}")
-
