@@ -1,0 +1,7 @@
+dimension,keywords,raw_score,normalized_weight
+reproducibility,"10, environment, documented, configurations, data, specification, tools, presented, graphs, scripts, intended, completeness, ease, dependencies, script, experiments, run, values, reproduce, operational",10.363013543364474,0.27304886501772585
+documentation,"works, machine, step, intended, file, readme, recognize, work, manual, intervention, platform, committee, by, guide, additional",5.349328592576102,0.14094626960562318
+accessibility,"necessary, access, archival, claimed, dependent, paper, science, maintaining, list, encouraging, publicly, distribution, results, open, available",10.020926410972315,0.26403541513213186
+usability,"formats, interface, claimed, demo, machines, sufficiently, align, dependent, complex, user, list, goal",1.6787144419793378,0.04423144591611791
+experimental,"experiments, needed, evaluation, experiment, recompiling, accessible, produce, run, experimental, entire, parameter, badge, result, graph, understand, available",9.565754879530406,0.25204237184134376
+functionality,"output, summary, duration, preventing, require, involving, feature, space, consumption, frames, correct, human",0.9752253958331057,0.025695632487057394
