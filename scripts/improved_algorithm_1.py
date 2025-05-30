@@ -136,7 +136,7 @@ auto_seed_keywords = generate_seed_keywords_from_examples(dimension_examples)
 df_auto = extract_evaluation_criteria(conference_texts, auto_seed_keywords)
 
 # === Save to CSV ===
-output_path_auto = os.path.join(script_dir, "..", "data", "algorithm_1_output", "evaluation_criteria_semantic_auto.csv")
+output_path_auto = os.path.join(script_dir, "..", "data", "algorithm_1_output", "algorithm_1_artifact_evaluation_criteria.csv")
 os.makedirs(os.path.dirname(output_path_auto), exist_ok=True)
 df_auto.to_csv(output_path_auto, index=False)
 logging.info(f"Saved enhanced evaluation results to: {output_path_auto}")
