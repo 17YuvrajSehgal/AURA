@@ -1,9 +1,13 @@
+import logging
 import mimetypes
 import os
 import shutil
 
 from anytree import Node, RenderTree
 from git import Repo
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 DOCUMENT_EXTENSIONS = ['.md', '.rst', '.txt']
 CODE_EXTENSIONS = ['.py', '.java', '.cpp', '.js', '.ts']
@@ -19,20 +23,39 @@ def clone_repository(repo_url, temp_base_dir="temp_dir_for_git"):
     repo_name = repo_url.rstrip("/").split("/")[-1]
     clone_path = os.path.join(temp_base_dir, repo_name)
 
+    logging.info(f"Cloning repository: {repo_url}")
     if os.path.exists(clone_path):
-        shutil.rmtree(clone_path, ignore_errors=True)  # force cleanup before re-cloning
+        logging.warning(f"Deleting existing clone path: {clone_path}")
+        shutil.rmtree(clone_path, ignore_errors=True)
 
     Repo.clone_from(repo_url, clone_path)
+    logging.info(f"Repository cloned to: {clone_path}")
     return clone_path
 
 
-def generate_file_list(root, exclude_dirs=EXCLUDE_DIRS):
+def generate_file_list(root, exclude_dirs=EXCLUDE_DIRS, max_files_per_dir=5, allowed_extensions=None,
+                       max_file_size_kb=2048):
     file_paths = []
+    logging.info(f"Generating file list from: {root}")
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
+
+        filenames = sorted(filenames)[:max_files_per_dir]
         for filename in filenames:
             full_path = os.path.join(dirpath, filename)
+            ext = os.path.splitext(full_path)[1].lower()
+            size_kb = os.path.getsize(full_path) / 1024
+
+            if allowed_extensions and ext not in allowed_extensions:
+                logging.debug(f"Skipping unsupported extension: {filename}")
+                continue
+            if size_kb > max_file_size_kb:
+                logging.debug(f"Skipping large file: {filename} ({size_kb:.1f} KB)")
+                continue
+
             file_paths.append(full_path)
+            logging.info(f"Including file: {filename} ({size_kb:.1f} KB)")
+    logging.info(f"Total files selected: {len(file_paths)}")
     return file_paths
 
 
@@ -55,10 +78,12 @@ def read_file_content(path):
         with open(path, 'r', encoding='utf-8', errors='ignore') as f:
             return f.read()
     except Exception as e:
+        logging.error(f"Failed to read file: {path} — {e}")
         return f"[ERROR READING FILE]: {e}"
 
 
 def generate_tree_structure(file_paths, root_dir):
+    logging.info("Generating directory tree structure...")
     root_node = Node(os.path.basename(root_dir))
     node_map = {root_dir: root_node}
     for path in file_paths:
@@ -81,10 +106,17 @@ def analyze_repository(repo_path_or_url, temp_base_dir="temp_dir_for_git"):
         is_temp = True
     else:
         repo_path = repo_path_or_url
+        logging.info(f"Using local repository path: {repo_path}")
 
-    file_paths = generate_file_list(repo_path)
+    file_paths = generate_file_list(
+        repo_path,
+        exclude_dirs=EXCLUDE_DIRS,
+        max_files_per_dir=5,
+        allowed_extensions={'.py', '.md', '.txt'},
+        max_file_size_kb=2048
+    )
 
-    S = []  # metadata
+    S = []
     M, C, L = [], [], []
 
     for path in file_paths:
@@ -99,17 +131,23 @@ def analyze_repository(repo_path_or_url, temp_base_dir="temp_dir_for_git"):
         content = read_file_content(path)
         if is_documentation_file(path):
             M.append({"path": path, "content": content})
+            logging.info(f"[DOC] {path}")
         elif is_code_file(path):
             C.append({"path": path, "content": content})
+            logging.info(f"[CODE] {path}")
         elif is_license_file(path):
             L.append({"path": path, "content": content})
+            logging.info(f"[LICENSE] {path}")
+        else:
+            logging.debug(f"[SKIP] {path}")
 
+    logging.info("Repository Tree:")
     tree = generate_tree_structure(file_paths, repo_path)
-    for pre, fill, node in tree:
+    for pre, _, node in tree:
         print(f"{pre}{node.name}")
 
     if is_temp:
-        print(f"Temporary repo saved at: {repo_path} (not deleted for safety)")
+        logging.info(f"Temporary repo saved at: {repo_path} (not deleted for safety)")
 
     return {
         "repository_structure": S,
@@ -119,4 +157,7 @@ def analyze_repository(repo_path_or_url, temp_base_dir="temp_dir_for_git"):
     }
 
 
-print(analyze_repository("https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"))
+# Example usage
+if __name__ == "__main__":
+    result = analyze_repository("https://github.com/sneh2001patel/ml-image-classifier")
+    logging.info("Analysis complete.")
