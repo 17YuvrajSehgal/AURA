@@ -34,28 +34,35 @@ def clone_repository(repo_url, temp_base_dir="temp_dir_for_git"):
 
 
 def generate_file_list(root, exclude_dirs=EXCLUDE_DIRS, max_files_per_dir=5, allowed_extensions=None,
-                       max_file_size_kb=2048):
+                       max_file_size_kb=2048, min_files_to_include_anyway=2):
+    """
+    Includes files matching filters, but also adds a few sample files even if they're not .py/.md
+    """
     file_paths = []
-    logging.info(f"Generating file list from: {root}")
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
 
-        filenames = sorted(filenames)[:max_files_per_dir]
-        for filename in filenames:
+        selected = []
+        sampled = []
+
+        for filename in sorted(filenames):
             full_path = os.path.join(dirpath, filename)
             ext = os.path.splitext(full_path)[1].lower()
             size_kb = os.path.getsize(full_path) / 1024
 
-            if allowed_extensions and ext not in allowed_extensions:
-                logging.debug(f"Skipping unsupported extension: {filename}")
-                continue
+            # Always skip absurdly large files
             if size_kb > max_file_size_kb:
-                logging.debug(f"Skipping large file: {filename} ({size_kb:.1f} KB)")
                 continue
 
-            file_paths.append(full_path)
-            logging.info(f"Including file: {filename} ({size_kb:.1f} KB)")
-    logging.info(f"Total files selected: {len(file_paths)}")
+            if allowed_extensions and ext in allowed_extensions:
+                selected.append(full_path)
+            elif len(sampled) < min_files_to_include_anyway:
+                sampled.append(full_path)
+
+            if len(selected) >= max_files_per_dir:
+                break
+
+        file_paths.extend(selected[:max_files_per_dir] + sampled)
     return file_paths
 
 
@@ -113,7 +120,8 @@ def analyze_repository(repo_path_or_url, temp_base_dir="temp_dir_for_git"):
         exclude_dirs=EXCLUDE_DIRS,
         max_files_per_dir=5,
         allowed_extensions={'.py', '.md', '.txt'},
-        max_file_size_kb=2048
+        max_file_size_kb=2048,
+        min_files_to_include_anyway=2
     )
 
     S = []
