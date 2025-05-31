@@ -19,7 +19,7 @@ def is_github_url(url):
     return url.startswith("http://") or url.startswith("https://")
 
 
-def clone_repository(repo_url, temp_base_dir="temp_dir_for_git"):
+def clone_repository(repo_url, temp_base_dir="../../temp_dir_for_git"):
     repo_name = repo_url.rstrip("/").split("/")[-1]
     clone_path = os.path.join(temp_base_dir, repo_name)
 
@@ -108,7 +108,7 @@ def generate_tree_structure(file_paths, root_dir):
     return RenderTree(root_node)
 
 
-def analyze_repository(repo_path_or_url, temp_base_dir="temp_dir_for_git"):
+def analyze_repository(repo_path_or_url, temp_base_dir="../../temp_dir_for_git"):
     is_temp = False
     if is_github_url(repo_path_or_url):
         repo_path = clone_repository(repo_path_or_url, temp_base_dir=temp_base_dir)
@@ -179,7 +179,8 @@ def save_analysis_result(result, repo_name, output_dir="../../data/algorithm_2_o
 
 # Example usage
 if __name__ == "__main__":
-    repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
+    #repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
+    repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
     result = analyze_repository(repo_url)
 
     repo_name = repo_url.rstrip("/").split("/")[-1]
