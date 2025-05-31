@@ -1,7 +1,7 @@
+import json
 import logging
 import mimetypes
 import os
-import shutil
 
 from anytree import Node, RenderTree
 from git import Repo
@@ -23,13 +23,15 @@ def clone_repository(repo_url, temp_base_dir="temp_dir_for_git"):
     repo_name = repo_url.rstrip("/").split("/")[-1]
     clone_path = os.path.join(temp_base_dir, repo_name)
 
-    logging.info(f"Cloning repository: {repo_url}")
+    # If already cloned, skip
     if os.path.exists(clone_path):
-        logging.warning(f"Deleting existing clone path: {clone_path}")
-        shutil.rmtree(clone_path, ignore_errors=True)
+        logging.info(f"Repository already exists at: {clone_path}, skipping clone.")
+        return clone_path
 
+    # Otherwise, clone
+    logging.info(f"Cloning repository: {repo_url} → {clone_path}")
     Repo.clone_from(repo_url, clone_path)
-    logging.info(f"Repository cloned to: {clone_path}")
+    logging.info(f"Cloned successfully.")
     return clone_path
 
 
@@ -165,7 +167,20 @@ def analyze_repository(repo_path_or_url, temp_base_dir="temp_dir_for_git"):
     }
 
 
+def save_analysis_result(result, repo_name, output_dir="../../data/algorithm_2_output"):
+    os.makedirs(output_dir, exist_ok=True)
+    json_path = os.path.join(output_dir, f"{repo_name}_analysis.json")
+
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+
+    logging.info(f"Saved analysis result to: {json_path}")
+
+
 # Example usage
 if __name__ == "__main__":
-    result = analyze_repository("https://github.com/sneh2001patel/ml-image-classifier")
-    logging.info("Analysis complete.")
+    repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
+    result = analyze_repository(repo_url)
+
+    repo_name = repo_url.rstrip("/").split("/")[-1]
+    save_analysis_result(result, repo_name)
