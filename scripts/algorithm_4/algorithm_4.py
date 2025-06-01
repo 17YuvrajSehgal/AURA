@@ -1,10 +1,12 @@
 import json
+import logging
 import os
 
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
+# === Setup ===
 # Required inputs
 # S = repository_structure
 # C = code_files
@@ -12,6 +14,7 @@ from langchain_openai import ChatOpenAI
 # Ctx = conference_context
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 llm = ChatOpenAI(
     temperature=0.2,
@@ -19,33 +22,33 @@ llm = ChatOpenAI(
 )
 
 
-# Step 1: High-level extractions
-def ExtractProjectOverview(C, S):
+# === High-level Content Extractors ===
+def extract_project_overview(code_files, structure):
     return "Project overview generated from structure and code context."
 
 
-def ExtractAPIDocumentation(C, S):
+def extract_api_documentation(code_files, structure):
     return "Auto-generated API documentation from code comments or functions."
 
 
-def SummarizeDataFiles(S):
+def summarize_data_files(structure):
     return "Summary of data directories (e.g., training/testing datasets)."
 
 
-def ExtractAuthors(S, C, L):
+def extract_authors(structure, code_files, licenses):
     return "Author info inferred from code comments or commit metadata."
 
 
-# Step 2: Determine required sections based on a conference
-def GetRequiredSections(Ctx):
+# === Required Section Logic ===
+def get_required_sections(conference_context):
     return ["Overview", "Installation", "Usage", "License", "Citation", "Dataset", "Contributing"]
 
 
-# Step 3: Section generation
-def GenerateSectionPrompt(section, S, C, L):
-    sample_code = "\n\n".join([f['content'][:500] for f in C[:2]])  # short
-    license_text = L[0]['content'][:500] if L else "No license file provided."
-    tree = S["file_structure"]
+# === Prompt Generator ===
+def generate_section_prompt(section, structure, code_files, licenses):
+    sample_code = "\n\n".join([f['content'][:500] for f in code_files[:2]])
+    license_text = licenses[0]['content'][:500] if licenses else "No license file provided."
+    tree = structure["file_structure"]
 
     return f"""Generate a README section titled '{section}' using the following:
 - File structure:\n{tree}
@@ -55,33 +58,37 @@ Make it suitable for a research artifact in an academic conference.
 """
 
 
-def GenerateSectionContent(section, S, C, L):
-    prompt_text = GenerateSectionPrompt(section, S, C, L)
+# === LLM Invocation ===
+def generate_section_content(section, structure, code_files, licenses):
+    prompt_text = generate_section_prompt(section, structure, code_files, licenses)
     prompt = PromptTemplate.from_template("Section: {section}\n\n{context}")
-
-    context = f"{prompt_text}\n\nCode Files: {[c['content'][:500] for c in C[:1]]}\n"  # limited sample
-
+    context = f"{prompt_text}\n\nCode Files: {[c['content'][:500] for c in code_files[:1]]}"
     chain = prompt | llm
     return chain.invoke({"section": section, "context": context})
 
 
-# Step 4: Orchestrator
-def GenerateREADME(S, C, L, Ctx):
-    project_overview = ExtractProjectOverview(C, S)
-    api_docs = ExtractAPIDocumentation(C, S)
-    data_summary = SummarizeDataFiles(S)
-    authors = ExtractAuthors(S, C, L)
+# === Orchestrator ===
+def generate_readme(structure, code_files, licenses, conference_context):
+    logging.info("Generating README content...")
 
-    required_sections = GetRequiredSections(Ctx)
+    overview = extract_project_overview(code_files, structure)
+    api_docs = extract_api_documentation(code_files, structure)
+    data_summary = summarize_data_files(structure)
+    authors = extract_authors(structure, code_files, licenses)
+
+    required_sections = get_required_sections(conference_context)
     section_contents = {}
 
     for section in required_sections:
-        content = GenerateSectionContent(section, S, C, L)
-        section_contents[section] = content
+        try:
+            logging.info(f"Generating section: {section}")
+            section_contents[section] = generate_section_content(section, structure, code_files, licenses)
+        except Exception as e:
+            logging.error(f"Failed to generate section '{section}': {e}")
+            section_contents[section] = f"[Failed to generate {section}]"
 
-    # Optional: Completeness & readability logic (placeholders)
     completeness = len(section_contents) / len(required_sections)
-    readability = 0.9  # Stub value
+    readability = 0.9  # placeholder for future scoring
     quality = (completeness + readability) / 2
 
     if quality < 0.8:
@@ -89,65 +96,56 @@ def GenerateREADME(S, C, L, Ctx):
             if section not in section_contents:
                 section_contents[section] = f"[Placeholder for {section}]"
 
-    # Final formatting
     readme = "\n\n".join(f"## {k}\n{v}" for k, v in section_contents.items())
+    logging.info("README generation complete.")
     return readme
 
 
-# # Assume these are loaded from your analyzer:
-# S = [...]  # repo_structure
-# C = [...]  # list of code file content
-# L = [...]  # LICENSE info
-# Ctx = "ASE_2024"  # or dynamically fetched from parsed guideline JSON
-
-
+# === File Loader ===
 def load_repository_data(filepath):
-    with open(filepath, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data["repository_structure"], data["code_files"], data["license_files"]
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data["repository_structure"], data["code_files"], data["license_files"]
+    except Exception as e:
+        logging.error(f"Error loading repository data from {filepath}: {e}")
+        raise
 
 
-manual_tree = """
-ml-image-classifier
-├── README.md
-├── src
-│   ├── train.py
-│   ├── model.py
-│   ├── evaluate.py
-├── data
-│   ├── training/
-│   └── testing/
-├── tests
-│   └── test_model.py
-"""
+# === MAIN EXECUTION ===
+if __name__ == "__main__":
+    logging.info("Starting README generation...")
 
-repo_json_path = "../../data/algorithm_2_output/ml-image-classifier_analysis.json"
+    repo_json_path = "../../data/algorithm_2_output/ml-image-classifier_analysis.json"
+    manual_tree = """
+                    ml-image-classifier
+                    ├── README.md
+                    ├── src
+                    │   ├── train.py
+                    │   ├── model.py
+                    │   ├── evaluate.py
+                    ├── data
+                    │   ├── training/
+                    │   └── testing/
+                    ├── tests
+                    │   └── test_model.py
+                """
 
-# Load inputs
-S_raw, C, L = load_repository_data(repo_json_path)
+    structure_raw, code_files, licenses = load_repository_data(repo_json_path)
+    structure = {
+        "file_structure": manual_tree,
+        "files": structure_raw
+    }
 
-# Build S from raw: could just be tree string + list of files
-S = {
-    "file_structure": manual_tree,
-    "files": S_raw
-}
+    conference_context = "ASE_2024"
 
-# Dummy context for now
-Ctx = "ASE_2024"
+    readme_content = generate_readme(structure, code_files, licenses, conference_context)
 
-# Run README generation
-readme = GenerateREADME(S, C, L, Ctx)
+    output_dir = "../../data/algorithm_4_output"
+    os.makedirs(output_dir, exist_ok=True)
+    readme_path = os.path.join(output_dir, "generated_README.md")
 
-# Save it
-output_dir = "../../data/algorithm_4_output"
-os.makedirs(output_dir, exist_ok=True)  # create a directory if missing
+    with open(readme_path, "w", encoding="utf-8") as f:
+        f.write(readme_content)
 
-readme_path = os.path.join(output_dir, "generated_README.md")
-with open(readme_path, "w", encoding="utf-8") as f:
-    f.write(readme)
-
-print(f"README saved to: {readme_path}")
-
-readme_content = GenerateREADME(S, C, L, Ctx)
-with open("generated_README.md", "w", encoding="utf-8") as f:
-    f.write(readme_content)
+    logging.info(f"README saved to: {readme_path}")
