@@ -94,7 +94,7 @@ if __name__ == "__main__":
 │   └── ai_utils.py
 ├── app
 │   ├── exceptions.py
-│   ├── langchains
+│   ├── readme_langchains
 │   │   ├── api_chain.py
 │   │   ├── authors_chain.py
 │   │   ├── chains.py
