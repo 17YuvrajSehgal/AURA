@@ -95,13 +95,23 @@ def is_license_file(path: str) -> bool:
     return name in LICENSE_NAMES or 'license' in name
 
 
-def read_file_content(path: str) -> str:
+def read_file_content(path: str) -> list[str]:
+    """
+    Read the file at `path` and return its contents as a list of lines.
+    This way, when we write to JSON, each line is its own JSON string,
+    and no single JSON value ends up containing literal '\n' escapes.
+    """
     try:
         with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-            return f.read()
+            raw = f.read()
+            # Split on any line‐break (removing the trailing '\n')
+            # so that we return a list of lines without "\n" at the end.
+            return raw.splitlines()
     except Exception as e:
         logging.error(f"Failed to read file: {path} — {e}")
-        return f"[ERROR READING FILE]: {e}"
+        # Return a single‐element list describing the error, so the JSON field stays a list.
+        return [f"[ERROR READING FILE]: {e}"]
+
 
 
 def generate_tree_lines(file_paths: list, root_dir: str) -> list:
@@ -158,24 +168,25 @@ def analyze_repository(repo_path_or_url: str, temp_base_dir="../../temp_dir_for_
     for path in file_paths:
         file_info = {
             "name": os.path.basename(path),
-            "path": os.path.relpath(path, repo_path),  # store relative path for portability
+            "path": os.path.relpath(path, repo_path),
             "mime_type": mimetypes.guess_type(path)[0],
             "size_kb": round(os.path.getsize(path) / 1024, 2)
         }
         S.append(file_info)
 
-        content = read_file_content(path)
+        # NOW read_file_content returns List[str], not a single big string
+        content_lines = read_file_content(path)
+
         if is_documentation_file(path):
-            M.append({"path": os.path.relpath(path, repo_path), "content": content})
-            logging.info(f"[DOC] {path}")
+            M.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
         elif is_code_file(path):
-            C.append({"path": os.path.relpath(path, repo_path), "content": content})
-            logging.info(f"[CODE] {path}")
+            C.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
         elif is_license_file(path):
-            L.append({"path": os.path.relpath(path, repo_path), "content": content})
-            logging.info(f"[LICENSE] {path}")
+            L.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
         else:
+            # skip other file types
             logging.debug(f"[SKIP] {path}")
+            pass
 
     # 2) Generate a list of lines representing the directory‐tree
     tree_lines = generate_tree_lines(file_paths, repo_path)
