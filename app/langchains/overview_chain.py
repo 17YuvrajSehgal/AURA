@@ -1,5 +1,7 @@
+import json
+import logging
+
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
-from langchain_core.runnables import RunnableLambda
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, START, MessagesState
 
@@ -7,171 +9,69 @@ from app.ai_models.ai_utils import open_ai_chat_model
 from app.langchains.file_search_chains import files_chain
 from app.utils.utils import read_files_content
 
-# Define memory and workflow
+# Setup logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("overview_chain")
+
+# === Memory and Workflow ===
 memory = MemorySaver()
 workflow = StateGraph(state_schema=MessagesState)
 
 
-# Define summarization logic for project overview
 def summarize_project_overview(state: MessagesState):
     system_prompt = (
-        """You are an assistant creating a README Overview section for a project. Summarize the project in one 
-        paragraph. The paragraph must be very concise and informative so that the reader knows the purpose of project,
-        its usage and key features."""
+        "You are an assistant creating a README Overview section for a research artifact project. "
+        "Summarize the purpose, main features, and intended usage in one concise paragraph."
     )
     system_message = SystemMessage(content=system_prompt)
+
     file_messages = [
-        HumanMessage(content=f"Summarize the following project file content: {content}")
+        HumanMessage(content=f"Summarize this code file:\n\n{content}")
         for content in state["messages"]
     ]
+    logger.info(f"Summarizing {len(file_messages)} code files...")
+
     response = open_ai_chat_model.invoke([system_message] + file_messages)
     return {"messages": response}
 
 
-# Add summarization to the workflow
 workflow.add_node("overview_summarizer", summarize_project_overview)
 workflow.add_edge(START, "overview_summarizer")
 app = workflow.compile(checkpointer=memory)
 
-# Define Runnables
-extract_file_paths = RunnableLambda(
-    lambda inputs: files_chain.invoke(
-        {
-            "base_directory": inputs["base_directory"],
-            "project_structure": inputs["project_structure"],
-            "task": "project overview documentation",
-        }
-    )
-)
 
-read_file_contents = RunnableLambda(
-    lambda file_paths: read_files_content(
-        [fp.strip() for fp in file_paths["text"].split(",") if fp.strip()]
-    )
-)
+# === New logic: directly use the repository analysis JSON ===
+def run_overview_from_analysis(analysis_path):
+    logger.info(f"Loading analysis data from: {analysis_path}")
+    with open(analysis_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
-generate_project_overview = RunnableLambda(
-    lambda file_contents: app.invoke(
-        {"messages": file_contents},
+    code_file_contents = []
+    for file in data.get("code_files", []):
+        if isinstance(file.get("content"), list):
+            joined = "\n".join(file["content"])
+        else:
+            joined = str(file.get("content", ""))
+        if joined.strip():
+            code_file_contents.append(joined[:1500])  # Limit per file
+
+    logger.info(f"Loaded {len(code_file_contents)} code files for summarization")
+
+    # Run the chain
+    result = app.invoke(
+        {"messages": code_file_contents},
         config={"configurable": {"thread_id": "project-overview"}},
     )
-)
 
-format_output = RunnableLambda(
-    lambda result: "\n\n".join(
-        message.content
-        for message in result["messages"]
-        if isinstance(message, AIMessage)
+    overview = "\n\n".join(
+        m.content for m in result["messages"] if isinstance(m, AIMessage)
     )
-)
+    return overview
 
-# Properly chain the steps
-overview_chain = (
-        extract_file_paths
-        | read_file_contents
-        | generate_project_overview
-        | format_output
-)
 
-# Usage example
-# if __name__ == "__main__":
-#     base_directory = "C:\\workplace\\ArtifactEvaluator\\temp_dir_for_git\\COSC-4P02-PROJECT"
-#     project_structure = """
-#     Tree structure with files:
-#     ├── .gitignore
-#     ├── Dockerfile
-#     ├── LICENSE.md
-#     ├── mvnw
-#     ├── mvnw.cmd
-#     ├── pom.xml
-#     └── src
-#         └── main
-#             ├── java
-#             │   └── com
-#             │       └── websummarizer
-#             │           └── Web
-#             │               └── Summarizer
-#             │                   ├── common
-#             │                   │   └── exceptions
-#             │                   │       └── OauthUpdateNotAllowed.java
-#             │                   ├── configs
-#             │                   │   ├── GlobalExceptionHandler.java
-#             │                   │   ├── SecurityConfig.java
-#             │                   │   └── SuccessHandler.java
-#             │                   ├── controller
-#             │                   │   ├── AdminController.java
-#             │                   │   ├── AuthenticationController.java
-#             │                   │   ├── PasswordResetController.java
-#             │                   │   ├── ShortLinkController.java
-#             │                   │   ├── ShortLinkGenerator.java
-#             │                   │   ├── UserController.java
-#             │                   │   └── WebController.java
-#             │                   ├── llmConnectors
-#             │                   │   ├── Bart.java
-#             │                   │   ├── Llm.java
-#             │                   │   └── OpenAi.java
-#             │                   ├── model
-#             │                   │   ├── History.java
-#             │                   │   ├── HistoryResAto.java
-#             │                   │   ├── LoginResponseDTO.java
-#             │                   │   ├── Provider.java
-#             │                   │   ├── Role.java
-#             │                   │   ├── User.java
-#             │                   │   ├── UserDTO.java
-#             │                   │   ├── UserOAuth2.java
-#             │                   │   └── UserReqAto.java
-#             │                   ├── parsers
-#             │                   │   └── HTMLParser.java
-#             │                   ├── repo
-#             │                   │   ├── HistoryRepo.java
-#             │                   │   ├── RoleRepo.java
-#             │                   │   └── UserRepo.java
-#             │                   ├── services
-#             │                   │   ├── AuthenticationService.java
-#             │                   │   ├── history
-#             │                   │   │   ├── HistoryMapper.java
-#             │                   │   │   └── HistoryService.java
-#             │                   │   ├── OAuth2AuthenticationService.java
-#             │                   │   ├── TokenService.java
-#             │                   │   ├── UserOAuth2Service.java
-#             │                   │   └── UserServiceImpl.java
-#             │                   ├── utils
-#             │                   │   ├── KeyGeneratorUtility.java
-#             │                   │   └── RSAKeyProperties.java
-#             │                   └── WebSummarizerApplication.java
-#             └── resources
-#                 ├── application.properties
-#                 ├── env.properties
-#                 ├── static
-#                 │   ├── css
-#                 │   │   └── custom.css
-#                 │   ├── images
-#                 │   │   └── safe-checkout.png
-#                 │   └── js
-#                 │       └── custom.js
-#                 └── templates
-#                     ├── api
-#                     │   ├── newchat.html
-#                     │   └── summary.html
-#                     ├── error.html
-#                     ├── fragments
-#                     │   ├── message.html
-#                     │   ├── meta.html
-#                     │   └── shortlink.html
-#                     ├── index.html
-#                     └── user
-#                         ├── account.html
-#                         ├── cancel.html
-#                         ├── code.html
-#                         ├── login.html
-#                         ├── pro.html
-#                         ├── register.html
-#                         ├── reset.html
-#                         └── thankyou.html
-#     """
-#
-#     # Run the chain
-#     result = overview_chain.invoke(
-#         {"base_directory": base_directory, "project_structure": project_structure}
-#     )
-#     print(result)
+# === Run if a script is executed directly ===
+if __name__ == "__main__":
+    analysis_file = "../../data/algorithm_2_output/ml-image-classifier_analysis.json"
+    overview_section = run_overview_from_analysis(analysis_file)
+    print("\n--- Project Overview ---\n")
+    print(overview_section)
