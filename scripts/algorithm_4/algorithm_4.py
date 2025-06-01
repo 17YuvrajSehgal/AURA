@@ -1,3 +1,6 @@
+import json
+import os
+
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
@@ -33,14 +36,23 @@ def ExtractAuthors(S, C, L):
     return "Author info inferred from code comments or commit metadata."
 
 
-# Step 2: Determine required sections based on conference
+# Step 2: Determine required sections based on a conference
 def GetRequiredSections(Ctx):
     return ["Overview", "Installation", "Usage", "License", "Citation", "Dataset", "Contributing"]
 
 
 # Step 3: Section generation
 def GenerateSectionPrompt(section, S, C, L):
-    return f"Generate a '{section}' section for the README using repository structure and code context."
+    sample_code = "\n\n".join([f['content'][:500] for f in C[:2]])  # short
+    license_text = L[0]['content'][:500] if L else "No license file provided."
+    tree = S["file_structure"]
+
+    return f"""Generate a README section titled '{section}' using the following:
+- File structure:\n{tree}
+- Sample code:\n{sample_code}
+- License:\n{license_text}
+Make it suitable for a research artifact in an academic conference.
+"""
 
 
 def GenerateSectionContent(section, S, C, L):
@@ -82,11 +94,59 @@ def GenerateREADME(S, C, L, Ctx):
     return readme
 
 
-# Assume these are loaded from your analyzer:
-S = [...]  # repo_structure
-C = [...]  # list of code file content
-L = [...]  # LICENSE info
-Ctx = "ASE_2024"  # or dynamically fetched from parsed guideline JSON
+# # Assume these are loaded from your analyzer:
+# S = [...]  # repo_structure
+# C = [...]  # list of code file content
+# L = [...]  # LICENSE info
+# Ctx = "ASE_2024"  # or dynamically fetched from parsed guideline JSON
+
+
+def load_repository_data(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data["repository_structure"], data["code_files"], data["license_files"]
+
+
+manual_tree = """
+ml-image-classifier
+├── README.md
+├── src
+│   ├── train.py
+│   ├── model.py
+│   ├── evaluate.py
+├── data
+│   ├── training/
+│   └── testing/
+├── tests
+│   └── test_model.py
+"""
+
+repo_json_path = "../../data/algorithm_2_output/ml-image-classifier_analysis.json"
+
+# Load inputs
+S_raw, C, L = load_repository_data(repo_json_path)
+
+# Build S from raw: could just be tree string + list of files
+S = {
+    "file_structure": manual_tree,
+    "files": S_raw
+}
+
+# Dummy context for now
+Ctx = "ASE_2024"
+
+# Run README generation
+readme = GenerateREADME(S, C, L, Ctx)
+
+# Save it
+output_dir = "../../data/algorithm_4_output"
+os.makedirs(output_dir, exist_ok=True)  # create a directory if missing
+
+readme_path = os.path.join(output_dir, "generated_README.md")
+with open(readme_path, "w", encoding="utf-8") as f:
+    f.write(readme)
+
+print(f"README saved to: {readme_path}")
 
 readme_content = GenerateREADME(S, C, L, Ctx)
 with open("generated_README.md", "w", encoding="utf-8") as f:
