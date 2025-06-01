@@ -6,8 +6,6 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, START, MessagesState
 
 from app.ai_models.ai_utils import open_ai_chat_model
-from app.langchains.file_search_chains import files_chain
-from app.utils.utils import read_files_content
 
 # Setup logger
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +28,10 @@ def summarize_project_overview(state: MessagesState):
         for content in state["messages"]
     ]
     logger.info(f"Summarizing {len(file_messages)} code files...")
+
+    # response = "overview content"
+    # print(system_message)
+    # print(file_messages)
 
     response = open_ai_chat_model.invoke([system_message] + file_messages)
     return {"messages": response}

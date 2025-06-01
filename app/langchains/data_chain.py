@@ -4,7 +4,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph, START, MessagesState
 
 from app.ai_models.ai_utils import open_ai_chat_model
-from app.langchains.file_search_chains import files_chain
+from app.util_langchains.file_search_chains import files_chain
 from app.utils.utils import read_file_peek
 
 # Define memory and workflow
