@@ -97,21 +97,21 @@ def is_license_file(path: str) -> bool:
 
 def read_file_content(path: str) -> list[str]:
     """
-    Read the file at `path` and return its contents as a list of lines.
-    This way, when we write to JSON, each line is its own JSON string,
-    and no single JSON value ends up containing literal '\n' escapes.
+    Read the file at `path` and return its contents as a list of non‐empty lines.
+    Blank lines (after stripping whitespace) are dropped entirely.
     """
     try:
         with open(path, 'r', encoding='utf-8', errors='ignore') as f:
             raw = f.read()
-            # Split on any line‐break (removing the trailing '\n')
-            # so that we return a list of lines without "\n" at the end.
-            return raw.splitlines()
+            # 1) Split into lines.
+            all_lines = raw.splitlines()
+            # 2) Filter out any line that is empty (or whitespace-only) after stripping.
+            nonempty = [line for line in all_lines if line.strip() != ""]
+            return nonempty
     except Exception as e:
         logging.error(f"Failed to read file: {path} — {e}")
-        # Return a single‐element list describing the error, so the JSON field stays a list.
+        # Return a one‐element list so that "content" remains a list, even on error.
         return [f"[ERROR READING FILE]: {e}"]
-
 
 
 def generate_tree_lines(file_paths: list, root_dir: str) -> list:
@@ -222,7 +222,7 @@ def save_analysis_result(result: dict, repo_name: str, output_dir="../../data/al
 # Example usage
 if __name__ == "__main__":
     repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
-    #repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
+    # repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
     result = analyze_repository(repo_url)
 
     repo_name = repo_url.rstrip("/").split("/")[-1]
