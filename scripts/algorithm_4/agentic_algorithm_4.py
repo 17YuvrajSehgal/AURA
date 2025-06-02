@@ -2,9 +2,23 @@ import logging
 import os
 from typing import TypedDict, List
 
+from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
+
+from json_file_utils import (
+    read_analysis_json,
+    get_repository_structure,
+    get_documentation_texts,
+    get_code_texts,
+    get_license_texts,
+    get_first_code_snippet,
+    get_all_field_paths
+)
+
+
+load_dotenv()
 
 # === 0. Logging Setup ===
 logging.basicConfig(
@@ -179,16 +193,48 @@ with open("data/algorithm_4_output/readme_generator_workflow.png", "wb") as f_pn
 
 if __name__ == "__main__":
     # 5.a: Initial state from pre‐parsed analysis JSON
+
+    # 1. Load JSON
+    analysis_path = "../../data/algorithm_2_output/ml-image-classifier_analysis.json"
+    data = read_analysis_json(analysis_path)
+
+    # 2. Extract structure (tree or list of paths)
+    structure = "\n".join(get_repository_structure(data))
+    logger.info(f"\nRepository structure:\n{structure}")
+
+    # 3. Extract documentation text (first doc only, e.g.)
+    docs = get_documentation_texts(data)
+    if docs:
+        logger.info(f"\nFirst documentation snippet:\n{docs[0][:200]}...")
+
+    # 4. Extract code texts, pick first snippet
+    code_texts = get_code_texts(data)
+    snippet = get_first_code_snippet(data)
+    if snippet:
+        logger.info(f"\nSnippet from first code file:\n{snippet[:500]}...")
+
+    # 5. Extract license
+    licenses = get_license_texts(data)
+    if licenses:
+        logger.info(f"\nLicense text starts with:\n{licenses[0][:200]}...")
+
+
     state: READMEState = {
-        "context": "ASE_2024",
-        "structure": (
-            "ml-image-classifier\n"
-            "├── README.md\n"
-            "├── src/train.py\n"
-            "└── data/training/"
-        ),
-        "code_files": ["def foo(): pass\nimport torch\n# ..."],
-        "license_text": "MIT License text here",
+        "context": """Availability: This factor evaluates whether the artifact has been placed in a publicly accessible archival repository, ensuring long-term retrieval. A DOI or link to the repository must be provided.
+Functionality: This factor assesses if the artifact is documented, consistent, complete, and exercisable. It checks if the artifact can be executed successfully and if it includes evidence of verification and validation.
+Reusability: This factor examines if the artifact is documented and structured to facilitate reuse and repurposing. It requires a higher quality of documentation than the Functional level.
+Documentation: This factor involves the quality and comprehensiveness of the documentation provided with the artifact. It should include a README file detailing the purpose, provenance, setup, and usage of the artifact.
+Archival Repository: This factor considers whether the artifact is stored in a suitable archival repository like Zenodo or FigShare, which ensures long-term availability, as opposed to non-archival platforms like GitHub.
+Executable Artifacts: This factor evaluates the preparation of executable artifacts, including the provision of installation packages and the use of Docker or VM images to ensure easy setup and execution.
+Non-executable Artifacts: This factor assesses the submission of non-executable artifacts, which should be packaged in a format accessible by common tools and include necessary data and documents.
+License: This factor checks if a LICENSE file is included, describing the distribution rights and ensuring public availability, preferably under an open-source or open data license.
+Setup Instructions: This factor evaluates the clarity and completeness of setup instructions for executable artifacts, including hardware and software requirements.
+Usage Instructions: This factor assesses the clarity of instructions for replicating the main results of the paper, including basic usage examples and detailed commands.
+Iterative Review Process: This factor involves the authors' responsiveness to reviewer requests for information or clarifications during the review period, ensuring the artifact meets the required standards.
+""",  # e.g., from analysis or config
+        "structure": structure,
+        "code_files": code_texts,  # list of full code file strings
+        "license_text": licenses[0] if licenses else "",
         "required_sections": [],
         "current_section": "",
         "completed_sections": [],
