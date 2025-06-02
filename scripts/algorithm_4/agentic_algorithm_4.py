@@ -220,18 +220,20 @@ if __name__ == "__main__":
 
 
     state: READMEState = {
-        "context": """Availability: This factor evaluates whether the artifact has been placed in a publicly accessible archival repository, ensuring long-term retrieval. A DOI or link to the repository must be provided.
-Functionality: This factor assesses if the artifact is documented, consistent, complete, and exercisable. It checks if the artifact can be executed successfully and if it includes evidence of verification and validation.
-Reusability: This factor examines if the artifact is documented and structured to facilitate reuse and repurposing. It requires a higher quality of documentation than the Functional level.
-Documentation: This factor involves the quality and comprehensiveness of the documentation provided with the artifact. It should include a README file detailing the purpose, provenance, setup, and usage of the artifact.
-Archival Repository: This factor considers whether the artifact is stored in a suitable archival repository like Zenodo or FigShare, which ensures long-term availability, as opposed to non-archival platforms like GitHub.
-Executable Artifacts: This factor evaluates the preparation of executable artifacts, including the provision of installation packages and the use of Docker or VM images to ensure easy setup and execution.
-Non-executable Artifacts: This factor assesses the submission of non-executable artifacts, which should be packaged in a format accessible by common tools and include necessary data and documents.
-License: This factor checks if a LICENSE file is included, describing the distribution rights and ensuring public availability, preferably under an open-source or open data license.
-Setup Instructions: This factor evaluates the clarity and completeness of setup instructions for executable artifacts, including hardware and software requirements.
-Usage Instructions: This factor assesses the clarity of instructions for replicating the main results of the paper, including basic usage examples and detailed commands.
-Iterative Review Process: This factor involves the authors' responsiveness to reviewer requests for information or clarifications during the review period, ensuring the artifact meets the required standards.
-""",  # e.g., from analysis or config
+        "context":
+        """
+            Availability: This factor evaluates whether the artifact has been placed in a publicly accessible archival repository, ensuring long-term retrieval. A DOI or link to the repository must be provided.
+            Functionality: This factor assesses if the artifact is documented, consistent, complete, and exercisable. It checks if the artifact can be executed successfully and if it includes evidence of verification and validation.
+            Reusability: This factor examines if the artifact is documented and structured to facilitate reuse and repurposing. It requires a higher quality of documentation than the Functional level.
+            Documentation: This factor involves the quality and comprehensiveness of the documentation provided with the artifact. It should include a README file detailing the purpose, provenance, setup, and usage of the artifact.
+            Archival Repository: This factor considers whether the artifact is stored in a suitable archival repository like Zenodo or FigShare, which ensures long-term availability, as opposed to non-archival platforms like GitHub.
+            Executable Artifacts: This factor evaluates the preparation of executable artifacts, including the provision of installation packages and the use of Docker or VM images to ensure easy setup and execution.
+            Non-executable Artifacts: This factor assesses the submission of non-executable artifacts, which should be packaged in a format accessible by common tools and include necessary data and documents.
+            License: This factor checks if a LICENSE file is included, describing the distribution rights and ensuring public availability, preferably under an open-source or open data license.
+            Setup Instructions: This factor evaluates the clarity and completeness of setup instructions for executable artifacts, including hardware and software requirements.
+            Usage Instructions: This factor assesses the clarity of instructions for replicating the main results of the paper, including basic usage examples and detailed commands.
+            Iterative Review Process: This factor involves the authors' responsiveness to reviewer requests for information or clarifications during the review period, ensuring the artifact meets the required standards.
+        """,
         "structure": structure,
         "code_files": code_texts,  # list of full code file strings
         "license_text": licenses[0] if licenses else "",
