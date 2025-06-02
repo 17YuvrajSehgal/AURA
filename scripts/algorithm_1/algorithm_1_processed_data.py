@@ -126,7 +126,7 @@ df = pd.DataFrame(evaluation_criteria)
 df["keywords"] = df["keywords"].apply(lambda kw: ", ".join(kw))
 
 # Save to CSV
-output_path = os.path.join(script_dir, "..", "..", "data", "algorithm_1_output",
+output_path = os.path.join(script_dir, "..", "..", "algo_outputs", "algorithm_1_output",
                            "algorithm_1_artifact_evaluation_criteria.csv")
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 

@@ -185,8 +185,8 @@ compiled = graph.compile()
 # 4.g: Visualize as PNG
 logger.info("Drawing workflow diagram to 'readme_generator_workflow.png'...")
 png_bytes = compiled.get_graph().draw_mermaid_png()
-os.makedirs("data/algorithm_4_output", exist_ok=True)
-with open("../../data/algorithm_4_output/readme_generator_workflow.png", "wb") as f_png:
+os.makedirs("../../algo_outputs/algorithm_4_output", exist_ok=True)
+with open("../../algo_outputs/algorithm_4_output/readme_generator_workflow.png", "wb") as f_png:
     f_png.write(png_bytes)
 
 # === 5. Driver code: manual “parallel” section generation ===
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     # 5.a: Initial state from pre‐parsed analysis JSON
 
     # 1. Load JSON
-    analysis_path = "../../data/algorithm_2_output/ml-image-classifier_analysis.json"
+    analysis_path = "../../algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json"
     data = read_analysis_json(analysis_path)
 
     # 2. Extract structure (tree or list of paths)
@@ -273,8 +273,8 @@ if __name__ == "__main__":
         state["quality_score"] = eval2["quality_score"]
 
     # 5.f: Save the final README
-    os.makedirs("../../data/algorithm_4_output", exist_ok=True)
-    readme_path = os.path.join("../../data/algorithm_4_output", "generated_README.md")
+    os.makedirs("../../algo_outputs/algorithm_4_output", exist_ok=True)
+    readme_path = os.path.join("../../algo_outputs/algorithm_4_output", "generated_README.md")
     with open(readme_path, "w", encoding="utf-8") as f_md:
         f_md.write(state["readme"])
 

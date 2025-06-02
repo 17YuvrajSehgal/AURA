@@ -12,7 +12,7 @@ def read_analysis_json(filepath: str) -> Dict[str, Any]:
     Load the entire analysis JSON from disk.
 
     Parameters:
-        filepath: Path to the JSON file (e.g. "data/algorithm_2_output/ml-image-classifier_analysis.json").
+        filepath: Path to the JSON file (e.g. "data/outputs/algorithm_2_output/ml-image-classifier_analysis.json").
 
     Returns:
         A Python dict parsed from the JSON.

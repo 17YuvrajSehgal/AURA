@@ -205,7 +205,7 @@ def analyze_repository(repo_path_or_url: str, temp_base_dir="../../temp_dir_for_
     }
 
 
-def save_analysis_result(result: dict, repo_name: str, output_dir="../../data/algorithm_2_output"):
+def save_analysis_result(result: dict, repo_name: str, output_dir="../../algo_outputs/algorithm_2_output"):
     """
     Write the `result` dict to JSON. Because `tree_structure` is already a list of simple strings,
     the output JSON will not contain any '\\n' escape characters.
