@@ -186,7 +186,7 @@ compiled = graph.compile()
 logger.info("Drawing workflow diagram to 'readme_generator_workflow.png'...")
 png_bytes = compiled.get_graph().draw_mermaid_png()
 os.makedirs("data/algorithm_4_output", exist_ok=True)
-with open("data/algorithm_4_output/readme_generator_workflow.png", "wb") as f_png:
+with open("../../data/algorithm_4_output/readme_generator_workflow.png", "wb") as f_png:
     f_png.write(png_bytes)
 
 # === 5. Driver code: manual “parallel” section generation ===
@@ -271,8 +271,8 @@ Iterative Review Process: This factor involves the authors' responsiveness to re
         state["quality_score"] = eval2["quality_score"]
 
     # 5.f: Save the final README
-    os.makedirs("data/algorithm_4_output", exist_ok=True)
-    readme_path = os.path.join("data/algorithm_4_output", "generated_README.md")
+    os.makedirs("../../data/algorithm_4_output", exist_ok=True)
+    readme_path = os.path.join("../../data/algorithm_4_output", "generated_README.md")
     with open(readme_path, "w", encoding="utf-8") as f_md:
         f_md.write(state["readme"])
 
