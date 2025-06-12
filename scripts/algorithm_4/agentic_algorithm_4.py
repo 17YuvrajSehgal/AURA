@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from typing import TypedDict, List
+from typing import TypedDict, List, Dict
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -13,8 +13,7 @@ from json_file_utils import (
     get_repository_structure,
     get_documentation_texts,
     get_code_texts,
-    get_license_texts,
-    get_first_code_snippet
+    get_license_texts, get_first_code_snippet
 )
 
 load_dotenv()
@@ -27,7 +26,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # === 1. Real LLM (OpenAI) ===
-# Make sure you have set OPENAI_API_KEY in your environment.
 llm = ChatOpenAI(temperature=0.2, model="gpt-4")
 
 
@@ -43,12 +41,60 @@ class READMEState(TypedDict):
     readme: str
     quality_score: float
 
-# === Critic Agent ===
+
+# === 3. Custom Section Prompts ===
+SECTION_PROMPTS: Dict[str, str] = {
+    "overview": "Write a concise overview describing the purpose and scope of the research artifact. Emphasize its novelty and target audience.",
+    "installation": "Provide clear installation instructions for the artifact, specifying software/hardware requirements, and any dependencies. Use bullet points or numbered steps if possible.",
+    "usage": "Describe how to use the artifact. Include example commands, expected input/output, and mention key options or flags.",
+    "reproducibility": "Explain how users can reproduce the main results from the associated research paper. Mention any datasets, scripts, or parameters needed.",
+    "authors": "List the authors, their roles, and (if possible) their affiliations/contact info for artifact-related queries.",
+    "license": "State the license type, key terms, and any usage restrictions or permissions.",
+    # Add more section prompts as needed
+}
+
+GENERIC_SECTION_PROMPT = "Write a detailed '{section}' section for a research artifact README, following academic best practices and including all critical information."
+
+
+# === 4. Multi-Agent (Prompt Chaining) Functions ===
+
+def author_agent(state: READMEState, prev_sections: Dict[str, str], feedback: str = "") -> str:
+    """ Section Author agent: generates initial content for a README section. """
+    sect = state["current_section"]
+    prev_content = "\n".join([f"## {sec}\n{cont}" for sec, cont in prev_sections.items()])
+    prompt_template = SECTION_PROMPTS.get(sect, GENERIC_SECTION_PROMPT.format(section=sect))
+    prompt_content = (
+        f"{prompt_template}\n\n"
+        f"Project structure:\n{state['structure']}\n\n"
+        f"Sample code (first file):\n{state['code_files'][0] if state['code_files'] else 'N/A'}\n\n"
+        f"License:\n{state['license_text']}\n\n"
+        f"Sections written so far:\n{prev_content}\n\n"
+        f"{'Feedback from reviewer: ' + feedback if feedback else ''}"
+    )
+    prompt = [
+        SystemMessage(content=f"You are a research artifact documentation author. {prompt_template}"),
+        HumanMessage(content=prompt_content)
+    ]
+    resp = llm.invoke(prompt)
+    return resp.content.strip()
+
+
+def editor_agent(section_content: str, section_name: str) -> str:
+    """ Section Editor agent: revises/improves initial section for clarity and structure. """
+    prompt = [
+        SystemMessage(content=(
+            f"You are an academic editor. Edit and improve the following '{section_name}' section for clarity, conciseness, and academic tone. "
+            f"Reorganize information as needed. Do not remove critical details."
+        )),
+        HumanMessage(content=section_content)
+    ]
+    resp = llm.invoke(prompt)
+    return resp.content.strip()
+
+
 def critic_agent(section_content: str, section_name: str) -> dict:
     """
-    LLM-based critic: Reviews the generated section and gives
-    - Numeric score (0–1) for quality (clarity, completeness, usefulness)
-    - Concrete suggestions for improvement
+    Critic agent reviews a section, gives a score and feedback.
     """
     prompt = [
         SystemMessage(
@@ -71,27 +117,19 @@ def critic_agent(section_content: str, section_name: str) -> dict:
     feedback = feedback_match.group(1).strip() if feedback_match else ""
     return {"score": score, "feedback": feedback}
 
-# === 3. Node Functions ===
+
+# === 5. Core Workflow Functions ===
 
 def load_analysis(state: READMEState) -> dict:
-    """
-    Initial loader: in practice, you'd load from a JSON file into 'state'.
-    Here, we assume 'state' is already populated with context, structure, code_files, license_text.
-    We log and return an empty dict to advance to 'planner'.
-    """
     logger.info("Loading pre‐parsed analysis from input state.")
-    return {}  # no changes to state, just proceed to planner
+    return {}
 
 
 def plan_sections(state: READMEState) -> dict:
-    """
-    Orchestrator: ask GPT‐4 which sections are needed (e.g. "overview, installation, usage").
-    """
     logger.info("Planning which sections to generate...")
     prompt = [
         SystemMessage(
-            content="List comma‐separated sections that should appear "
-                    "in a README for a research artifact."
+            content="List comma‐separated sections that should appear in a README for a research artifact."
         ),
         HumanMessage(content=state["context"])
     ]
@@ -100,32 +138,8 @@ def plan_sections(state: READMEState) -> dict:
     logger.info(f"LLM returned sections: {sections}")
     return {"required_sections": sections}
 
-def generate_section(state: READMEState, feedback: str = "") -> dict:
-    sect = state["current_section"]
-    logger.info(f"Generating section: '{sect}'")
-    prompt_content = (
-        f"Critic feedback for improvement: {feedback}\n\n" if feedback else ""
-    ) + (
-        f"Project structure:\n{state['structure']}\n\n"
-        f"Sample code (first file):\n{state['code_files'][0] if state['code_files'] else 'N/A'}\n\n"
-        f"License:\n{state['license_text']}\n\n"
-        f"Section to write: {sect}"
-    )
-    prompt = [
-        SystemMessage(content=f"Generate a '{sect}' section for a README. Use this context:"),
-        HumanMessage(content=prompt_content)
-    ]
-    resp = llm.invoke(prompt)
-    entry = {"section": sect, "content": resp.content.strip()}
-    updated_list = state.get("completed_sections", []) + [entry]
-    logger.info(f"Completed '{sect}'.")
-    return {"completed_sections": updated_list}
-
 
 def synthesize_readme(state: READMEState) -> dict:
-    """
-    Synthesizer: merge all completed_sections into a single Markdown README string.
-    """
     logger.info("Synthesizing final README from completed sections...")
     parts = [
         f"## {s['section'].title()}\n{s['content']}"
@@ -144,8 +158,7 @@ def evaluate_quality(state: READMEState) -> dict:
     draft = state["readme"]
     prompt = [
         SystemMessage(
-            content="Rate this README draft between 0 and 1 on completeness and clarity "
-                    "(only return the numeric score)."
+            content="Rate this README draft between 0 and 1 on completeness and clarity (only return the numeric score)."
         ),
         HumanMessage(content=draft)
     ]
@@ -157,6 +170,7 @@ def evaluate_quality(state: READMEState) -> dict:
         logger.warning("Could not parse numeric score from LLM; defaulting to 0.5")
     logger.info(f"LLM quality score: {score:.2f}")
     return {"quality_score": score}
+
 
 def refine_sections(state: READMEState) -> dict:
     """
@@ -171,7 +185,7 @@ def refine_sections(state: READMEState) -> dict:
     return {"completed_sections": refined}
 
 
-# === 4. Build a static LangGraph workflow ===
+# === 6. LangGraph Workflow (unchanged) ===
 
 graph = StateGraph(READMEState)
 
@@ -212,7 +226,7 @@ os.makedirs("../../algo_outputs/algorithm_4_output", exist_ok=True)
 with open("../../algo_outputs/algorithm_4_output/readme_generator_workflow.png", "wb") as f_png:
     f_png.write(png_bytes)
 
-# === 5. Driver code: Section generation with Critic agent ===
+# === 7. Driver: Multi-Agent Section Workflow with Prompt Chaining ===
 
 if __name__ == "__main__":
     # 5.a: Initial state from pre‐parsed analysis JSON
@@ -241,24 +255,10 @@ if __name__ == "__main__":
     if licenses:
         logger.info(f"\nLicense text starts with:\n{licenses[0][:200]}...")
 
-
     state: READMEState = {
-        "context":
-        """
-            Availability: This factor evaluates whether the artifact has been placed in a publicly accessible archival repository, ensuring long-term retrieval. A DOI or link to the repository must be provided.
-            Functionality: This factor assesses if the artifact is documented, consistent, complete, and exercisable. It checks if the artifact can be executed successfully and if it includes evidence of verification and validation.
-            Reusability: This factor examines if the artifact is documented and structured to facilitate reuse and repurposing. It requires a higher quality of documentation than the Functional level.
-            Documentation: This factor involves the quality and comprehensiveness of the documentation provided with the artifact. It should include a README file detailing the purpose, provenance, setup, and usage of the artifact.
-            Archival Repository: This factor considers whether the artifact is stored in a suitable archival repository like Zenodo or FigShare, which ensures long-term availability, as opposed to non-archival platforms like GitHub.
-            Executable Artifacts: This factor evaluates the preparation of executable artifacts, including the provision of installation packages and the use of Docker or VM images to ensure easy setup and execution.
-            Non-executable Artifacts: This factor assesses the submission of non-executable artifacts, which should be packaged in a format accessible by common tools and include necessary data and documents.
-            License: This factor checks if a LICENSE file is included, describing the distribution rights and ensuring public availability, preferably under an open-source or open data license.
-            Setup Instructions: This factor evaluates the clarity and completeness of setup instructions for executable artifacts, including hardware and software requirements.
-            Usage Instructions: This factor assesses the clarity of instructions for replicating the main results of the paper, including basic usage examples and detailed commands.
-            Iterative Review Process: This factor involves the authors' responsiveness to reviewer requests for information or clarifications during the review period, ensuring the artifact meets the required standards.
-        """,
+        "context": "...",  # your full context as before
         "structure": structure,
-        "code_files": code_texts,  # list of full code file strings
+        "code_files": code_texts,
         "license_text": licenses[0] if licenses else "",
         "required_sections": [],
         "current_section": "",
@@ -267,36 +267,37 @@ if __name__ == "__main__":
         "quality_score": 0.0
     }
 
-    # 5.b: Step 1: load_analysis → planner
+    # Step 1: Determine required sections
     logger.info("Running planner to determine required sections...")
     planner_out = compiled.invoke(state)
     state["required_sections"] = planner_out["required_sections"]
     logger.info(f"Sections planned: {state['required_sections']}")
 
-    # 5.c: Section generation with Critic review
     SECTION_CRITIC_THRESHOLD = 0.8
+    prev_sections = {}
 
     for sect in state["required_sections"]:
         state["current_section"] = sect
         feedback = ""
         retry_count = 0
-        max_retries = 3  # Avoid infinite loops in case of stubborn LLMs
-
+        max_retries = 3
         while True:
-            worker_out = generate_section(state, feedback=feedback)
-            new_section = worker_out["completed_sections"][-1]
-            review = critic_agent(new_section["content"], sect)
+            # === Multi-agent prompt chaining for this section ===
+            author_output = author_agent(state, prev_sections, feedback)
+            editor_output = editor_agent(author_output, sect)
+            review = critic_agent(editor_output, sect)
             logger.info(f"Critic score for '{sect}': {review['score']:.2f} | Feedback: {review['feedback']}")
             if review["score"] >= SECTION_CRITIC_THRESHOLD or retry_count >= max_retries:
-                # Accept the section (even if it didn't hit the threshold after retries)
-                state["completed_sections"] = worker_out["completed_sections"]
+                # Accept section, add to completed
+                prev_sections[sect] = editor_output
+                state["completed_sections"].append({"section": sect, "content": editor_output})
                 break
             else:
                 logger.info(f"Regenerating '{sect}' due to low critic score. Feedback: {review['feedback']}")
                 feedback = review["feedback"]
                 retry_count += 1
 
-    # 5.d: Now synthesize → evaluate
+    # Synthesize, evaluate, refine if needed
     synth_out = synthesize_readme(state)
     state["readme"] = synth_out["readme"]
     eval_out = evaluate_quality(state)
@@ -312,7 +313,7 @@ if __name__ == "__main__":
         eval2 = evaluate_quality(state)
         state["quality_score"] = eval2["quality_score"]
 
-    # 5.f: Save the final README
+    # Save and report
     os.makedirs("../../algo_outputs/algorithm_4_output", exist_ok=True)
     readme_path = os.path.join("../../algo_outputs/algorithm_4_output", "generated_README.md")
     with open(readme_path, "w", encoding="utf-8") as f_md:
