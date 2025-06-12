@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from typing import TypedDict, List
 
 from dotenv import load_dotenv
@@ -13,10 +14,8 @@ from json_file_utils import (
     get_documentation_texts,
     get_code_texts,
     get_license_texts,
-    get_first_code_snippet,
-    get_all_field_paths
+    get_first_code_snippet
 )
-
 
 load_dotenv()
 
@@ -44,6 +43,33 @@ class READMEState(TypedDict):
     readme: str
     quality_score: float
 
+# === Critic Agent ===
+def critic_agent(section_content: str, section_name: str) -> dict:
+    """
+    LLM-based critic: Reviews the generated section and gives
+    - Numeric score (0–1) for quality (clarity, completeness, usefulness)
+    - Concrete suggestions for improvement
+    """
+    prompt = [
+        SystemMessage(
+            content=(
+                f"You are a research artifact reviewer specializing in README quality. "
+                f"Review the following '{section_name}' section and:\n"
+                f"1. Provide a numeric quality score between 0 and 1 (clarity, completeness, usefulness for a research artifact)\n"
+                f"2. Give concise, actionable feedback for improvement, if any.\n"
+                f"Format:\n"
+                f"Score: <numeric_score>\n"
+                f"Feedback: <short_feedback>"
+            )
+        ),
+        HumanMessage(content=section_content)
+    ]
+    resp = llm.invoke(prompt)
+    score_match = re.search(r"Score:\s*([0-9.]+)", resp.content)
+    feedback_match = re.search(r"Feedback:\s*(.*)", resp.content, re.DOTALL)
+    score = float(score_match.group(1)) if score_match else 0.5
+    feedback = feedback_match.group(1).strip() if feedback_match else ""
+    return {"score": score, "feedback": feedback}
 
 # === 3. Node Functions ===
 
@@ -74,22 +100,20 @@ def plan_sections(state: READMEState) -> dict:
     logger.info(f"LLM returned sections: {sections}")
     return {"required_sections": sections}
 
-
-def generate_section(state: READMEState) -> dict:
-    """
-    Worker: generate content for exactly one section.
-    Each call sees state['current_section'] set by the driver loop.
-    """
+def generate_section(state: READMEState, feedback: str = "") -> dict:
     sect = state["current_section"]
     logger.info(f"Generating section: '{sect}'")
+    prompt_content = (
+        f"Critic feedback for improvement: {feedback}\n\n" if feedback else ""
+    ) + (
+        f"Project structure:\n{state['structure']}\n\n"
+        f"Sample code (first file):\n{state['code_files'][0] if state['code_files'] else 'N/A'}\n\n"
+        f"License:\n{state['license_text']}\n\n"
+        f"Section to write: {sect}"
+    )
     prompt = [
         SystemMessage(content=f"Generate a '{sect}' section for a README. Use this context:"),
-        HumanMessage(content=(
-            f"Project structure:\n{state['structure']}\n\n"
-            f"Sample code (first file):\n{state['code_files'][0] if state['code_files'] else 'N/A'}\n\n"
-            f"License:\n{state['license_text']}\n\n"
-            f"Section to write: {sect}"
-        ))
+        HumanMessage(content=prompt_content)
     ]
     resp = llm.invoke(prompt)
     entry = {"section": sect, "content": resp.content.strip()}
@@ -133,7 +157,6 @@ def evaluate_quality(state: READMEState) -> dict:
         logger.warning("Could not parse numeric score from LLM; defaulting to 0.5")
     logger.info(f"LLM quality score: {score:.2f}")
     return {"quality_score": score}
-
 
 def refine_sections(state: READMEState) -> dict:
     """
@@ -189,7 +212,7 @@ os.makedirs("../../algo_outputs/algorithm_4_output", exist_ok=True)
 with open("../../algo_outputs/algorithm_4_output/readme_generator_workflow.png", "wb") as f_png:
     f_png.write(png_bytes)
 
-# === 5. Driver code: manual “parallel” section generation ===
+# === 5. Driver code: Section generation with Critic agent ===
 
 if __name__ == "__main__":
     # 5.a: Initial state from pre‐parsed analysis JSON
@@ -250,11 +273,28 @@ if __name__ == "__main__":
     state["required_sections"] = planner_out["required_sections"]
     logger.info(f"Sections planned: {state['required_sections']}")
 
-    # 5.c: “Parallel” section generation via Python loop
+    # 5.c: Section generation with Critic review
+    SECTION_CRITIC_THRESHOLD = 0.8
+
     for sect in state["required_sections"]:
         state["current_section"] = sect
-        worker_out = generate_section(state)
-        state["completed_sections"] = worker_out["completed_sections"]
+        feedback = ""
+        retry_count = 0
+        max_retries = 3  # Avoid infinite loops in case of stubborn LLMs
+
+        while True:
+            worker_out = generate_section(state, feedback=feedback)
+            new_section = worker_out["completed_sections"][-1]
+            review = critic_agent(new_section["content"], sect)
+            logger.info(f"Critic score for '{sect}': {review['score']:.2f} | Feedback: {review['feedback']}")
+            if review["score"] >= SECTION_CRITIC_THRESHOLD or retry_count >= max_retries:
+                # Accept the section (even if it didn't hit the threshold after retries)
+                state["completed_sections"] = worker_out["completed_sections"]
+                break
+            else:
+                logger.info(f"Regenerating '{sect}' due to low critic score. Feedback: {review['feedback']}")
+                feedback = review["feedback"]
+                retry_count += 1
 
     # 5.d: Now synthesize → evaluate
     synth_out = synthesize_readme(state)
