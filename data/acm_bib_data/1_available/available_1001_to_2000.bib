@@ -3408,13 +3408,13 @@ keywords = {automatic differentiation, differentiable programming, MLIR, sparsit
 
 @software{10.6084/m9.figshare.21976358.v1,
 author = {Rocha, Rodrigo C. O. and Saumya, Charitha and Sundararajah, Kirshanthan and Petoumenos, Pavlos and Kulkarni, Milind and O’Boyle, Michael F. P.},
-title = {Artifact for "HyBF : A hybrid branch fusion strategy for code size reduction"},
+title = {Artifact for "HyBF: A hybrid branch fusion strategy for code size reduction"},
 year = {2023},
 publisher = {Association for Computing Machinery},
 url = {https://doi.org/10.6084/m9.figshare.21976358.v1},
 abstract = {
     <p>This is the artifact of the paper</p>
-<p>“HyBF : A hybrid branch fusion strategy for code size reduction” Rodrigo Rocha, Charitha Saumya, Kirshanthan Sundararajah, Pavlos Petoumenos, Milind Kulkarni, Michael O’Boyle</p>
+<p>“HyBF: A hybrid branch fusion strategy for code size reduction” Rodrigo Rocha, Charitha Saumya, Kirshanthan Sundararajah, Pavlos Petoumenos, Milind Kulkarni, Michael O’Boyle</p>
 <p>published at the Conference on Compiler Construction, 2023.</p>
 <p>We provide scripts that automate the installation and use of this artifact. Read README.md for detailed instructions.</p>
 
@@ -4899,7 +4899,7 @@ url = {https://doi.org/10.5281/zenodo.7811004},
 abstract = {
     <p>This artifact contains:</p>
 <ol type="1">
-<li>README.md : the artifact guide.</li>
+<li>README.md: the artifact guide.</li>
 <li>poirot-full.pdf: full paper with the appendix.</li>
 <li>poirot_pldi-2023.tar.gz: the docker image (optional, we recommend to pull from the docker hub, see README.md).</li>
 <li>Dockerfile: the docker file that can reproduce the docker image (optional, we recommend to pull from the docker hub, see README.md).</li>
@@ -5179,7 +5179,7 @@ abstract = {
 [...]
 
 Searching for proofs... 
-Proved "CommutativityAddition.prop_comm_add : add x y = add y x"
+Proved "CommutativityAddition.prop_comm_add: add x y = add y x"
 
 [...]
 
@@ -5234,8 +5234,8 @@ Check Done</code></pre>
 [...]
 
 [info] FailingPropertyChecks:
-[info] - nat_add2p_acc !!! IGNORED !!!
-[info] - nat_add3p_acc !!! IGNORED !!!
+[info] - nat_add2p_acc!!! IGNORED!!!
+[info] - nat_add3p_acc!!! IGNORED!!!
 
 [...]
 
@@ -5355,14 +5355,14 @@ $ nano /propel/src/test/scala/propel/ScalaExamplesList.scala    # open the file
 $ cd /propel &amp;\&amp; sbt Test/compile                                # recompile</code></pre>
 <p>Compiling the examples may not work inside the Docker container on Apple M1 machines for the reasons mentioned earlier.</p>
 <p>You may define your own function using the following syntax:</p>
-<pre><code>def myFunction = prop[(FunctionProperties) ::= (T1, T1) =&gt;: T2] { (x, y) =&gt; body }
+<pre><code>def myFunction = prop[(FunctionProperties)::= (T1, T1) =&gt;: T2] { (x, y) =&gt; body }
 // or
-def myRecursiveFunction = prop.rec[(FunctionProperties) ::= (T1, T1) =&gt;: T2] { myRecursiveFunction =&gt; (x, y) =&gt; body }</code></pre>
+def myRecursiveFunction = prop.rec[(FunctionProperties)::= (T1, T1) =&gt;: T2] { myRecursiveFunction =&gt; (x, y) =&gt; body }</code></pre>
 <p>Here, <code>myFunction</code> is the name of the function, <code>FunctionProperties</code> is a list of function properties the function has (separated by <code>&amp;</code>), <code>T1</code> is the type of the arguments of the binary function, <code>T2</code> is the return type of the function, <code>x</code> and <code>y</code> are the names of the function arguments, and <code>body</code> is the function body.</p>
 <p>The function properties are chosen from the following list: <code>Comm</code>, <code>Assoc</code>, <code>Idem</code>, <code>Sel</code>, <code>Refl</code>, <code>Antisym</code>, <code>Trans</code>, <code>Conn</code>, and <code>Sym</code>. Their semantics is defined in Table 1.</p>
 <p>If Propel is able to prove the properties that the function is annotated with, then compilation succeeds. If the properties cannot be proven, then a compilation error indicates which property could not be proven</p>
 <p>For example, you can add the GCounter CRDT example from the paper to one of the files in <code>/propel/src/test/scala/propel</code></p>
-<pre><code>def mergeGCounter = prop[(Comm \&amp; Assoc \&amp; Idem) := (List[Num], List[Num]) =&gt;: List[Num]] { (x, y) =&gt; zipWith(maxNum)(x, y) }</code></pre>
+<pre><code>def mergeGCounter = prop[(Comm \&amp; Assoc \&amp; Idem):= (List[Num], List[Num]) =&gt;: List[Num]] { (x, y) =&gt; zipWith(maxNum)(x, y) }</code></pre>
 <p>We hope that the integration into Scala makes the artifact easily usable by other researchers, either (1) by directly using the DSL to check algebraic and relational properties of their programs or (2) by building on Propel’s verification engine. To facilitate the latter, the implementation of Propel’s Scala DSL (<code>propel.dsl</code> package) is separated from the verification mechanism (<code>propel.evaluator</code> package), which researchers can adopt independently of the Scala integration (an overview of the package structure is in the last section).</p>
 <h3 id="using-propel-standalone-outside-of-scala">USING PROPEL STANDALONE (OUTSIDE OF SCALA)</h3>
 <p>Propel can be directly reused as a verification tool in other projects (without the Scala and JVM dependency) through the <code>propel</code> binary. The binary consumes ASTs of Propel’s calculus in an S-expression-based syntax.</p>
@@ -8281,7 +8281,7 @@ year = {2023},
 publisher = {Association for Computing Machinery},
 url = {https://doi.org/10.5281/zenodo.8270267},
 abstract = {
-    <p>The artifact allow to reproduce results from associated article. It contains : - the implementation of our approach, - the baseline tool, - the scripts to run the experiments, and - the notebooks to compute plot the figures.</p>
+    <p>The artifact allow to reproduce results from associated article. It contains: - the implementation of our approach, - the baseline tool, - the scripts to run the experiments, and - the notebooks to compute plot the figures.</p>
 
 },
 keywords = {Code history mining, Diff, Edit script, Temporal code analysis}
@@ -9567,7 +9567,7 @@ year = {2024},
 publisher = {Association for Computing Machinery},
 url = {https://doi.org/10.5281/zenodo.10125602},
 abstract = {
-    <p>This is the artifact for the paper Shoggoth : A Formal Foundation for Strategic Rewriting. We provide all mechanised proofs developed in Isabelle/HOL. In total we provide nine files (with .thy extension) containing our proof scripts for the denotational semantics, operational semantics, semantic equivalence, weakest precondition calculus and soundness of the weakest precondition calculus are discussed in the paper. Please refer to README.md for detail information as well as instructions for installing and executing this artifact.</p>
+    <p>This is the artifact for the paper Shoggoth: A Formal Foundation for Strategic Rewriting. We provide all mechanised proofs developed in Isabelle/HOL. In total we provide nine files (with .thy extension) containing our proof scripts for the denotational semantics, operational semantics, semantic equivalence, weakest precondition calculus and soundness of the weakest precondition calculus are discussed in the paper. Please refer to README.md for detail information as well as instructions for installing and executing this artifact.</p>
 
 },
 keywords = {formal verification, semantics, weakest precondition}
@@ -10946,7 +10946,7 @@ url = {https://doi.org/10.5281/zenodo.10806686},
 abstract = {
     <p>This artifact contains:</p>
 <ol type="1">
-<li>README.md : the artifact guide.</li>
+<li>README.md: the artifact guide.</li>
 <li>marple-original-submission.pdf: the original submitted paper.</li>
 <li>marple:pldi-2024.tar.gz: the docker image (optional, we recommend to pull from the docker hub, see README.md).</li>
 <li>Dockerfile: the docker file that can reproduce the docker image (optional, we recommend to pull from the docker hub, see README.md).</li>
@@ -11495,7 +11495,7 @@ abstract = {
 [...]
 
 Searching for proofs... 
-Proved "CommutativityAddition.prop_add_comm : add x y = add y x"
+Proved "CommutativityAddition.prop_add_comm: add x y = add y x"
 
 [...]
 
@@ -11557,8 +11557,8 @@ Check Done</code></pre>
 [...]
 
 [info] FailingPropertyChecks:
-[info] - nat_add2p_acc !!! IGNORED !!!
-[info] - nat_add3p_acc !!! IGNORED !!!
+[info] - nat_add2p_acc!!! IGNORED!!!
+[info] - nat_add3p_acc!!! IGNORED!!!
 
 [...]
 
@@ -11597,9 +11597,9 @@ $ nano /propel/src/test/scala/propel/ScalaExamplesList.scala    # open the file
 $ cd /propel &amp;\&amp; sbt Test/compile                                # recompile</code></pre>
 <p>Compiling the examples may not work inside the Docker container on Apple M1 machines for the reasons mentioned earlier.</p>
 <p>You may define your own function using the following syntax:</p>
-<pre><code>def myFunction = prop[(FunctionProperties) := (T1, T1) =&gt;: T2] { (x, y) =&gt; body }
+<pre><code>def myFunction = prop[(FunctionProperties):= (T1, T1) =&gt;: T2] { (x, y) =&gt; body }
 // or
-def myRecursiveFunction = prop.rec[(FunctionProperties) := (T1, T1) =&gt;: T2] { myRecursiveFunction =&gt; (x, y) =&gt; body }</code></pre>
+def myRecursiveFunction = prop.rec[(FunctionProperties):= (T1, T1) =&gt;: T2] { myRecursiveFunction =&gt; (x, y) =&gt; body }</code></pre>
 <p>Here, <code>myFunction</code> is the name of the function, <code>FunctionProperties</code> is a list of function properties the function has (separated by <code>&amp;</code>), <code>T1</code> is the type of the arguments of the binary function, <code>T2</code> is the return type of the function, <code>x</code> and <code>y</code> are the names of the function arguments, and <code>body</code> is the function body.</p>
 <p>The function properties are chosen from the following list: <code>Comm</code>, <code>Assoc</code>, <code>Idem</code>, <code>Sel</code>, <code>Refl</code>, <code>Antisym</code>, <code>Trans</code>, <code>Conn</code>, and <code>Sym</code>. Their semantics is defined in Section 2.2.</p>
 <p>If Propel is able to prove the properties that the function is annotated with, then compilation succeeds. If the properties cannot be proven, then a compilation error indicates which property could not be proven</p>
@@ -11614,11 +11614,11 @@ import propel.dsl.scala.*</code></pre>
   case Z
   case S(pred: ℕ)
 
-def add1 = prop.rec[(Comm \&amp; Assoc) := (ℕ, ℕ) =&gt;: ℕ]: add1 =&gt;
+def add1 = prop.rec[(Comm \&amp; Assoc):= (ℕ, ℕ) =&gt;: ℕ]: add1 =&gt;
   case (ℕ.Z, y) =&gt; y
   case (ℕ.S(x), y) =&gt; ℕ.S(add1(x, y))</code></pre>
 <p>To define custom properties to be proven, you can add a <code>props</code> clause to the definition of <code>add1</code>. For instance, the following example proves the left and right identity laws:</p>
-<pre><code>def add1 = prop.rec[(Comm \&amp; Assoc) := (ℕ, ℕ) =&gt;: ℕ]: add1 =&gt;
+<pre><code>def add1 = prop.rec[(Comm \&amp; Assoc):= (ℕ, ℕ) =&gt;: ℕ]: add1 =&gt;
   props(
     (x: ℕ) =&gt; add1(ℕ.Z, x) =:= x, // left identity
     (x: ℕ) =&gt; add1(x, ℕ.Z) =:= x, // right identity
@@ -13253,7 +13253,7 @@ abstract = {
 
  * Compiler correctness
 
-      exec (comp e c) s = do v &lt;- eval e; exec c (v : s)
+      exec (comp e c) s = do v &lt;- eval e; exec c (v: s)
 
  * Correctness of the fusion of run and exec:
 
@@ -13505,7 +13505,7 @@ keywords = {Empirical Study, Literature Review, Misconfigurations, ROS}
 
 @software{10.5281/zenodo.12647526,
 author = {Zhao, Wenxuan and Zeng, Ruiying and Zhou, Yangfan},
-title = {Code \&amp; Data of "Wapplique : Testing WebAssembly Runtime via Execution Context-Aware Bytecode Mutation"},
+title = {Code \&amp; Data of "Wapplique: Testing WebAssembly Runtime via Execution Context-Aware Bytecode Mutation"},
 year = {2024},
 publisher = {Association for Computing Machinery},
 url = {https://doi.org/10.5281/zenodo.12647526},
@@ -14991,15 +14991,15 @@ table to set a single 9-bit field <code>port</code> based on the value
 of a 32-bit destination address <code>dst</code>. First, we can define
 the variables <code>port</code>and <code>dst</code>:</p>
 <div class="sourceCode" id="cb19"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>utop # <span class="kw">let</span> port = Var.make <span class="st">"port"</span> <span class="dv">9</span>;;</span>
-<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> port : Var.t = &lt;abstr&gt;</span></code></pre></div>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> port: Var.t = &lt;abstr&gt;</span></code></pre></div>
 <div class="sourceCode" id="cb20"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>utop # <span class="kw">let</span> dst = Var.make <span class="st">"dst"</span> <span class="dv">32</span>;;</span>
-<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> dst : Var.t = &lt;abstr&gt;</span></code></pre></div>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> dst: Var.t = &lt;abstr&gt;</span></code></pre></div>
 <p>We’ll use these variables to construct our table. Lets see how we
 might do that by inspecting the type of the constructor
 <code>table</code>:</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>utop # table;;</span></code></pre></div>
 <p>should produce</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>- : <span class="dt">string</span> -&gt;</span>
+<div class="sourceCode" id="cb22"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>-: <span class="dt">string</span> -&gt;</span>
 <span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    [&gt; `Exact <span class="kw">of</span> Var.t | `Maskable <span class="kw">of</span> Var.t | `MaskableDegen <span class="kw">of</span> Var.t ] <span class="dt">list</span> -&gt;</span>
 <span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    (Var.t <span class="dt">list</span> * Capiscelib.Primitives.Action.t <span class="dt">list</span>) <span class="dt">list</span> -&gt;</span>
 <span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    Pack.t</span>
@@ -15013,7 +15013,7 @@ their matchkind (<code>Exact</code>, <code>Maskable</code>, and
 where <code>xs</code> occur free in a list of primitive actions. This
 list should be understood as sequential composition. Lets construct our
 first action.</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>utop # <span class="kw">let</span> nop : Var.t <span class="dt">list</span> * Primitives.Action.t <span class="dt">list</span> = [],[];;</span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>utop # <span class="kw">let</span> nop: Var.t <span class="dt">list</span> * Primitives.Action.t <span class="dt">list</span> = [],[];;</span></code></pre></div>
 <p>This action is the trivial action. It takes no arguments
 <code>[],</code> and executes noactions <code>[]</code>.</p>
 <p>Stepping it up a notch in complexity. We will define a action that
@@ -15098,15 +15098,15 @@ programs.</p>
 <p>It has a type <code>t</code> that corresponds to <code>GPL</code>
 programs themselves.</p>
 <p>We can construct trivial programs</p>
-<div class="sourceCode" id="cb35"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> skip : t</span></code></pre></div>
+<div class="sourceCode" id="cb35"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> skip: t</span></code></pre></div>
 <p>Sequential compositions of programs;</p>
-<div class="sourceCode" id="cb36"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> sequence : t <span class="dt">list</span> -&gt; t</span></code></pre></div>
+<div class="sourceCode" id="cb36"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> sequence: t <span class="dt">list</span> -&gt; t</span></code></pre></div>
 <p>Nondeterministic choice between programs:</p>
-<div class="sourceCode" id="cb37"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> choice : t <span class="dt">list</span> -&gt; ts</span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> choice: t <span class="dt">list</span> -&gt; ts</span></code></pre></div>
 <p>We can also construct variable assignments</p>
-<div class="sourceCode" id="cb38"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> assign_ : Var.t -&gt; Expr.t -&gt; t</span></code></pre></div>
+<div class="sourceCode" id="cb38"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> assign_: Var.t -&gt; Expr.t -&gt; t</span></code></pre></div>
 <p>and the most important constuct, tables:</p>
-<div class="sourceCode" id="cb39"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> table : <span class="dt">string</span> </span>
+<div class="sourceCode" id="cb39"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> table: <span class="dt">string</span> </span>
 <span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>  -&gt; [&gt; `Exact <span class="kw">of</span> Var.t <span class="dt">list</span> | `Maskable <span class="kw">of</span> Var.t <span class="dt">list</span> | `MaskableDegen <span class="kw">of</span> Var.t ] <span class="dt">list</span> </span>
 <span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>  -&gt; ( Var.t * Primtives.Action.t <span class="dt">list</span>) <span class="dt">list</span> -&gt; t</span></code></pre></div>
 <p>As described above <code>table name keys actions</code> constructs a
@@ -15117,8 +15117,8 @@ table named <code>name</code> that chooses an action <code>a</code> in
 section.</p>
 <p>To specify desired behaviors we have two primitives,
 <code>assume</code> and <code>assert</code>.</p>
-<div class="sourceCode" id="cb40"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> assume : BExpr.t -&gt; t</span>
-<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> assert_ : BExpr.t -&gt; t</span></code></pre></div>
+<div class="sourceCode" id="cb40"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> assume: BExpr.t -&gt; t</span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a><span class="kw">val</span> assert_: BExpr.t -&gt; t</span></code></pre></div>
 <p>The <code>assume</code> primitive is angelic—if it can be satisfied
 the program assumes it is. Conversely, <code>assert_</code> is
 demonic—if it can ba falsified the program assumes it is.</p>
@@ -15144,12 +15144,12 @@ imperative programs with demonic nondeterminism.</p>
 module type <code>Primitive</code> shown below:</p>
 <div class="sourceCode" id="cb42"><pre class="sourceCode ocaml"><code class="sourceCode ocaml"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a><span class="kw">module</span> <span class="kw">type</span> Primitive = <span class="kw">sig</span></span>
 <span id="cb42-2"><a href="#cb42-2" aria-hidden="true" tabindex="-1"></a>  <span class="kw">type</span> t [@@deriving quickcheck, eq, hash, sexp, <span class="dt">compare</span>]</span>
-<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> assume : BExpr.t -&gt; t</span>
-<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> assert_ : BExpr.t -&gt; t</span>
-<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> contra : t -&gt; t -&gt; <span class="dt">bool</span></span>
-<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> to_smtlib : t -&gt; <span class="dt">string</span></span>
-<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> size : t -&gt; <span class="dt">int</span></span>
-<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> vars : t -&gt; Var.t <span class="dt">list</span></span>
+<span id="cb42-3"><a href="#cb42-3" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> assume: BExpr.t -&gt; t</span>
+<span id="cb42-4"><a href="#cb42-4" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> assert_: BExpr.t -&gt; t</span>
+<span id="cb42-5"><a href="#cb42-5" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> contra: t -&gt; t -&gt; <span class="dt">bool</span></span>
+<span id="cb42-6"><a href="#cb42-6" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> to_smtlib: t -&gt; <span class="dt">string</span></span>
+<span id="cb42-7"><a href="#cb42-7" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> size: t -&gt; <span class="dt">int</span></span>
+<span id="cb42-8"><a href="#cb42-8" aria-hidden="true" tabindex="-1"></a>  <span class="kw">val</span> vars: t -&gt; Var.t <span class="dt">list</span></span>
 <span id="cb42-9"><a href="#cb42-9" aria-hidden="true" tabindex="-1"></a><span class="kw">end</span></span></code></pre></div>
 <p>The <code>assume</code> and <code>assert_</code> functions construct
 assumptions and assertions as before; <code>contra</code> describes when
@@ -15327,7 +15327,7 @@ abstract = {
 Testing of Quantum Programs via Fixed-Point Amplitude Amplification”
 appeared in in OOPSLA 2024.</p>
 <p>This repository contains a PDF file of artifact manual and runnable
-software artifact. Running the artifact will give :</p>
+software artifact. Running the artifact will give:</p>
 <ul>
 <li>Numerical calculation shown in the Examples in the paper</li>
 <li>Validation of depth cost expression (appeared in Section 6 and 7 of
@@ -15338,7 +15338,7 @@ paper)</li>
 </ul>
 <p>For the further details, see the attached artifact manual. For any
 questions, contact changukang@korea.ac.kr. The artifact may be continued
-through following github repo : https://github.com/kupl/FpaaTestArtifact
+through following github repo: https://github.com/kupl/FpaaTestArtifact
 .</p>
 
 },
@@ -15409,7 +15409,7 @@ year = {2024},
 publisher = {Association for Computing Machinery},
 url = {https://doi.org/10.5281/zenodo.13373228},
 abstract = {
-    <p>This is the artifact of the OOPSLA2024 research paper : Imperative
+    <p>This is the artifact of the OOPSLA2024 research paper: Imperative
 Compositional Programming.</p>
 
 },
