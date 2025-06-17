@@ -1,5 +1,7 @@
 .idea
 .venv
 .env
-algo_outputs
+algo_outputs/algorithm_2_output
+algo_outputs/algorithm_4_output
+algo_outputs/md_file_extraction
 temp_dir_for_git

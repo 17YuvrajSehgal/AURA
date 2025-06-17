@@ -1,0 +1,373 @@
+Starting processing for directory: C:\workplace\AURA\algo_outputs\md_file_extraction
+Total number of .md files: 31084
+
+Total number of unique .md files: 12784
+
+Markdown Feature Stats (Aggregate across unique files):
+bullet_lists: 173891
+numbered_lists: 23446
+tables: 22607
+images: 2152
+diagram_images: 28
+flow_images: 109
+architecture_images: 24
+screenshot_images: 33
+outbound_links: 49373
+internal_links: 32115
+
+Licensing & Attribution Stats:
+  License Mentions:
+    mpl: 9078
+    epl: 2360
+    gpl: 232
+    apache license: 481
+    mit license: 205
+    bsd license: 59
+    lgpl: 44
+    creative commons: 32
+    unlicense: 3
+    eupl: 2
+    cc-by: 10
+  Citation Mentions:
+    citation: 134
+    zenodo: 212
+    doi:: 27
+    paper url: 1
+    how to cite: 5
+  Files with authors/contributors:
+    2389
+
+Installation / Technical Instructions Stats:
+  files_named_install: 165
+  files_with_installation_headings: 1050
+  files_with_installation_text: 2352
+  files_with_dependencies: 3180
+  files_with_env_requirements: 2543
+
+Troubleshooting / FAQ Stats:
+  files_with_common_issues: 504
+  files_with_bug_guidance: 4979
+
+Usage & Configuration Stats:
+  files_with_example_commands: 1014
+  files_with_samples: 119
+  files_with_env_config: 4517
+  files_with_advanced_customization: 316
+
+Doc-Driven Reproducibility Signals:
+  files_with_repro_steps: 1341
+  files_with_validation_steps: 1384
+  files_with_related_references: 2722
+
+Quality & Readability Stats (README only, \u2265100 words):
+
+  Average Flesch-Kincaid Score: 16.67070997543957
+  Average Gunning Fog Scores: 16.851652296423342
+  Avg Dale Chall_ Scores: 13.521355661151075
+  Average Technical Jargon Ratios: 0.015714435161286164
+
+Top 100 file names:
+readme.md: 4649
+contributing.md: 175
+index.md: 171
+changelog.md: 169
+license.md: 158
+install.md: 130
+status.md: 65
+_index.md: 61
+requirements.md: 51
+constraints.md: 51
+predicates.md: 51
+debugging.md: 46
+code_of_conduct.md: 44
+overview.md: 36
+imagecreation.md: 32
+notes.md: 25
+expected.md: 24
+security.md: 23
+todo.md: 23
+copying.md: 22
+test.md: 21
+faq.md: 20
+changes.md: 17
+testing.md: 17
+maintainers.md: 16
+sync.md: 16
+contact.md: 14
+authors.md: 14
+getting-started.md: 13
+contributors.md: 13
+artifact.md: 13
+architecture.md: 12
+tutorial.md: 11
+installation.md: 11
+rationale.md: 11
+code-of-conduct.md: 11
+compile.md: 11
+coding_standards.md: 11
+syntax.md: 10
+windows.md: 10
+commands.md: 10
+build.md: 10
+releases.md: 10
+summary.md: 10
+release-notes.md: 10
+examples.md: 9
+editor.md: 9
+proofmode.md: 9
+docs.md: 9
+types.md: 8
+troubleshooting.md: 8
+building.md: 8
+design.md: 8
+coding_style.md: 8
+diagnostics.md: 8
+passes.md: 8
+vector.md: 8
+heap_lang.md: 8
+proof_guide.md: 8
+proof_mode.md: 8
+news.md: 8
+quickstart.md: 7
+guide.md: 7
+interfaces.md: 7
+llvm.md: 7
+readme-cmake.md: 7
+development.md: 7
+manual.md: 6
+release_notes.md: 6
+python.md: 6
+logging.md: 6
+intrinsics.md: 6
+canonicalization.md: 6
+conversiontollvmdialect.md: 6
+declarativerewrites.md: 6
+dialectconversion.md: 6
+langref.md: 6
+opdefinitions.md: 6
+quantization.md: 6
+shapeinference.md: 6
+symbolsandsymboltables.md: 6
+traits.md: 6
+affine.md: 6
+spir-v.md: 6
+standard.md: 6
+mlirforgraphalgorithms.md: 6
+rationalelinalgdialect.md: 6
+usageofconst.md: 6
+creatingadialect.md: 6
+definingattributesandtypes.md: 6
+quickstartrewrites.md: 6
+ch-1.md: 6
+ch-2.md: 6
+ch-3.md: 6
+ch-4.md: 6
+ch-5.md: 6
+ch-6.md: 6
+ch-7.md: 6
+vsc-extension-quickstart.md: 6
+issue_template.md: 6
+
+Top 100 headings by total occurrences (across unique files):
+example: 513
+usage: 340
+variant cases: 336
+installation: 320
+results: 315
+returns: 308
+since: 306
+arguments: 301
+variant layout: 286
+rule details: 283
+params: 278
+requirements: 276
+overview: 272
+getting started: 272
+license: 257
+name #: 244
+see also #: 244
+description #: 241
+examples: 240
+synopsis #: 236
+options: 234
+added: 230
+description: 226
+introduction: 222
+fixed: 222
+changed: 210
+": 197
+when not to use it: 189
+prerequisites: 185
+return value #: 154
+input:: 154
+record members: 147
+endif: 143
+build: 136
+contributing: 134
+dependencies: 131
+documentation: 129
+references: 114
+setup: 114
+table of contents: 112
+output:: 106
+building: 102
+related rules: 101
+summary: 99
+windows: 92
+features: 90
+functions: 89
+syntax: 85
+types: 84
+new features: 84
+step-by-step instructions: 83
+notes: 82
+linux: 82
+note: this error code is no longer emitted by the compiler.: 82
+troubleshooting: 81
+osx: 81
+}: 80
+environment: 78
+list of issue types: 78
+further reading: 76
+synopsis: 73
+��\x88�1"{\x8c�: 73
+getting started guide: 72
+testing: 72
+source: 71
+implementation: 71
+include <libpmem2.h>: 71
+contents: 70
+goker: 68
+options inherited from parent commands: 68
+run the experiment for all data points: 68
+run the experiment for an individual data point: 68
+operations: 65
+configuration: 62
+wrong:: 61
+install: 60
+bug fixes: 59
+right:: 59
+usage:: 56
+fn main() {}: 56
+example #: 54
+~: 53
+structure: 52
+motivation: 52
+|: 52
+include <libpmemobj.h>: 51
+run: 50
+else: 50
+changelog: 49
+heuristic: 49
+compilation: 48
+what is happening?: 48
+scope: 47
+evaluation: 46
+declaration: 46
+bugfixes: 45
+other: 45
+...: 45
+contact: 45
+removed: 45
+
+Top 100 headings by number of unique files containing them:
+installation: 318
+usage: 315
+rule details: 282
+requirements: 269
+getting started: 269
+license: 252
+overview: 247
+see also #: 244
+name #: 244
+description #: 241
+synopsis #: 236
+examples: 232
+introduction: 221
+options: 219
+when not to use it: 189
+prerequisites: 182
+return value #: 154
+example: 136
+contributing: 134
+description: 134
+build: 131
+dependencies: 129
+documentation: 124
+references: 111
+setup: 109
+table of contents: 107
+related rules: 101
+building: 99
+windows: 89
+step-by-step instructions: 82
+note: this error code is no longer emitted by the compiler.: 82
+syntax: 81
+notes: 80
+troubleshooting: 80
+osx: 79
+list of issue types: 78
+linux: 77
+environment: 76
+further reading: 76
+getting started guide: 72
+testing: 71
+source: 71
+implementation: 71
+include <libpmem2.h>: 71
+summary: 70
+types: 68
+goker: 68
+run the experiment for an individual data point: 68
+run the experiment for all data points: 68
+contents: 65
+operations: 65
+configuration: 61
+install: 59
+functions: 57
+features: 57
+example #: 54
+motivation: 52
+structure: 51
+include <libpmemobj.h>: 51
+changelog: 49
+what is happening?: 48
+scope: 47
+compilation: 46
+run: 46
+contact: 45
+endif: 45
+new features: 45
+parameters: 44
+artifact instructions: 44
+benchmarks: 43
+arch linux: 43
+reference: 43
+quick start: 42
+directory structure: 42
+compatibility: 42
+windows 8: 42
+debian and ubuntu linux: 42
+shutdown: 42
+windows 10: 42
+startup: 42
+enforcement: 41
+caveats #: 41
+results: 40
+qemu instructions: 40
+limitations: 39
+evaluation: 39
+how can we reproduce the issue?: 39
+any suggestions?: 39
+contributors: 38
+project structure: 38
+tests: 37
+registration: 37
+agenda items: 37
+instructions: 36
+running: 36
+coq: 36
+...: 36
+synopsis: 36
+what should happen?: 36
+logistics: 36
