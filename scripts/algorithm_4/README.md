@@ -1,88 +1,56 @@
-# 🧠 Automated Multi-Agent README Generator
+# AURA: Agentic Artifact Evaluation and Documentation Pipeline
 
-This repository contains a sophisticated, automated system designed to generate high-quality, academic-style `README.md` files for software or research artifacts. It leverages a **multi-agent workflow** powered by **LangChain**, **LangGraph**, and **OpenAI's GPT-4**, and includes detailed logging, prompt chaining, section scoring, and iterative refinement.
+## Overview
 
----
+**AURA** (AI-powered Unified Research Artifact Evaluation) is a modular, conference-aware framework for automating research artifact assessment and documentation generation. Leveraging a Neo4j knowledge graph of conference guidelines, multi-agent LLM workflows, and retrieval-augmented evaluation, AURA produces:
 
-## 📌 Purpose
-
-Creating a comprehensive and standardized `README.md` for research codebases can be tedious and inconsistent. This system automates the documentation pipeline by:
-
-- **Parsing repository structure**
-- **Extracting code and license information**
-- **Generating README sections with GPT-4 agents**
-- **Reviewing and refining output for academic clarity and completeness**
-- **Producing a final quality-assessed README document**
+- **Reviewer-quality READMEs** tailored to conference requirements.  
+- **Automated artifact grading** across configurable dimensions.  
+- **Rich Markdown reports** with detailed feedback and scores.
 
 ---
 
-## ⚙️ How It Works
+## Motivation
 
-### 1. **Setup and Environment**
-- Environment variables are loaded using `dotenv`.
-- Logging is configured to output both to file and console.
-- UTF-8 encoding ensures compatibility with multilingual content.
+Manual review of research artifacts (code, data, documentation) can be slow, inconsistent, and subjective. Conferences define nuanced criteria for reproducibility, usability, and more—but enforcement at scale is challenging. AURA:
 
-### 2. **Initial LLM Setup**
-- The system uses `ChatOpenAI` with GPT-4 and a low temperature (0.2) for deterministic behavior.
-
-### 3. **README State Definition**
-A global state object (`READMEState`) stores:
-- Parsed context and structure
-- Code/License metadata
-- Required README sections
-- Generated content
-- Quality score (0–1)
+- Ensures **strict, evidence-driven evaluation** without assumptions.  
+- Automates README generation via **agentic prompt chaining** (author, editor, critic agents).  
+- Produces **transparent, weighted scores** aligned to each conference’s priorities.
 
 ---
 
-## 🧠 Multi-Agent Workflow
+## Architecture Overview
 
-This project uses a **multi-agent architecture** where each agent has a specialized role in the README generation lifecycle:
+1. **Knowledge Graph Ingestion**  
+   - Parse processed `.md` guidelines and criteria CSVs.  
+   - Load into Neo4j as:  
+     - `(:Conference)-[:REQUIRES_SECTION]->(:Section)`  
+     - `(:Conference)-[:USES_DIMENSION]->(:Dimension)`  
+     - `(:Dimension)-[:HAS_KEYWORD]->(:Keyword)`
 
-| Agent | Responsibility |
-|-------|----------------|
-| **Planner Agent** | Identifies necessary README sections based on the repository context |
-| **Author Agent** | Drafts section content tailored to best practices |
-| **Editor Agent** | Improves readability, formatting, and structure |
-| **Critic Agent** | Scores the content and provides actionable feedback |
-| **Evaluator Agent** | Evaluates the full README quality (0–1) |
-| *(Optional)* Optimizer | Refines low-score sections to improve clarity |
+2. **Agentic README Generation**  
+   - For each required section:  
+     - **Author Agent** drafts based on code, docs, and guidelines.  
+     - **Editor Agent** refines clarity and completeness.  
+     - **Critic Agent** reviews, scores, and prompts revisions.  
+   - Chains context to ensure consistency across sections.
 
----
+3. **RAG + LLM Artifact Evaluation**  
+   - **Retrieve**: Load precomputed analysis JSON (documentation, code, license content).  
+   - **Load Criteria**: Query Neo4j for sections, dimensions (with weights & keywords).  
+   - **Evaluate** each dimension using GPT-4, guided by strict “Do NOT assume” prompts.  
+   - **Weight & Aggregate** scores into a final artifact grade.
 
-## 🗂️ Supported Sections
-
-The system generates the following common sections (and more if contextually required):
-
-- Overview / Project Structure
-- Installation
-- Usage
-- Requirements
-- Examples
-- License
-- Troubleshooting / FAQ
-- Contributing
-- Reproducibility
-- References / Related Work
-
-Each section is generated based on rich, section-specific prompts with injected metadata (repository structure, code samples, license text, etc.).
+4. **Reviewer Report Generation**  
+   - Compile:  
+     - Final normalized score.  
+     - Dimension-level breakdown with feedback.  
+     - Full generated README.  
+   - Export as Markdown (or convert to HTML/PDF).
 
 ---
 
-## 🔁 Execution Flow
+## Update: Full Repository Evaluation
 
-```mermaid
-graph TD;
-    A[Start] --> B[load_analysis];
-    B --> C[plan_sections];
-    C --> D[Iterate: For each section];
-    D --> E[author_agent];
-    E --> F[editor_agent];
-    F --> G[critic_agent];
-    G -->|Score >= 0.8| H[synthesize_readme];
-    G -->|Score < 0.8| E;
-    H --> I[evaluate_quality];
-    I -->|Score < 0.8| J[refine_sections];
-    J --> H;
-    I -->|Score >= 0.8| K[Write README to File];
+An extension to AURA now evaluates the **entire artifact** using a precomputed analysis JSON, rather than only the README. The new script `eval_full_repo.py` implements this:
