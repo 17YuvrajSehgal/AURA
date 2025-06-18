@@ -1,10 +1,15 @@
+import io
+import json
 import logging
 import os
 import re
+import sys
+from datetime import datetime
 from typing import TypedDict, List, Dict
 
 from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, END
 
@@ -16,12 +21,24 @@ from json_file_utils import (
     get_license_texts, get_first_code_snippet
 )
 
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 load_dotenv()
 
 # === 0. Logging Setup ===
+# Define logging directory
+LOG_DIR = "../../algo_outputs/logs/algorithm_4_logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Configure detailed logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, f"execution_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
@@ -40,6 +57,23 @@ class READMEState(TypedDict):
     completed_sections: List[dict]
     readme: str
     quality_score: float
+
+
+# Helper function to log detailed interactions with the LLM
+def log_llm_interaction(agent_name, prompt, response):
+    logger.info(f"Agent: {agent_name}")
+    logger.info(f"Prompt:\n{prompt}")
+    logger.info(f"Response:\n{response}")
+
+
+def log_state(state: READMEState, note: str = ""):
+    serialized = json.dumps(state, indent=2)
+    logger.info(f"=== READMEState Snapshot {f'({note})' if note else ''} ===\n{serialized}")
+
+
+def dump_state_to_json(state: READMEState, filename: str):
+    with open(os.path.join(LOG_DIR, filename), "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
 
 
 # === 3. Custom Section Prompts ===
@@ -120,9 +154,11 @@ def author_agent(state: READMEState, prev_sections: Dict[str, str], feedback: st
         "- Use bullet lists and tables for clarity.\n"
         "- Include diagrams/images if helpful.\n"
         "- Provide outbound/internal links when useful.\n"
-        "- Use readable, concise, and technical language (target Flesch-Kincaid ≈ 16).\n"
+        "- Use readable, concise, and technical language that is easy to understand and is very accurate according to the given repository.\n"
         "- Explicitly mention all licenses, attributions, and citation instructions if applicable.\n"
         "**Do not repeat or copy content that is already present in previously written sections.**\n\n"
+        "**Do not add any information that is not present in the artifact such as false results.**\n\n"
+        "**If you are not sure about what should be written in a given section, just leave it blank with heading only. The author of the repository will take care of that section.**\n\n"
         f"Project structure:\n{state['structure']}\n\n"
         f"Sample code (first file):\n{state['code_files'][0] if state['code_files'] else 'N/A'}\n\n"
         f"License:\n{state['license_text']}\n\n"
@@ -135,6 +171,7 @@ def author_agent(state: READMEState, prev_sections: Dict[str, str], feedback: st
         HumanMessage(content=prompt_content)
     ]
     resp = llm.invoke(prompt)
+    log_llm_interaction("Author Agent", prompt_content, resp.content)
     return resp.content.strip()
 
 
@@ -148,6 +185,8 @@ def editor_agent(section_content: str, section_name: str) -> str:
         HumanMessage(content=section_content)
     ]
     resp = llm.invoke(prompt)
+    log_llm_interaction("Editor Agent", section_content, resp.content)
+
     return resp.content.strip()
 
 
@@ -170,6 +209,9 @@ def critic_agent(section_content: str, section_name: str) -> dict:
         HumanMessage(content=section_content)
     ]
     resp = llm.invoke(prompt)
+
+    log_llm_interaction("Critic Agent", section_content, resp.content)
+
     score_match = re.search(r"Score:\s*([0-9.]+)", resp.content)
     feedback_match = re.search(r"Feedback:\s*(.*)", resp.content, re.DOTALL)
     score = float(score_match.group(1)) if score_match else 0.5
@@ -180,8 +222,33 @@ def critic_agent(section_content: str, section_name: str) -> dict:
 # === 5. Core Workflow Functions ===
 
 def load_analysis(state: READMEState) -> dict:
-    logger.info("Loading pre‐parsed analysis from input state.")
-    return {}
+    logger.info("Loading pre‐parsed analysis into state...")
+
+    # Load the analysis file path from a known location or passed context
+    analysis_path = "../../algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json"
+    data = read_analysis_json(analysis_path)
+
+    structure = "\n".join(get_repository_structure(data))
+    docs = get_documentation_texts(data)
+    code_texts = get_code_texts(data)
+    snippet = get_first_code_snippet(data)
+    licenses = get_license_texts(data)
+
+    # Log the extracted metadata
+    logger.info(f"Extracted structure:\n{structure}")
+    if docs:
+        logger.info(f"Sample doc:\n{docs[0][:200]}...")
+    if snippet:
+        logger.info(f"Sample code:\n{snippet[:500]}...")
+    if licenses:
+        logger.info(f"License preview:\n{licenses[0][:200]}...")
+
+    return {
+        "structure": structure,
+        "code_files": code_texts,
+        "license_text": licenses[0] if licenses else "",
+        "context": docs[0] if docs else "No documentation found."
+    }
 
 
 def plan_sections(state: READMEState) -> dict:
@@ -193,6 +260,9 @@ def plan_sections(state: READMEState) -> dict:
         HumanMessage(content=state["context"])
     ]
     response = llm.invoke(prompt)
+
+    log_llm_interaction("Planner Agent", state["context"], response.content)
+
     sections = [s.strip().lower() for s in response.content.split(",") if s.strip()]
     logger.info(f"LLM returned sections: {sections}")
     return {"required_sections": sections}
@@ -206,6 +276,9 @@ def synthesize_readme(state: READMEState) -> dict:
     ]
     combined = "\n\n".join(parts)
     logger.debug(f"Synthesized README:\n{combined}")
+
+    log_llm_interaction("Synthesizer", "Completed sections", combined)
+
     return {"readme": combined}
 
 
@@ -215,6 +288,11 @@ def evaluate_quality(state: READMEState) -> dict:
     """
     logger.info("Evaluating README quality...")
     draft = state["readme"]
+
+    if not draft.strip():
+        logger.warning("README draft is empty. Returning score 0.0.")
+        return {"quality_score": 0.0}
+
     prompt = [
         SystemMessage(
             content="Rate this README draft between 0 and 1 on completeness and clarity (only return the numeric score)."
@@ -222,6 +300,9 @@ def evaluate_quality(state: READMEState) -> dict:
         HumanMessage(content=draft)
     ]
     resp = llm.invoke(prompt)
+
+    log_llm_interaction("Evaluator Agent", draft, resp.content)
+
     try:
         score = float(resp.content.strip())
     except ValueError:
@@ -233,14 +314,17 @@ def evaluate_quality(state: READMEState) -> dict:
 
 def refine_sections(state: READMEState) -> dict:
     """
-    Optimizer: append "[Refined]" to each section. In a real system you might
-    re‐invoke GPT with feedback; here we simply tag sections for demonstration.
+    Optimizer: append "[Refined]" to each section. In a real system, you might invoke GPT with feedback; here we simply tag sections for demonstration.
     """
     logger.info("Refining all sections due to low quality score...")
     refined = [
         {"section": s["section"], "content": s["content"] + "\n\n[Refined]"}
         for s in state["completed_sections"]
     ]
+
+    for s in refined:
+        logger.debug(f"Refined Section - {s['section']}:\n{s['content']}")
+
     return {"completed_sections": refined}
 
 
@@ -248,33 +332,37 @@ def refine_sections(state: READMEState) -> dict:
 
 graph = StateGraph(READMEState)
 
-# 4.a: load_analysis (entry point)
+# Entry point
 graph.add_node("load_analysis", load_analysis)
 graph.set_entry_point("load_analysis")
 
-# 4.b: planner
+# Step 1: Planner
 graph.add_node("planner", plan_sections)
 graph.add_edge("load_analysis", "planner")
 
-# 4.c: synthesizer
-graph.add_node("synthesizer", synthesize_readme)
+# Step 2: Synthesize README
+# graph.add_node("synthesizer", synthesize_readme)
+graph.add_edge("planner", END)
 
-# 4.d: evaluator
-graph.add_node("evaluator", evaluate_quality)
-graph.add_edge("synthesizer", "evaluator")
+# # Step 3: Evaluate README
+# graph.add_node("evaluator", evaluate_quality)
+# graph.add_edge("synthesizer", "evaluator")
+#
+# # Step 4: Optimize if needed
+# graph.add_node("optimizer", refine_sections)
+# graph.add_edge("optimizer", "synthesizer")
 
-# 4.e: optimizer
-graph.add_node("optimizer", refine_sections)
-graph.add_conditional_edges(
-    "evaluator",
-    # If quality_score < 0.8, invoke optimizer; otherwise go to END.
-    lambda state: "optimizer" if state["quality_score"] < 0.8 else END,
-    {"optimizer": "optimizer", END: END}
-)
-graph.add_edge("optimizer", "synthesizer")
+# Conditional branch based on quality score
+# graph.add_conditional_edges(
+#     "evaluator",
+#     lambda state: "optimizer" if state["quality_score"] < 0.8 else END,
+#     {"optimizer": "optimizer", END: END}
+# )
+#
+# graph.add_edge("optimizer", "synthesizer")
 
 # 4.f: evaluator → END when quality OK
-graph.add_edge("evaluator", END)
+# graph.add_edge("evaluator", END)
 
 compiled = graph.compile()
 
@@ -288,37 +376,12 @@ with open("../../algo_outputs/algorithm_4_output/readme_generator_workflow.png",
 # === 7. Driver: Multi-Agent Section Workflow with Prompt Chaining ===
 
 if __name__ == "__main__":
-    # 5.a: Initial state from pre‐parsed analysis JSON
-
-    # 1. Load JSON
-    analysis_path = "../../algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json"
-    data = read_analysis_json(analysis_path)
-
-    # 2. Extract structure (tree or list of paths)
-    structure = "\n".join(get_repository_structure(data))
-    logger.info(f"\nRepository structure:\n{structure}")
-
-    # 3. Extract documentation text (first doc only, e.g.)
-    docs = get_documentation_texts(data)
-    if docs:
-        logger.info(f"\nFirst documentation snippet:\n{docs[0][:200]}...")
-
-    # 4. Extract code texts, pick first snippet
-    code_texts = get_code_texts(data)
-    snippet = get_first_code_snippet(data)
-    if snippet:
-        logger.info(f"\nSnippet from first code file:\n{snippet[:500]}...")
-
-    # 5. Extract license
-    licenses = get_license_texts(data)
-    if licenses:
-        logger.info(f"\nLicense text starts with:\n{licenses[0][:200]}...")
-
+    # 1. Start with an empty state
     state: READMEState = {
-        "context": "...",  # your full context as before
-        "structure": structure,
-        "code_files": code_texts,
-        "license_text": licenses[0] if licenses else "",
+        "context": "",
+        "structure": "",
+        "code_files": [],
+        "license_text": "",
         "required_sections": [],
         "current_section": "",
         "completed_sections": [],
@@ -326,17 +389,28 @@ if __name__ == "__main__":
         "quality_score": 0.0
     }
 
-    # Step 1: Determine required sections
-    logger.info("Running planner to determine required sections...")
-    planner_out = compiled.invoke(state)
-    state["required_sections"] = planner_out["required_sections"]
+    log_state(state, "initial")
+
+    # 2. Run the full LangGraph pipeline (this includes load_analysis → planner → synthesize → evaluate [+optimize if needed])
+    logger.info("Running LangGraph pipeline...")
+    intermediate_state = compiled.invoke(state, config=RunnableConfig(recursion_limit=3))
+
+    # 3. Extract planned sections from output
+    state.update(intermediate_state)
+    log_state(state, "after LangGraph execution")
     logger.info(f"Sections planned: {state['required_sections']}")
 
+    # Optional: Warn if planning failed
+    if not state["required_sections"]:
+        logger.warning("No sections could be planned. Repository may be too minimal or lacking context.")
+
+    # 4. Manual multi-agent generation (as before)
     SECTION_CRITIC_THRESHOLD = 0.8
     prev_sections = {}
 
     for section_key in state["required_sections"]:
         state["current_section"] = section_key
+        log_state(state, f"processing section: {section_key}")
         feedback = ""
         retry_count = 0
         max_retries = 3
@@ -348,37 +422,39 @@ if __name__ == "__main__":
             if review["score"] >= SECTION_CRITIC_THRESHOLD or retry_count >= max_retries:
                 prev_sections[section_key] = editor_output
                 state["completed_sections"].append({"section": section_key, "content": editor_output})
+                log_state(state, f"after completing section: {section_key}")
                 break
             else:
                 logger.info(f"Regenerating '{section_key}' due to low critic score. Feedback: {review['feedback']}")
                 feedback = review["feedback"]
                 retry_count += 1
 
-    # Synthesize, evaluate, refine if needed
+    # 5. Synthesize, evaluate, and refine
     synth_out = synthesize_readme(state)
     state["readme"] = synth_out["readme"]
+    log_state(state, "after synthesis")
     eval_out = evaluate_quality(state)
     state["quality_score"] = eval_out["quality_score"]
+    log_state(state, "after evaluation")
 
-    # 5.e: If quality < 0.8, refine → re‐synthesize → re‐evaluate
     if state["quality_score"] < 0.8:
         refine_out = refine_sections(state)
         state["completed_sections"] = refine_out["completed_sections"]
-        # Re‐synthesize & re‐evaluate once more
+        log_state(state, "after refinement")
         synth2 = synthesize_readme(state)
         state["readme"] = synth2["readme"]
         eval2 = evaluate_quality(state)
         state["quality_score"] = eval2["quality_score"]
 
-    # Save and report
+    # 6. Save and report
     os.makedirs("../../algo_outputs/algorithm_4_output", exist_ok=True)
     readme_path = os.path.join("../../algo_outputs/algorithm_4_output", "generated_README.md")
     with open(readme_path, "w", encoding="utf-8") as f_md:
         f_md.write(state["readme"])
 
-    # 5.g: Print summary
     logger.info("=== Generated README ===\n")
     print(state["readme"])
+    dump_state_to_json(state, "final_state.json")
     logger.info(f"Final quality score: {state['quality_score']:.2f}")
     was_refined = any("[Refined]" in s["content"] for s in state["completed_sections"])
     logger.info(f"Refinement applied? {'Yes' if was_refined else 'No'}")
