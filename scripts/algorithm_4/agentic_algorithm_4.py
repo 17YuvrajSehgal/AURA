@@ -44,16 +44,67 @@ class READMEState(TypedDict):
 
 # === 3. Custom Section Prompts ===
 SECTION_PROMPTS: Dict[str, str] = {
-    "overview": "Write a concise overview describing the purpose and scope of the research artifact. Emphasize its novelty and target audience.",
-    "installation": "Provide clear installation instructions for the artifact, specifying software/hardware requirements, and any dependencies. Use bullet points or numbered steps if possible.",
-    "usage": "Describe how to use the artifact. Include example commands, expected input/output, and mention key options or flags.",
-    "reproducibility": "Explain how users can reproduce the main results from the associated research paper. Mention any datasets, scripts, or parameters needed.",
-    "authors": "List the authors, their roles, and (if possible) their affiliations/contact info for artifact-related queries.",
-    "license": "State the license type, key terms, and any usage restrictions or permissions.",
-    # Add more section prompts as needed
+    "installation": (
+        "Write a detailed **Installation** section for this artifact. "
+        "Begin with a heading (e.g., 'Installation' or 'Setup'). "
+        "List all dependencies, environment requirements, and required package versions. "
+        "Provide step-by-step, numbered installation instructions (code blocks for 'pip install', 'conda install', etc.). "
+        "Mention files like 'requirements.txt', and add platform-specific notes if relevant. "
+        "Link to official docs/scripts if available."
+    ),
+    "usage": (
+        "Write a comprehensive **Usage** section. "
+        "Explain how to run the main code/application, referencing example commands and expected input/output. "
+        "Provide code block examples. "
+        "Highlight advanced options, environment variables, configuration files, and best practices. "
+        "Include quickstart guide or command summary table if possible."
+    ),
+    "requirements": (
+        "Write a clear **Requirements** section. "
+        "Specify all software/hardware prerequisites, Python/OS/CPU/GPU versions, required libraries (with links if possible), and environment setup instructions."
+    ),
+    "license": (
+        "Write a prominent **License** section. "
+        "State the license type (e.g., MIT, Apache), summarize permissions/restrictions, provide a link or full license text, and acknowledge contributors/authors. "
+        "Optionally, add a citation block (DOI, Zenodo, or BibTeX)."
+    ),
+    "troubleshooting": (
+        "Add a **Troubleshooting / FAQ** section. "
+        "List common errors or issues and their solutions. "
+        "Provide debugging tips and support contacts or links to the issue tracker. "
+        "Add a 'Frequently Asked Questions' subsection if relevant."
+    ),
+    "reproducibility": (
+        "Write a dedicated **Reproducibility** section. "
+        "Explain how to reproduce main results, listing all scripts, datasets, and detailed steps for replication. "
+        "Mention random seed setting, environment (Docker/Colab/Binder), validation outputs, and expected results."
+    ),
+    "references": (
+        "Write a **References / Related Work** section. "
+        "List relevant papers, datasets, or projects, with links to arXiv, Zenodo, or official sites. "
+        "Mention the original research paper if applicable."
+    ),
+    "examples": (
+        "Write an **Examples** section. "
+        "Give code walkthroughs for typical usage, showing input/output or screenshots, and sample datasets or demo files."
+    ),
+    "overview": (
+        "Write an **Overview** or **Project Structure** section. "
+        "Summarize the artifact's purpose, key features, and main components. "
+        "Optionally, provide a directory tree and explain the role of each file."
+    ),
+    "contributing": (
+        "Write a **Contributing** section. "
+        "Explain how to contribute, report issues, and suggest improvements. "
+        "Mention any code of conduct or contribution guidelines."
+    ),
+    # Add more patterns if needed
 }
 
-GENERIC_SECTION_PROMPT = "Write a detailed '{section}' section for a research artifact README, following academic best practices and including all critical information."
+GENERIC_SECTION_PROMPT = (
+    "Write a detailed '{section}' section for a research artifact README, following academic best practices "
+    "and including all critical information. Use bullet lists, tables, and clear headings where appropriate."
+)
 
 
 # === 4. Multi-Agent (Prompt Chaining) Functions ===
@@ -65,12 +116,20 @@ def author_agent(state: READMEState, prev_sections: Dict[str, str], feedback: st
     prompt_template = SECTION_PROMPTS.get(sect, GENERIC_SECTION_PROMPT.format(section=sect))
     prompt_content = (
         f"{prompt_template}\n\n"
+        "General requirements:\n"
+        "- Use bullet lists and tables for clarity.\n"
+        "- Include diagrams/images if helpful.\n"
+        "- Provide outbound/internal links when useful.\n"
+        "- Use readable, concise, and technical language (target Flesch-Kincaid ≈ 16).\n"
+        "- Explicitly mention all licenses, attributions, and citation instructions if applicable.\n"
+        "**Do not repeat or copy content that is already present in previously written sections.**\n\n"
         f"Project structure:\n{state['structure']}\n\n"
         f"Sample code (first file):\n{state['code_files'][0] if state['code_files'] else 'N/A'}\n\n"
         f"License:\n{state['license_text']}\n\n"
-        f"Sections written so far:\n{prev_content}\n\n"
+        f"Sections written so far (include headings and content):\n{prev_content}\n\n"
         f"{'Feedback from reviewer: ' + feedback if feedback else ''}"
     )
+
     prompt = [
         SystemMessage(content=f"You are a research artifact documentation author. {prompt_template}"),
         HumanMessage(content=prompt_content)
@@ -276,24 +335,22 @@ if __name__ == "__main__":
     SECTION_CRITIC_THRESHOLD = 0.8
     prev_sections = {}
 
-    for sect in state["required_sections"]:
-        state["current_section"] = sect
+    for section_key in state["required_sections"]:
+        state["current_section"] = section_key
         feedback = ""
         retry_count = 0
         max_retries = 3
         while True:
-            # === Multi-agent prompt chaining for this section ===
             author_output = author_agent(state, prev_sections, feedback)
-            editor_output = editor_agent(author_output, sect)
-            review = critic_agent(editor_output, sect)
-            logger.info(f"Critic score for '{sect}': {review['score']:.2f} | Feedback: {review['feedback']}")
+            editor_output = editor_agent(author_output, section_key)
+            review = critic_agent(editor_output, section_key)
+            logger.info(f"Critic score for '{section_key}': {review['score']:.2f} | Feedback: {review['feedback']}")
             if review["score"] >= SECTION_CRITIC_THRESHOLD or retry_count >= max_retries:
-                # Accept section, add to completed
-                prev_sections[sect] = editor_output
-                state["completed_sections"].append({"section": sect, "content": editor_output})
+                prev_sections[section_key] = editor_output
+                state["completed_sections"].append({"section": section_key, "content": editor_output})
                 break
             else:
-                logger.info(f"Regenerating '{sect}' due to low critic score. Feedback: {review['feedback']}")
+                logger.info(f"Regenerating '{section_key}' due to low critic score. Feedback: {review['feedback']}")
                 feedback = review["feedback"]
                 retry_count += 1
 
