@@ -12,11 +12,17 @@ load_dotenv()
 # --- Step 1: Load JSON and Get Documentation Files ---
 with open('C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json', 'r') as f:
     artifact = json.load(f)
-
 doc_files = artifact['documentation_files']
 
 # Combine content lines into a single string per document
 texts = ["\n".join(doc['content']) for doc in doc_files]
+
+# --- Load Conference Guidelines ---
+with open('../../data/conference_guideline_texts/processed/13_icse_2025.md', 'r') as f:
+    icse_guidelines = f.read()
+# Alternatively, parse as JSON/YAML for more complex pipelines
+
+# --- Prepare Text Chunks for Vector DB ---
 splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=100)
 all_chunks = []
 for text in texts:
@@ -34,18 +40,21 @@ qa_chain = RetrievalQA.from_chain_type(
     chain_type="stuff"
 )
 
-# --- Step 5: Chain-of-Thought Prompt for Evaluation ---
-prompt = """
-You are an artifact evaluation agent. Using the following documentation, answer these questions:
-1. Is there a main README and is it clear?
-2. Are installation steps explained?
-3. Are dependencies listed?
-4. Are usage examples/tutorials provided?
-5. Is there support/contact info?
+# --- Guideline-Aware Prompt ---
+prompt = f"""
+You are an expert artifact evaluator for ICSE 2025.
+Here are the ICSE documentation requirements:
+{icse_guidelines}
 
-For each, give a 1-5 score with justification. Then provide an overall score and summary.
+Using the retrieved documentation below, answer:
+1. Is there a README and is it complete?
+2. Is the artifact's purpose explained?
+3. Is the provenance/source clear?
+4. Are setup and install instructions provided and clear?
+5. Are usage instructions/examples present?
+
+Score each point from 1-5 with justification. Provide an overall score, and suggestions for improvement.
 """
 
 result = qa_chain({"query": prompt})
-
 print(result['result'])
