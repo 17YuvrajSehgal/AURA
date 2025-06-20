@@ -17,7 +17,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
     handlers=[
-        logging.FileHandler("functionality_evaluation_agent.log"),
+        logging.FileHandler("../functionality_evaluation_agent.log"),
         logging.StreamHandler()
     ]
 )
