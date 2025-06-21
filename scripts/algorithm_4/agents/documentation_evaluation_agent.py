@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
@@ -45,6 +45,7 @@ class DocumentationEvaluationAgent:
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
+            keyword_agent: Optional[object] = None,
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -53,6 +54,7 @@ class DocumentationEvaluationAgent:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
+        self.keyword_agent = keyword_agent
 
         logger.info(f"Initializing DocumentationEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
@@ -108,7 +110,37 @@ class DocumentationEvaluationAgent:
         logger.info("Vector DB built and persisted.")
         return db
 
+    def _get_keyword_evidence(self) -> Dict:
+        """Get keyword-based evidence for documentation evaluation"""
+        if not self.keyword_agent:
+            return {}
+        
+        try:
+            keyword_results = self.keyword_agent.evaluate(verbose=False)
+            documentation_dim = None
+            
+            # Find documentation dimension in keyword results
+            for dim in keyword_results.get('dimensions', []):
+                if dim['dimension'].lower() == 'documentation':
+                    documentation_dim = dim
+                    break
+            
+            if documentation_dim:
+                return {
+                    'raw_score': documentation_dim['raw_score'],
+                    'weighted_score': documentation_dim['weighted_score'],
+                    'keywords_found': documentation_dim['keywords_found'],
+                    'overall_score': keyword_results.get('overall_score', 0)
+                }
+        except Exception as e:
+            logger.warning(f"Could not get keyword evidence: {e}")
+        
+        return {}
+
     def _build_eval_prompt(self):
+        # Get keyword-based evidence
+        keyword_evidence = self._get_keyword_evidence()
+        
         # Focus only on documentation section(s)
         doc_sections = [s for s in self.sections if "documentation" in s.name.lower() or "readme" in s.name.lower()]
         # Fallback: if none detected, use all as a defensive approach
@@ -122,13 +154,28 @@ class DocumentationEvaluationAgent:
                 f"{section.description} Rate from 1-5 with justification.\n"
             )
 
+        # Include keyword evidence in prompt
+        keyword_context = ""
+        if keyword_evidence:
+            keyword_context = f"""
+KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
+- Raw documentation score: {keyword_evidence.get('raw_score', 'N/A')}
+- Weighted documentation score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
+- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
+- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+
+IMPORTANT: Your evaluation should be consistent with this keyword evidence. If documentation keywords are abundant, your score should reflect comprehensive documentation. If few documentation keywords are found, explain what's missing.
+"""
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
             "Evaluate ONLY the **documentation** of the artifact according to these required sections:\n\n"
             f"{section_questions}\n"
+            f"{keyword_context}\n"
             "Provide a score and justification for each documentation aspect. "
             "Then give an overall documentation score and suggestions for improvement. "
-            "Do NOT evaluate other dimensions such as Availability, Functionality, Reusability, or Archival Repository."
+            "Do NOT evaluate other dimensions such as Availability, Functionality, Reusability, or Archival Repository.\n"
+            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
         )
         logger.info(f"Documentation evaluation prompt:\n{prompt}")
         return prompt

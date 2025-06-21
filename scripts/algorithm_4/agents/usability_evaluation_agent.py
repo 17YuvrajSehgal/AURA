@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
@@ -43,6 +43,7 @@ class UsabilityEvaluationAgent:
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
+            keyword_agent: Optional[object] = None,
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -51,6 +52,7 @@ class UsabilityEvaluationAgent:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
+        self.keyword_agent = keyword_agent
 
         logger.info(f"Initializing UsabilityEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
@@ -129,7 +131,37 @@ class UsabilityEvaluationAgent:
                     return str(file['content'])
         return None
 
+    def _get_keyword_evidence(self) -> Dict:
+        """Get keyword-based evidence for usability evaluation"""
+        if not self.keyword_agent:
+            return {}
+        
+        try:
+            keyword_results = self.keyword_agent.evaluate(verbose=False)
+            usability_dim = None
+            
+            # Find usability dimension in keyword results
+            for dim in keyword_results.get('dimensions', []):
+                if dim['dimension'].lower() == 'usability':
+                    usability_dim = dim
+                    break
+            
+            if usability_dim:
+                return {
+                    'raw_score': usability_dim['raw_score'],
+                    'weighted_score': usability_dim['weighted_score'],
+                    'keywords_found': usability_dim['keywords_found'],
+                    'overall_score': keyword_results.get('overall_score', 0)
+                }
+        except Exception as e:
+            logger.warning(f"Could not get keyword evidence: {e}")
+        
+        return {}
+
     def _build_eval_prompt(self):
+        # Get keyword-based evidence
+        keyword_evidence = self._get_keyword_evidence()
+        
         # Chain-of-thought: For each criterion, check for related file references and read/verify file if mentioned
         chain_of_thought_steps = ""
         for criterion in self.criteria:
@@ -141,13 +173,28 @@ class UsabilityEvaluationAgent:
                 "Step 3: Based on all information, rate this aspect from 1-5 and justify your score with evidence from the artifact.\n\n"
             )
 
+        # Include keyword evidence in prompt
+        keyword_context = ""
+        if keyword_evidence:
+            keyword_context = f"""
+KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
+- Raw usability score: {keyword_evidence.get('raw_score', 'N/A')}
+- Weighted usability score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
+- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
+- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+
+IMPORTANT: Your evaluation should be consistent with this keyword evidence. If usability keywords (installation, setup, demo, etc.) are abundant, your score should reflect strong usability features. If few usability keywords are found, explain what's missing.
+"""
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
             f"Evaluate ONLY the **Usability** of the artifact according to the following criteria.\n"
             "For each, follow the chain-of-thought process:\n\n"
             f"{chain_of_thought_steps}\n"
+            f"{keyword_context}\n"
             "Do NOT evaluate dimensions such as Documentation, Availability, Functionality, or Reusability.\n"
-            "At the end, provide a detailed usability score and suggestions for improvement."
+            "At the end, provide a detailed usability score and suggestions for improvement.\n"
+            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
         )
         logger.info(f"Usability evaluation prompt:\n{prompt}")
         return prompt

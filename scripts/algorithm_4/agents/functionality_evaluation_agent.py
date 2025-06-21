@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
@@ -44,6 +44,7 @@ class FunctionalityEvaluationAgent:
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
+            keyword_agent: Optional[object] = None,
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -52,6 +53,7 @@ class FunctionalityEvaluationAgent:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
+        self.keyword_agent = keyword_agent
 
         logger.info(f"Initializing FunctionalityEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
@@ -127,7 +129,37 @@ class FunctionalityEvaluationAgent:
                     return str(file['content'])
         return None
 
+    def _get_keyword_evidence(self) -> Dict:
+        """Get keyword-based evidence for functionality evaluation"""
+        if not self.keyword_agent:
+            return {}
+        
+        try:
+            keyword_results = self.keyword_agent.evaluate(verbose=False)
+            functionality_dim = None
+            
+            # Find functionality dimension in keyword results
+            for dim in keyword_results.get('dimensions', []):
+                if dim['dimension'].lower() == 'functionality':
+                    functionality_dim = dim
+                    break
+            
+            if functionality_dim:
+                return {
+                    'raw_score': functionality_dim['raw_score'],
+                    'weighted_score': functionality_dim['weighted_score'],
+                    'keywords_found': functionality_dim['keywords_found'],
+                    'overall_score': keyword_results.get('overall_score', 0)
+                }
+        except Exception as e:
+            logger.warning(f"Could not get keyword evidence: {e}")
+        
+        return {}
+
     def _build_eval_prompt(self):
+        # Get keyword-based evidence
+        keyword_evidence = self._get_keyword_evidence()
+        
         chain_of_thought_steps = ""
         for criterion in self.criteria:
             chain_of_thought_steps += (
@@ -140,13 +172,28 @@ class FunctionalityEvaluationAgent:
                 "Step 5: Based on all information, rate this aspect from 1-5 and justify your score with evidence from the artifact.\n\n"
             )
 
+        # Include keyword evidence in prompt
+        keyword_context = ""
+        if keyword_evidence:
+            keyword_context = f"""
+KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
+- Raw functionality score: {keyword_evidence.get('raw_score', 'N/A')}
+- Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
+- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
+- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+
+IMPORTANT: Your evaluation should be consistent with this keyword evidence. If functionality keywords (testing, verification, etc.) are abundant, your score should reflect strong functionality evidence. If few functionality keywords are found, explain what's missing.
+"""
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
             "Evaluate ONLY the **Functionality** of the artifact according to the following criteria.\n"
             "For each, follow the chain-of-thought process:\n\n"
             f"{chain_of_thought_steps}\n"
+            f"{keyword_context}\n"
             "Do NOT evaluate Documentation, Usability, Accessibility, or Reusability.\n"
-            "At the end, provide a detailed functionality score and suggestions for improvement."
+            "At the end, provide a detailed functionality score and suggestions for improvement.\n"
+            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
         )
         logger.info(f"Functionality evaluation prompt:\n{prompt}")
         return prompt

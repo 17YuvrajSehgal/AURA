@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
@@ -30,8 +30,10 @@ class AccessibilityCriterion(BaseModel):
     name: str = Field(description="Accessibility aspect to check")
     description: str = Field(description="Description of what this aspect means or how to check it")
 
+
 class AccessibilityCriteriaList(BaseModel):
-    criteria: List[AccessibilityCriterion] = Field(description="List of required accessibility criteria for the conference")
+    criteria: List[AccessibilityCriterion] = Field(
+        description="List of required accessibility criteria for the conference")
 
 
 class AccessibilityEvaluationAgent:
@@ -44,6 +46,7 @@ class AccessibilityEvaluationAgent:
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
+            keyword_agent: Optional[object] = None,
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -52,6 +55,7 @@ class AccessibilityEvaluationAgent:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
+        self.keyword_agent = keyword_agent
 
         logger.info(f"Initializing AccessibilityEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
@@ -127,7 +131,37 @@ class AccessibilityEvaluationAgent:
                     return str(file['content'])
         return None
 
+    def _get_keyword_evidence(self) -> Dict:
+        """Get keyword-based evidence for accessibility evaluation"""
+        if not self.keyword_agent:
+            return {}
+
+        try:
+            keyword_results = self.keyword_agent.evaluate(verbose=False)
+            accessibility_dim = None
+
+            # Find accessibility dimension in keyword results
+            for dim in keyword_results.get('dimensions', []):
+                if dim['dimension'].lower() == 'accessibility':
+                    accessibility_dim = dim
+                    break
+
+            if accessibility_dim:
+                return {
+                    'raw_score': accessibility_dim['raw_score'],
+                    'weighted_score': accessibility_dim['weighted_score'],
+                    'keywords_found': accessibility_dim['keywords_found'],
+                    'overall_score': keyword_results.get('overall_score', 0)
+                }
+        except Exception as e:
+            logger.warning(f"Could not get keyword evidence: {e}")
+
+        return {}
+
     def _build_eval_prompt(self):
+        # Get keyword-based evidence
+        keyword_evidence = self._get_keyword_evidence()
+
         # Build explicit, chain-of-thought prompt for accessibility
         chain_of_thought_steps = ""
         for criterion in self.criteria:
@@ -141,13 +175,28 @@ class AccessibilityEvaluationAgent:
                 "Step 5: Based on all information, rate this aspect from 1-5 and justify your score with evidence from the artifact.\n\n"
             )
 
+        # Include keyword evidence in prompt
+        keyword_context = ""
+        if keyword_evidence:
+            keyword_context = f"""
+            KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
+            - Raw accessibility score: {keyword_evidence.get('raw_score', 'N/A')}
+            - Weighted accessibility score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
+            - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
+            - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+            
+            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If keywords indicate strong accessibility features, your score should reflect that. If few accessibility keywords are found, explain what's missing.
+            """
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
             "Evaluate ONLY the **Accessibility** of the artifact according to the following criteria.\n"
             "For each, follow the chain-of-thought process:\n\n"
             f"{chain_of_thought_steps}\n"
+            f"{keyword_context}\n"
             "Do NOT evaluate other dimensions such as Documentation, Usability, Functionality, or Reusability.\n"
-            "At the end, provide a detailed accessibility score and suggestions for improvement."
+            "At the end, provide a detailed accessibility score and suggestions for improvement.\n"
+            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
         )
         logger.info(f"Accessibility evaluation prompt:\n{prompt}")
         return prompt
@@ -177,8 +226,7 @@ class AccessibilityEvaluationAgent:
     def get_file_content(self, filename: str) -> Optional[str]:
         return self._get_file_content(filename)
 
-
-#from accessibility_evaluation_agent import AccessibilityEvaluationAgent
+# from accessibility_evaluation_agent import AccessibilityEvaluationAgent
 
 # agent = AccessibilityEvaluationAgent(
 #     guideline_path="../../data/conference_guideline_texts/processed/13_icse_2025.md",
