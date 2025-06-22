@@ -5,7 +5,7 @@ from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -197,12 +197,3 @@ class DocumentationEvaluationAgent:
 
     def get_sections(self) -> List[ReadmeSection]:
         return self.sections
-
-# from documentation_evaluation_agent import DocumentationEvaluationAgent
-
-agent = DocumentationEvaluationAgent(
-    guideline_path="../../../data/conference_guideline_texts/processed/13_icse_2025.md",
-    artifact_json_path="../../../algo_outputs/algorithm_2_output/PyTy_analysis.json",
-    conference_name="ICSE 2025"
-)
-doc_evaluation = agent.evaluate(verbose=True)
