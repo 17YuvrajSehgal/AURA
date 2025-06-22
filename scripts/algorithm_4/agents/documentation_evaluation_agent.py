@@ -4,12 +4,12 @@ from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.llms import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_openai import OpenAI
 from pydantic import BaseModel, Field
 
 # === Logging Setup ===
@@ -200,9 +200,9 @@ class DocumentationEvaluationAgent:
 
 # from documentation_evaluation_agent import DocumentationEvaluationAgent
 
-# agent = DocumentationEvaluationAgent(
-#     guideline_path="../../data/conference_guideline_texts/processed/13_icse_2025.md",
-#     artifact_json_path="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json",
-#     conference_name="ICSE 2025"
-# )
-# doc_evaluation = agent.evaluate(verbose=True)
+agent = DocumentationEvaluationAgent(
+    guideline_path="../../../data/conference_guideline_texts/processed/13_icse_2025.md",
+    artifact_json_path="../../../algo_outputs/algorithm_2_output/PyTy_analysis.json",
+    conference_name="ICSE 2025"
+)
+doc_evaluation = agent.evaluate(verbose=True)
