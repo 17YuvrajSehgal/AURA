@@ -40,7 +40,7 @@ class DocumentationEvaluationAgent:
             self,
             guideline_path: str,
             artifact_json_path: str,
-            conference_name: str = "ICSE 2025",
+            conference_name: str,
             persist_directory: str = "chroma_index",
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
@@ -82,8 +82,8 @@ class DocumentationEvaluationAgent:
         parser = PydanticOutputParser(pydantic_object=ReadmeSectionsList)
         guideline_prompt = PromptTemplate(
             template=(
-                "Based on the following conference guidelines, "
-                "return a JSON object with a `sections` field (a list of required README sections). "
+                "Based on the following conference guidelines ,a list of required README sections, "
+                "return a JSON object with a `sections` field. "
                 "For example if it say: It should include a README file detailing the purpose, provenance, setup, and usage of the artifact., Then you should return purpose, provenance, setup, and usage in return"
                 "{format_instructions}\n"
                 "Conference Guidelines:\n{guidelines}"
@@ -114,17 +114,17 @@ class DocumentationEvaluationAgent:
         """Get keyword-based evidence for documentation evaluation"""
         if not self.keyword_agent:
             return {}
-        
+
         try:
             keyword_results = self.keyword_agent.evaluate(verbose=False)
             documentation_dim = None
-            
+
             # Find documentation dimension in keyword results
             for dim in keyword_results.get('dimensions', []):
                 if dim['dimension'].lower() == 'documentation':
                     documentation_dim = dim
                     break
-            
+
             if documentation_dim:
                 return {
                     'raw_score': documentation_dim['raw_score'],
@@ -134,13 +134,13 @@ class DocumentationEvaluationAgent:
                 }
         except Exception as e:
             logger.warning(f"Could not get keyword evidence: {e}")
-        
+
         return {}
 
     def _build_eval_prompt(self):
         # Get keyword-based evidence
         keyword_evidence = self._get_keyword_evidence()
-        
+
         # Focus only on documentation section(s)
         doc_sections = [s for s in self.sections if "documentation" in s.name.lower() or "readme" in s.name.lower()]
         # Fallback: if none detected, use all as a defensive approach
@@ -158,14 +158,14 @@ class DocumentationEvaluationAgent:
         keyword_context = ""
         if keyword_evidence:
             keyword_context = f"""
-KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
-- Raw documentation score: {keyword_evidence.get('raw_score', 'N/A')}
-- Weighted documentation score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
-- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
-- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
-
-IMPORTANT: Your evaluation should be consistent with this keyword evidence. If documentation keywords are abundant, your score should reflect comprehensive documentation. If few documentation keywords are found, explain what's missing.
-"""
+            KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
+            - Raw documentation score: {keyword_evidence.get('raw_score', 'N/A')}
+            - Weighted documentation score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
+            - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
+            - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+            
+            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If documentation keywords are abundant, your score should reflect comprehensive documentation. If few documentation keywords are found, explain what's missing.
+            """
 
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
@@ -198,7 +198,7 @@ IMPORTANT: Your evaluation should be consistent with this keyword evidence. If d
     def get_sections(self) -> List[ReadmeSection]:
         return self.sections
 
-#from documentation_evaluation_agent import DocumentationEvaluationAgent
+# from documentation_evaluation_agent import DocumentationEvaluationAgent
 
 # agent = DocumentationEvaluationAgent(
 #     guideline_path="../../data/conference_guideline_texts/processed/13_icse_2025.md",
