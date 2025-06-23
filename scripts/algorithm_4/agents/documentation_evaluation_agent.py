@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import List, Optional, Dict, Any
 
 from dotenv import load_dotenv
@@ -284,17 +285,43 @@ class DocumentationEvaluationAgent:
         )
         logger.info("Running artifact documentation evaluation chain...")
         result = qa_chain({"query": prompt})
-        logger.info(f"LLM output:\n{result['result']}")
-        if verbose:
-            print(result['result'])
+        raw_output = result.get('result', '')
+        logger.info(f"LLM output:\n{raw_output}")
 
-        # Try parsing structured output
+        if verbose:
+            print(raw_output)
+
         try:
-            parsed_result = parser.parse(result['result'])
+            # Clean malformed JSON if any
+            cleaned = raw_output.strip()
+
+            if cleaned.lower().startswith("output:"):
+                cleaned = cleaned[len("output:"):].strip()
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            elif cleaned.startswith("```"):
+                cleaned = cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+
+            # Fix common truncation
+            if cleaned.count("{") > cleaned.count("}"):
+                cleaned = re.sub(r',\s*{[^{}]*$', '', cleaned) + "]}"  # close the list + object
+
+            parsed_json = json.loads(cleaned)
+
+            # Add default justification if missing
+            for score in parsed_json.get("section_scores", []):
+                if "justification" not in score:
+                    score["justification"] = "Justification was missing from the LLM output."
+
+            # Validate using Pydantic
+            parsed_result = DocumentationEvaluationResult(**parsed_json)
             return parsed_result
+
         except Exception as e:
             logger.warning(f"Could not parse structured documentation result: {e}")
-            return {"error": "Failed to parse documentation result", "raw_output": result['result']}
+            return {"error": "Failed to parse documentation result", "raw_output": raw_output}
 
     def get_sections(self) -> List[ReadmeSection]:
         return self.sections
