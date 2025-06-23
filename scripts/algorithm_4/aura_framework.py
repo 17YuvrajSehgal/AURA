@@ -1,13 +1,13 @@
+import csv
 import logging
+import os
 
 from agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
 from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
 from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
-from agents.usability_evaluation_agent import UsabilityEvaluationAgent
 from agents.keyword_evaluation_agent import KeywordEvaluationAgent
 from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
-import csv
-import os
+from agents.usability_evaluation_agent import UsabilityEvaluationAgent
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,8 +19,6 @@ class AURA:
         self.conference_name = conference_name
         self.criteria_csv_path = criteria_csv_path
 
-
-        # Initialize keyword-based agent first (if criteria CSV is provided)
         self.keyword_agent = None
         if criteria_csv_path:
             try:
@@ -38,44 +36,45 @@ class AURA:
             clear_existing=True,
         )
 
-        # Initialize LLM-based agents with keyword agent reference
         self.doc_agent = DocumentationEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent, kg_agent=kg_agent)
+            guideline_path, artifact_json_path, conference_name,
+            keyword_agent=self.keyword_agent, kg_agent=kg_agent)
         self.usability_agent = UsabilityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent)
+            guideline_path, artifact_json_path, conference_name,
+            keyword_agent=self.keyword_agent)
         self.access_agent = AccessibilityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent)
+            guideline_path, artifact_json_path, conference_name,
+            keyword_agent=self.keyword_agent)
         self.func_agent = FunctionalityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent, kg_agent=kg_agent)
+            guideline_path, artifact_json_path, conference_name,
+            keyword_agent=self.keyword_agent, kg_agent=kg_agent)
 
     def evaluate(self, dimensions=None, verbose=False, include_keyword_eval=True):
-        """dimensions: list of dimension strings, e.g. ['documentation', 'usability']"""
         results = {}
         dimensions = dimensions or ['documentation', 'usability', 'accessibility', 'functionality']
 
-        # Run LLM-based evaluations (now grounded with keyword evidence)
         doc_result = self.doc_agent.evaluate(verbose)
         if isinstance(doc_result, dict) and "error" in doc_result:
             results['documentation'] = doc_result["raw_output"]
         else:
-            results['documentation'] = {
-                "overall_score": doc_result.overall_score,
-                "sections": [{s.section: s.score} for s in doc_result.section_scores],
-                "suggestions": doc_result.suggestions
-            }
+            results['documentation'] = doc_result
 
-
+        access_result = self.access_agent.evaluate(verbose)
+        if isinstance(access_result, dict) and "error" in access_result:
+            results['accessibility'] = access_result["raw_output"]
+        else:
+            results['accessibility'] = access_result
 
         if 'usability' in dimensions:
-            results['usability'] = "0 bad usability"#self.usability_agent.evaluate(verbose)
-        if 'accessibility' in dimensions:
-            results['accessibility'] = "0 poort accessibility"#self.access_agent.evaluate(verbose)
+            results['usability'] = "0 bad usability"  # self.usability_agent.evaluate(verbose)
+
         if 'functionality' in dimensions:
-            results['functionality'] = "0 poor functionality"#self.func_agent.evaluate(verbose)
+            results['functionality'] = "0 poor functionality"  # self.func_agent.evaluate(verbose)
 
-        self._save_documentation_to_csv(doc_result,                                            output_path="../../algo_outputs/algorithm_4_output/artifact_evals/output.csv")
+        # Save all results to a single CSV
+        self._save_all_to_csv(results,
+                              output_path="../../algo_outputs/algorithm_4_output/artifact_evals/full_evaluation.csv")
 
-        # Run keyword-based evaluation if available and requested
         if include_keyword_eval and self.keyword_agent:
             try:
                 keyword_results = self.keyword_agent.evaluate(verbose=verbose)
@@ -84,49 +83,40 @@ class AURA:
             except Exception as e:
                 logging.error(f"Error in keyword evaluation: {e}")
                 results['keyword_baseline'] = {"error": str(e)}
-        
+
         return results
 
     def evaluate_summary(self, verbose=False, include_keyword_eval=True):
-        """Returns a short summary for all dimensions."""
         results = self.evaluate(verbose=verbose, include_keyword_eval=include_keyword_eval)
-        
         summary_parts = []
-        
-        # LLM-based evaluations
+
         for dim in ['documentation', 'usability', 'accessibility', 'functionality']:
             if dim in results:
                 summary_parts.append(f"{dim.capitalize()}:\n{results[dim]}")
-        
-        # Keyword-based evaluation
+
         if 'keyword_baseline' in results:
             keyword_result = results['keyword_baseline']
             if 'error' not in keyword_result:
                 summary_parts.append(f"Keyword Baseline:\n{keyword_result['summary']}")
             else:
                 summary_parts.append(f"Keyword Baseline: Error - {keyword_result['error']}")
-        
+
         return "\n\n".join(summary_parts)
 
     def compare_evaluations(self, verbose=False):
-        """Compare LLM-based vs keyword-based evaluations"""
         if not self.keyword_agent:
             return {"error": "Keyword agent not available"}
-        
-        # Get both evaluations
+
         llm_results = self.evaluate(include_keyword_eval=False, verbose=verbose)
         keyword_results = self.keyword_agent.evaluate(verbose=verbose)
-        
-        comparison = {
+
+        return {
             "llm_evaluations": llm_results,
             "keyword_evaluation": keyword_results,
             "comparison_notes": self._generate_comparison_notes(llm_results, keyword_results)
         }
-        
-        return comparison
 
     def _generate_comparison_notes(self, llm_results, keyword_results):
-        """Generate notes comparing the two evaluation approaches"""
         notes = [
             "Evaluation Method Comparison:",
             "=" * 40,
@@ -146,30 +136,23 @@ class AURA:
             f"Keyword Overall Score: {keyword_results['overall_score']:.2f}",
             ""
         ]
-        
-        # Add dimension-specific comparisons
+
         if 'keyword_baseline' in llm_results:
-            keyword_dims = keyword_results['dimensions']
-            for dim in keyword_dims:
+            for dim in keyword_results.get('dimensions', []):
                 notes.append(f"{dim['dimension'].capitalize()}: {dim['weighted_score']:.2f} (raw: {dim['raw_score']})")
-        
+
         return "\n".join(notes)
 
     def get_grounded_evaluation(self, dimension: str, verbose: bool = True):
-        """Get a specific dimension evaluation with keyword grounding"""
         if not self.keyword_agent:
             return {"error": "Keyword agent not available for grounding"}
-        
-        # Get keyword evidence first
+
         keyword_results = self.keyword_agent.evaluate(verbose=False)
-        dimension_evidence = None
-        
-        for dim in keyword_results.get('dimensions', []):
-            if dim['dimension'].lower() == dimension.lower():
-                dimension_evidence = dim
-                break
-        
-        # Run LLM evaluation with grounding
+        dimension_evidence = next(
+            (dim for dim in keyword_results.get('dimensions', []) if dim['dimension'].lower() == dimension.lower()),
+            None
+        )
+
         if dimension == 'documentation':
             result = self.doc_agent.evaluate(verbose)
         elif dimension == 'usability':
@@ -180,38 +163,46 @@ class AURA:
             result = self.func_agent.evaluate(verbose)
         else:
             return {"error": f"Unknown dimension: {dimension}"}
-        
+
         return {
             "llm_evaluation": result,
             "keyword_evidence": dimension_evidence,
             "grounding_info": f"LLM evaluation was grounded with keyword evidence: {dimension_evidence['keywords_found'] if dimension_evidence else 'No evidence found'}"
         }
 
-    def _save_documentation_to_csv(self, doc_result, output_path):
-
-
-        # Ensure the directory exists if any
+    def _save_all_to_csv(self, results: dict, output_path: str):
         output_dir = os.path.dirname(output_path)
-        if output_dir:  # only create directory if non-empty
+        if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-
-        # Only save if doc_result is not a dict (i.e., is a DocumentationEvaluationResult)
-        if isinstance(doc_result, dict):
-            # Optionally, log or print the error
-            logging.info(f"doc_result is of type: {type(doc_result)}")
-            return
 
         with open(output_path, mode="w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
-            writer.writerow(["Section", "Score", "Justification"])  # Header row
-            for section_score in doc_result.section_scores:
-                writer.writerow([
-                    section_score.section,
-                    section_score.score,
-                    section_score.justification
-                ])
-            writer.writerow([])  # Empty row
-            writer.writerow(["Overall Score", doc_result.overall_score])
-            if doc_result.suggestions:
-                writer.writerow(["Suggestions", doc_result.suggestions])
+            writer.writerow(["Dimension", "Section/Criterion", "Score", "Justification"])
 
+            for dimension, result in results.items():
+                if isinstance(result, dict) and "error" in result:
+                    continue
+
+                if dimension == "documentation" and hasattr(result, "section_scores"):
+                    for section in result.section_scores:
+                        writer.writerow([
+                            dimension,
+                            section.section,
+                            section.score,
+                            section.justification
+                        ])
+                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
+                    if result.suggestions:
+                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
+
+                elif dimension == "accessibility" and hasattr(result, "criterion_scores"):
+                    for crit in result.criterion_scores:
+                        writer.writerow([
+                            dimension,
+                            crit.criterion,
+                            crit.score,
+                            crit.justification
+                        ])
+                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
+                    if result.suggestions:
+                        writer.writerow([dimension, "Suggestions", "", result.suggestions])

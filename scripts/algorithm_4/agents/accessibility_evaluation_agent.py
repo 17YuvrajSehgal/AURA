@@ -1,15 +1,17 @@
 import json
 import logging
+import re
 from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import OpenAI
+from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
 # === Logging Setup ===
@@ -24,6 +26,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 load_dotenv()
+
+
+class AccessibilityScore(BaseModel):
+    criterion: str = Field(description="Name of the accessibility criterion")
+    score: int = Field(ge=1, le=5, description="Score assigned to the criterion")
+    justification: str = Field(description="Justification for the score")
+
+
+class AccessibilityEvaluationResult(BaseModel):
+    overall_score: int = Field(ge=1, le=5)
+    criterion_scores: List[AccessibilityScore]
+    suggestions: Optional[str] = None
 
 
 class AccessibilityCriterion(BaseModel):
@@ -80,11 +94,11 @@ class AccessibilityEvaluationAgent:
             template="""
             You are an expert at extracting *only* the accessibility-related criteria for evaluating research software artifacts, based strictly on the provided conference guidelines.
 
-            Accessibility-related criteria refer ONLY to aspects that affect whether and how others can access, obtain, install, or use the artifact. This includes public availability (e.g., in an open repository), clarity of installation/setup instructions, the presence and clarity of dependency files, whether data and code are downloadable, and any restrictions on access. Ignore general factors such as documentation quality, usability, functionality, or reusability unless they are specifically described as affecting access to the artifact.
+            Accessibility-related criteria refer ONLY to aspects that affect whether and how others can access, obtain, install, or use the artifact. This includes public availability (e.g., in an open repository), clarity of whether data and code are downloadable, and any restrictions on access. Ignore general factors such as documentation quality, usability, functionality, or reusability unless they are specifically described as affecting access to the artifact.
 
             **Your task:**
             1. Read the conference guidelines below.
-            2. Extract ONLY those criteria that pertain directly to accessibility or availability (such as repository access, installability, dependency information, data accessibility, and license openness as it relates to access).
+            2. Extract ONLY those criteria that pertain directly to accessibility or availability (such as repository access, dependency information, data accessibility, and license openness as it relates to access).
             3. Do NOT extract general evaluation factors (like 'Functionality', 'Reusability', or 'Documentation') unless they are explicitly required as accessibility/availability aspects.
             4. For each extracted criterion, provide:
                - `name`: the accessibility aspect or criterion to check (e.g., "Public Repository Availability", "Installability", "Dependency Clarity")
@@ -147,104 +161,116 @@ class AccessibilityEvaluationAgent:
         return None
 
     def _get_keyword_evidence(self) -> Dict:
-        """Get keyword-based evidence for accessibility evaluation"""
         if not self.keyword_agent:
             return {}
 
         try:
             keyword_results = self.keyword_agent.evaluate(verbose=False)
-            accessibility_dim = None
-
-            # Find accessibility dimension in keyword results
             for dim in keyword_results.get('dimensions', []):
                 if dim['dimension'].lower() == 'accessibility':
-                    accessibility_dim = dim
-                    break
-
-            if accessibility_dim:
-                return {
-                    'raw_score': accessibility_dim['raw_score'],
-                    'weighted_score': accessibility_dim['weighted_score'],
-                    'keywords_found': accessibility_dim['keywords_found'],
-                    'overall_score': keyword_results.get('overall_score', 0)
-                }
+                    return {
+                        'raw_score': dim['raw_score'],
+                        'weighted_score': dim['weighted_score'],
+                        'keywords_found': dim['keywords_found'],
+                        'overall_score': keyword_results.get('overall_score', 0)
+                    }
         except Exception as e:
             logger.warning(f"Could not get keyword evidence: {e}")
 
         return {}
 
     def _build_eval_prompt(self):
-        # Get keyword-based evidence
         keyword_evidence = self._get_keyword_evidence()
 
-        # Build explicit, chain-of-thought prompt for accessibility
-        chain_of_thought_steps = ""
-        for criterion in self.criteria:
-            chain_of_thought_steps += (
-                f"Criterion: {criterion.name}\n"
-                f"Description: {criterion.description}\n"
-                "Step 1: Look for explicit mentions of artifact availability (e.g., DOI, Zenodo link, public repository).\n"
-                "Step 2: Check for dependency files (requirements.txt, environment.yml, setup.py) and their clarity/completeness.\n"
-                "Step 3: If dependencies are referenced, confirm those files exist and inspect their contents.\n"
-                "Step 4: Assess whether the artifact appears straightforward to install given its documentation and dependencies.\n"
-                "Step 5: Based on all information, rate this aspect from 1-5 and justify your score with evidence from the artifact.\n\n"
-            )
+        parser = PydanticOutputParser(pydantic_object=AccessibilityEvaluationResult)
+        fixing_parser = OutputFixingParser.from_llm(parser=parser, llm=OpenAI(temperature=0))
 
-        # Include keyword evidence in prompt
-        keyword_context = ""
-        if keyword_evidence:
-            keyword_context = f"""
-            KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
-            - Raw accessibility score: {keyword_evidence.get('raw_score', 'N/A')}
-            - Weighted accessibility score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
-            - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+        format_instructions = parser.get_format_instructions()
+        criteria_description_block = "\n".join([
+            f"- **{c.name}**: {c.description}" for c in self.criteria
+        ])
 
-            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If keywords indicate strong accessibility features, your score should reflect that. If few accessibility related information is found, explain what's missing.
-            """
+        prompt = f"""
+        You are an expert artifact evaluator for {self.conference_name}.
+        Evaluate ONLY the **Accessibility/Availability** of the artifact.
 
-        prompt = (
-            f"You are an expert artifact evaluator for {self.conference_name}.\n"
-            "Evaluate ONLY the **Accessibility/Availability** of the artifact according to the following criteria.\n"
-            "For each, follow the chain-of-thought process:\n\n"
-            f"{chain_of_thought_steps}\n"
-            f"{keyword_context}\n"
-            "Do NOT evaluate other dimensions such as Documentation, Usability, Functionality, or Reusability.\n"
-            "At the end, provide a detailed accessibility score and suggestions for improvement.\n"
-            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
-        )
-        logger.info(f"Accessibility evaluation prompt:\n{prompt}")
-        return prompt
+        Accessibility Criteria:
+        {criteria_description_block}
 
-    def evaluate(self, verbose: bool = True) -> str:
-        prompt = self._build_eval_prompt()
+        For each criterion:
+        1. Look for explicit mentions of artifact availability (e.g., DOI, Zenodo link, public repository).
+        2. If dependencies are referenced, confirm those files exist and inspect their contents.
+        3. Assign a score from 1–5 with justification.
+
+        Output must follow this format:
+        Each `criterion_scores` entry MUST contain:
+        - `criterion`
+        - `score` (1–5)
+        - `justification` (Required)
+
+        {format_instructions}
+
+        IMPORTANT:
+        - Do NOT evaluate other dimensions such as Usability, Functionality, etc.
+        - Base your evaluation on actual evidence found in the artifact, not assumptions.
+        - Return JSON only. No markdown or explanations outside the object.
+
+        {'KEYWORD-BASED EVIDENCE:' + json.dumps(keyword_evidence, indent=2) if keyword_evidence else ''}
+        """
+        return prompt.strip(), fixing_parser
+
+    import re
+
+    def evaluate(self, verbose: bool = True) -> AccessibilityEvaluationResult | dict[str, str]:
+        prompt, parser = self._build_eval_prompt()
+
         llm = OpenAI(temperature=0.2)
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
             retriever=self.db.as_retriever(search_kwargs={'k': 5}),
             chain_type="stuff"
         )
+
         logger.info("Running artifact accessibility evaluation chain...")
         result = qa_chain({"query": prompt})
-        logger.info(f"LLM output:\n{result['result']}")
+        raw_output = result.get('result', '')
+        logger.info(f"LLM output:\n{raw_output}")
+
         if verbose:
-            print(result['result'])
-        return result['result']
+            print(raw_output)
+
+        try:
+            # Attempt safe JSON recovery
+            cleaned = raw_output.strip()
+
+            # Heuristic: If string is cut off mid-field, try to trim to last full object
+            if cleaned.count("{") > cleaned.count("}"):
+                cleaned = re.sub(r',\s*{[^{}]*$', '', cleaned) + "]}"  # close the list and JSON
+
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+
+            parsed_json = json.loads(cleaned)
+
+            # Ensure justification field is present
+            for score in parsed_json.get("criterion_scores", []):
+                if "justification" not in score:
+                    score["justification"] = "Justification was missing from the LLM output."
+
+            parsed_result = AccessibilityEvaluationResult(**parsed_json)
+            return parsed_result
+
+        except Exception as e:
+            logger.warning(f"Could not parse structured accessibility result: {e}")
+            return {"error": "Failed to parse accessibility result", "raw_output": raw_output}
 
     def get_criteria(self) -> List[AccessibilityCriterion]:
         return self.criteria
 
-    # Optional: expose file existence/content utilities for downstream use
     def file_exists(self, filename: str) -> bool:
         return self._file_exists(filename)
 
     def get_file_content(self, filename: str) -> Optional[str]:
         return self._get_file_content(filename)
-
-# from accessibility_evaluation_agent import AccessibilityEvaluationAgent
-
-# agent = AccessibilityEvaluationAgent(
-#     guideline_path="../../data/conference_guideline_texts/processed/13_icse_2025.md",
-#     artifact_json_path="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json",
-#     conference_name="ICSE 2025"
-# )
-# accessibility_report = agent.evaluate(verbose=True)
