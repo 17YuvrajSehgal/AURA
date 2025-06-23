@@ -66,7 +66,11 @@ class AURA:
             results['accessibility'] = access_result
 
         if 'usability' in dimensions:
-            results['usability'] = "0 bad usability"  # self.usability_agent.evaluate(verbose)
+            usability_result = self.usability_agent.evaluate(verbose)
+            if isinstance(usability_result, dict) and "error" in usability_result:
+                results['usability'] = usability_result["raw_output"]
+            else:
+                results['usability'] = usability_result
 
         if 'functionality' in dimensions:
             results['functionality'] = "0 poor functionality"  # self.func_agent.evaluate(verbose)
@@ -206,3 +210,16 @@ class AURA:
                     writer.writerow([dimension, "Overall Score", result.overall_score, ""])
                     if result.suggestions:
                         writer.writerow([dimension, "Suggestions", "", result.suggestions])
+
+                elif dimension == "usability" and hasattr(result, "criterion_scores"):
+                    for crit in result.criterion_scores:
+                        writer.writerow([
+                            dimension,
+                            crit.criterion,
+                            crit.score,
+                            crit.justification
+                        ])
+                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
+                    if result.suggestions:
+                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
+
