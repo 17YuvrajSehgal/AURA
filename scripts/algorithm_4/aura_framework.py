@@ -2,12 +2,13 @@ import csv
 import logging
 import os
 
-from agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
-from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
-from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent, FunctionalityEvaluationResult
-from agents.keyword_evaluation_agent import KeywordEvaluationAgent
-from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
-from agents.usability_evaluation_agent import UsabilityEvaluationAgent
+from scripts.algorithm_4.agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
+from scripts.algorithm_4.agents.documentation_evaluation_agent import DocumentationEvaluationAgent
+from scripts.algorithm_4.agents.functionality_evaluation_agent import FunctionalityEvaluationAgent, \
+    FunctionalityEvaluationResult
+from scripts.algorithm_4.agents.keyword_evaluation_agent import KeywordEvaluationAgent
+from scripts.algorithm_4.agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
+from scripts.algorithm_4.agents.usability_evaluation_agent import UsabilityEvaluationAgent
 
 logging.basicConfig(level=logging.INFO)
 
