@@ -5,7 +5,7 @@ from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
 from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
 from agents.usability_evaluation_agent import UsabilityEvaluationAgent
 from agents.keyword_evaluation_agent import KeywordEvaluationAgent
-from scripts.algorithm_4.agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
+from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
 
 logging.basicConfig(level=logging.INFO)
 

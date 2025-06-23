@@ -1,20 +1,22 @@
-import json
 import ast
-import os
-from py2neo import Graph, Node, Relationship
+import json
 import logging
+import os
 from typing import Optional, Dict, Any, List
+
+from py2neo import Graph, Node, Relationship
 
 logging.basicConfig(level=logging.INFO)
 
+
 class RepositoryKnowledgeGraphAgent:
     def __init__(
-        self,
-        artifact_json_path: str,
-        neo4j_uri: str = "bolt://localhost:7687",
-        neo4j_user: str = "neo4j",
-        neo4j_password: str = "12345678",
-        clear_existing: bool = True,
+            self,
+            artifact_json_path: str,
+            neo4j_uri: str = "bolt://localhost:7687",
+            neo4j_user: str = "neo4j",
+            neo4j_password: str = "12345678",
+            clear_existing: bool = True,
     ):
         self.artifact_json_path = artifact_json_path
         self.graph = Graph(neo4j_uri, auth=(neo4j_user, neo4j_password))
@@ -40,14 +42,15 @@ class RepositoryKnowledgeGraphAgent:
         # Build directory and file structure
         path_to_node = {}
         for entry in self.artifact.get("repository_structure", []):
-            if entry.get("mime_type", "").startswith("directory"):
+            if (entry.get("mime_type") or "").startswith("directory"):
                 dir_node = Node("Directory", name=entry["name"], path=entry["path"], type="directory")
                 self.graph.merge(dir_node, "Directory", "path")
                 self.graph.merge(Relationship(repo_node, "CONTAINS", dir_node))
                 path_to_node[entry["path"]] = dir_node
             else:
                 file_type = self._infer_file_type(entry["name"])
-                file_node = Node("File", name=entry["name"], path=entry["path"], type=file_type, content_type=entry.get("mime_type", ""))
+                file_node = Node("File", name=entry["name"], path=entry["path"], type=file_type,
+                                 content_type=entry.get("mime_type", ""))
                 self.graph.merge(file_node, "File", "path")
                 self.graph.merge(Relationship(repo_node, "CONTAINS", file_node))
                 path_to_node[entry["path"]] = file_node
@@ -212,4 +215,4 @@ class RepositoryKnowledgeGraphAgent:
         return f"[GraphRAG Retriever] Query: {query} (NL2Cypher not implemented)"
 
     def close(self):
-        self.graph = None 
+        self.graph = None
