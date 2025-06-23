@@ -5,6 +5,7 @@ from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
 from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
 from agents.usability_evaluation_agent import UsabilityEvaluationAgent
 from agents.keyword_evaluation_agent import KeywordEvaluationAgent
+from scripts.algorithm_4.agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,9 +27,16 @@ class AURA:
             except Exception as e:
                 logging.warning(f"Could not initialize keyword agent: {e}")
 
+        kg_agent = RepositoryKnowledgeGraphAgent(
+            artifact_json_path=self.artifact_json_path,
+            neo4j_uri="bolt://localhost:7687",
+            neo4j_user="neo4j",
+            neo4j_password="12345678"
+        )
+
         # Initialize LLM-based agents with keyword agent reference
         self.doc_agent = DocumentationEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent)
+            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent, kg_agent=kg_agent)
         self.usability_agent = UsabilityEvaluationAgent(
             guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent)
         self.access_agent = AccessibilityEvaluationAgent(

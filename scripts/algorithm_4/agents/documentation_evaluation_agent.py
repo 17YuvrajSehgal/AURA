@@ -46,6 +46,7 @@ class DocumentationEvaluationAgent:
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
             keyword_agent: Optional[object] = None,
+            kg_agent: Optional[object] = None,  # <--- NEW
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -55,6 +56,8 @@ class DocumentationEvaluationAgent:
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
         self.keyword_agent = keyword_agent
+        self.kg_agent = kg_agent
+
 
         logger.info(f"Initializing DocumentationEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
@@ -167,11 +170,21 @@ class DocumentationEvaluationAgent:
             IMPORTANT: Your evaluation should be consistent with this keyword evidence. If documentation keywords are abundant, your score should reflect comprehensive documentation. If few documentation keywords are found, explain what's missing.
             """
 
+        kg_evidence = self._get_kg_evidence()
+        kg_context = ""
+        if kg_evidence:
+            kg_context = (
+                f"KNOWLEDGE GRAPH EVIDENCE:\n"
+                f"- Files described by README: {', '.join(kg_evidence.get('described_files', []))}\n"
+                f"- README has setup section: {kg_evidence.get('has_setup_section', False)}\n"
+            )
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
             "Evaluate ONLY the **documentation** of the artifact according to these required sections:\n\n"
             f"{section_questions}\n"
             f"{keyword_context}\n"
+            f"{kg_context}\n"
             "Provide a score and justification for each documentation aspect. "
             "Then give an overall documentation score and suggestions for improvement. "
             "Do NOT evaluate other dimensions such as Availability, Functionality, Reusability, or Archival Repository.\n"
@@ -197,3 +210,17 @@ class DocumentationEvaluationAgent:
 
     def get_sections(self) -> List[ReadmeSection]:
         return self.sections
+
+    def _get_kg_evidence(self) -> Dict:
+        if not self.kg_agent:
+            return {}
+        evidence = {}
+        # Example: Which files are described by the README?
+        described_files = self.kg_agent.run_cypher(
+            "MATCH (doc:File {name: 'README.md'})-[:DESCRIBES]->(code:File) RETURN code.name"
+        )
+        evidence['described_files'] = [r['code.name'] for r in described_files]
+        # Example: Does README have a 'setup' section?
+        evidence['has_setup_section'] = self.kg_agent.readme_has_section('setup')
+        # Add more as needed...
+        return evidence
