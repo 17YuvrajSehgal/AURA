@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Any
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
+from langchain.output_parsers import OutputFixingParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
@@ -148,7 +149,22 @@ class DocumentationEvaluationAgent:
             if output.endswith("```"):
                 output = output[:-3]
             output = output.strip()
-        result = parser.parse(output)
+        # Clean output to extract only the JSON object
+        clean_output = output.strip()
+
+        # Remove common prefixes or wrappers
+        if clean_output.lower().startswith("answer:"):
+            clean_output = clean_output[len("answer:"):].strip()
+        if clean_output.startswith("```json"):
+            clean_output = clean_output[7:].strip()
+        elif clean_output.startswith("```"):
+            clean_output = clean_output[3:].strip()
+        if clean_output.endswith("```"):
+            clean_output = clean_output[:-3].strip()
+
+        # Parse clean JSON output
+        result = parser.parse(clean_output)
+
         return result.sections
 
     def _build_vector_db(self):
@@ -232,6 +248,13 @@ class DocumentationEvaluationAgent:
                 "  3. Assign a score from 1 (poor/missing) to 5 (excellent/complete) for this section, and provide a justification grounded in the evidence.\n"
             )
 
+        # Add format instructions for structured JSON output
+        llm = OpenAI(temperature=0.0)
+        result_parser = PydanticOutputParser(pydantic_object=DocumentationEvaluationResult)
+        parser = OutputFixingParser.from_llm(parser=result_parser, llm=llm)
+
+        format_instructions = result_parser.get_format_instructions()
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
             "Your task is to evaluate ONLY the **documentation** of the artifact according to these required sections.\n\n"
@@ -239,14 +262,20 @@ class DocumentationEvaluationAgent:
             f"{kg_context}\n"
             "For each required section, follow this chain-of-thought process:\n"
             f"{section_questions}\n"
-            "After evaluating all sections, provide an overall documentation score (1-5) and suggestions for improvement.\n"
-            "IMPORTANT: Base your evaluation and scores ONLY on the evidence provided above. Do NOT make assumptions or hallucinate information."
+            "After evaluating all sections, provide:\n"
+            "- An overall documentation score (1 to 5)\n"
+            "- For each section: the name, a score from 1 to 5, and a justification\n"
+            "- Suggestions for improvement\n\n"
+            f"Return a valid JSON object matching this schema:\n{format_instructions}\n"
+            "IMPORTANT: Only return a single JSON object. Do NOT include any markdown or extra commentary."
         )
+
         logger.info(f"Documentation evaluation prompt:\n{prompt}")
-        return prompt
+        return prompt, parser
 
     def evaluate(self, verbose: bool = True) -> DocumentationEvaluationResult | dict[str, str | Any]:
-        prompt = self._build_eval_prompt()
+        prompt, parser = self._build_eval_prompt()
+
         llm = OpenAI(temperature=0.2)
         qa_chain = RetrievalQA.from_chain_type(
             llm=llm,
@@ -261,9 +290,8 @@ class DocumentationEvaluationAgent:
 
         # Try parsing structured output
         try:
-            parsed_result = json.loads(result['result'])
-            structured = DocumentationEvaluationResult(**parsed_result)
-            return structured
+            parsed_result = parser.parse(result['result'])
+            return parsed_result
         except Exception as e:
             logger.warning(f"Could not parse structured documentation result: {e}")
             return {"error": "Failed to parse documentation result", "raw_output": result['result']}

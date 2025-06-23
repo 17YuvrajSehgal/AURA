@@ -6,6 +6,8 @@ from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
 from agents.usability_evaluation_agent import UsabilityEvaluationAgent
 from agents.keyword_evaluation_agent import KeywordEvaluationAgent
 from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
+import csv
+import os
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,6 +18,7 @@ class AURA:
         self.artifact_json_path = artifact_json_path
         self.conference_name = conference_name
         self.criteria_csv_path = criteria_csv_path
+
 
         # Initialize keyword-based agent first (if criteria CSV is provided)
         self.keyword_agent = None
@@ -51,15 +54,27 @@ class AURA:
         dimensions = dimensions or ['documentation', 'usability', 'accessibility', 'functionality']
 
         # Run LLM-based evaluations (now grounded with keyword evidence)
-        if 'documentation' in dimensions:
-            results['documentation'] = self.doc_agent.evaluate(verbose)
+        doc_result = self.doc_agent.evaluate(verbose)
+        if isinstance(doc_result, dict) and "error" in doc_result:
+            results['documentation'] = doc_result["raw_output"]
+        else:
+            results['documentation'] = {
+                "overall_score": doc_result.overall_score,
+                "sections": [{s.section: s.score} for s in doc_result.section_scores],
+                "suggestions": doc_result.suggestions
+            }
+
+
+
         if 'usability' in dimensions:
-            results['usability'] = self.usability_agent.evaluate(verbose)
+            results['usability'] = "0 bad usability"#self.usability_agent.evaluate(verbose)
         if 'accessibility' in dimensions:
-            results['accessibility'] = self.access_agent.evaluate(verbose)
+            results['accessibility'] = "0 poort accessibility"#self.access_agent.evaluate(verbose)
         if 'functionality' in dimensions:
-            results['functionality'] = self.func_agent.evaluate(verbose)
-        
+            results['functionality'] = "0 poor functionality"#self.func_agent.evaluate(verbose)
+
+        self._save_documentation_to_csv(doc_result,                                            output_path="../../algo_outputs/algorithm_4_output/artifact_evals/output.csv")
+
         # Run keyword-based evaluation if available and requested
         if include_keyword_eval and self.keyword_agent:
             try:
@@ -171,3 +186,32 @@ class AURA:
             "keyword_evidence": dimension_evidence,
             "grounding_info": f"LLM evaluation was grounded with keyword evidence: {dimension_evidence['keywords_found'] if dimension_evidence else 'No evidence found'}"
         }
+
+    def _save_documentation_to_csv(self, doc_result, output_path):
+
+
+        # Ensure the directory exists if any
+        output_dir = os.path.dirname(output_path)
+        if output_dir:  # only create directory if non-empty
+            os.makedirs(output_dir, exist_ok=True)
+
+        # Only save if doc_result is not a dict (i.e., is a DocumentationEvaluationResult)
+        if isinstance(doc_result, dict):
+            # Optionally, log or print the error
+            logging.info(f"doc_result is of type: {type(doc_result)}")
+            return
+
+        with open(output_path, mode="w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Section", "Score", "Justification"])  # Header row
+            for section_score in doc_result.section_scores:
+                writer.writerow([
+                    section_score.section,
+                    section_score.score,
+                    section_score.justification
+                ])
+            writer.writerow([])  # Empty row
+            writer.writerow(["Overall Score", doc_result.overall_score])
+            if doc_result.suggestions:
+                writer.writerow(["Suggestions", doc_result.suggestions])
+

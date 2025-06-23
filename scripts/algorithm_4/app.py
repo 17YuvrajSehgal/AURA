@@ -8,7 +8,7 @@ st.title("AURA: Unified Artifact Research Assessment")
 with st.sidebar:
     st.header("Artifact & Conference")
     guideline_path = st.text_input("Conference Guidelines Path", value="C:\\workplace\\AURA\\data\\conference_guideline_texts\\processed\\13_icse_2025.md")
-    artifact_json_path = st.text_input("Artifact JSON Path", value="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\PyTy_analysis.json")
+    artifact_json_path = st.text_input("Artifact JSON Path", value="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json")
     conference_name = st.text_input("Conference Name", value="ICSE 2025")
     
     st.header("Evaluation Options")
