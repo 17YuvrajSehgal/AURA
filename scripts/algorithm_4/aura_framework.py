@@ -31,7 +31,8 @@ class AURA:
             artifact_json_path=self.artifact_json_path,
             neo4j_uri="bolt://localhost:7687",
             neo4j_user="neo4j",
-            neo4j_password="12345678"
+            neo4j_password="12345678",
+            clear_existing=True,
         )
 
         # Initialize LLM-based agents with keyword agent reference
@@ -42,7 +43,7 @@ class AURA:
         self.access_agent = AccessibilityEvaluationAgent(
             guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent)
         self.func_agent = FunctionalityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent)
+            guideline_path, artifact_json_path, conference_name, keyword_agent=self.keyword_agent, kg_agent=kg_agent)
 
     def evaluate(self, dimensions=None, verbose=False, include_keyword_eval=True):
         """dimensions: list of dimension strings, e.g. ['documentation', 'usability']"""
