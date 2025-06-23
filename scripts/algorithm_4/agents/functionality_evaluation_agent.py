@@ -10,6 +10,7 @@ from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import OpenAIEmbeddings, OpenAI
 from pydantic import BaseModel, Field
+from langchain.memory import ConversationBufferMemory
 
 logging.basicConfig(
     level=logging.INFO,
@@ -273,24 +274,25 @@ class FunctionalityEvaluationAgent:
         return prompt
 
     def evaluate(self, verbose=True):
+        from langchain.memory import ConversationBufferMemory
+
         results = []
+        scores = []
+        memory = ConversationBufferMemory(return_messages=True)
+
         llm = OpenAI(temperature=0.2)
 
         for criterion in self.criteria:
-            # Step 1: Retrieve context for this criterion
             retrieval_query = f"Show all evidence the artifact supports: {criterion.name}. {criterion.description}"
             docs = self.db.as_retriever(search_kwargs={'k': 3}).get_relevant_documents(retrieval_query)
             content = "\n".join([doc.page_content[:250] for doc in docs]) or "No evidence found."
 
-            # Step 2: Get relevant KG/keyword evidence for this criterion (you can add fine-grained filters here)
             kg_ev = self._get_kg_evidence()
             keyword_ev = self._get_keyword_evidence()
             kg_str = ""
-            if kg_ev:  # Add only fields that relate to this criterion!
-                # Example for "test" criterion:
-                if "test" in criterion.name.lower():
-                    kg_str += summarize_list(kg_ev.get('test_file_list'), "Test files")
-                    kg_str += summarize_output_sections(kg_ev.get('output_sections'))
+            if kg_ev and "test" in criterion.name.lower():
+                kg_str += summarize_list(kg_ev.get('test_file_list'), "Test files")
+                kg_str += summarize_output_sections(kg_ev.get('output_sections'))
             keyword_str = ""
             if keyword_ev:
                 keyword_str = (
@@ -299,7 +301,6 @@ class FunctionalityEvaluationAgent:
                     f"- Keywords found: {', '.join(keyword_ev.get('keywords_found', []))}\n"
                 )
 
-            # Step 3: Build short prompt for this criterion
             prompt = (
                 f"You are evaluating the **Functionality** of a research artifact for the criterion:\n"
                 f"Criterion: {criterion.name}\nDescription: {criterion.description}\n\n"
@@ -310,14 +311,44 @@ class FunctionalityEvaluationAgent:
                 f"If evidence is missing, state so clearly."
             )
 
-            # Step 4: LLM call (single criterion, short context!)
             response = llm.invoke(prompt)
             results.append(f"### {criterion.name}\n{response}")
+
+            # Attempt to extract the score for this criterion (must be present as 1-5 in the LLM output)
+            import re
+            score_match = re.search(r'(\b[1-5]\b)', response)
+            if score_match:
+                scores.append(int(score_match.group(1)))
+            else:
+                scores.append(None)  # Or default
+
+            # Save to memory (for use in final evaluation)
+            memory.save_context({"input": prompt}, {"output": response})
+
             if verbose:
                 print(f"\n== {criterion.name} ==\n{response}\n")
 
-        # Optionally: aggregate results, compute total score, etc.
-        return "\n\n".join(results)
+        # Aggregate and compute final score using all previous outputs in memory
+        # Provide all previous outputs as context to the final prompt
+        full_justifications = "\n\n".join(
+            [msg.content for msg in memory.chat_memory.messages if hasattr(msg, "content")])
+        avg_score = (
+            sum([s for s in scores if s is not None]) / len([s for s in scores if s is not None])
+            if any(s is not None for s in scores) else "N/A"
+        )
+
+        final_prompt = (
+            f"You are an expert research artifact evaluator. Here are the individual chain-of-thought evaluations for all functionality criteria:\n\n"
+            f"{full_justifications}\n\n"
+            f"Based on the above, assign ONE final functionality score (1-5) for this artifact, "
+            f"with a brief justification (no more than 3 sentences). If some criteria are weak/missing, explain how that affects the final score."
+        )
+
+        final_summary = llm.invoke(final_prompt)
+        if verbose:
+            print(f"\n== FINAL FUNCTIONALITY SCORE ==\n{final_summary}\n")
+
+        return "\n\n".join(results) + "\n\n== FINAL FUNCTIONALITY SCORE ==\n" + final_summary
 
     def get_criteria(self) -> List[FunctionalityCriterion]:
         return self.criteria
