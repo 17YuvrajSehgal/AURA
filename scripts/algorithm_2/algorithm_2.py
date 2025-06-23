@@ -220,7 +220,7 @@ def save_analysis_result(result: dict, repo_name: str, output_dir="../../algo_ou
 
 
 # Example usage
-if __name__ == "__main__":
+#if __name__ == "__main__":
     #repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
     #repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
     #repo_url = "https://github.com/nntzuekai/Respector"
@@ -229,8 +229,8 @@ if __name__ == "__main__":
     #repo_url =  "https://github.com/JackyChok/AI_Code_Detection_Education"
     #repo_url = "https://github.com/JackyChok/AI_Code_Detection_Education"
     #repo_url = "https://github.com/huiAlex/TRIAD"
-    repo_url = "https://github.com/sola-st/PyTy"
-    result = analyze_repository(repo_url)
-
-    repo_name = repo_url.rstrip("/").split("/")[-1]
-    save_analysis_result(result, repo_name)
+    #repo_url = "https://github.com/sola-st/PyTy"
+    # result = analyze_repository(repo_url)
+    #
+    # repo_name = repo_url.rstrip("/").split("/")[-1]
+    # save_analysis_result(result, repo_name)

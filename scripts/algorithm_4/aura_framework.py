@@ -19,6 +19,9 @@ class AURA:
         self.artifact_json_path = artifact_json_path
         self.conference_name = conference_name
         self.criteria_csv_path = criteria_csv_path
+        
+        # Extract artifact name from the JSON file path
+        self.artifact_name = self._extract_artifact_name(artifact_json_path)
 
         self.keyword_agent = None
         if criteria_csv_path:
@@ -49,6 +52,27 @@ class AURA:
         self.func_agent = FunctionalityEvaluationAgent(
             guideline_path, artifact_json_path, conference_name,
             keyword_agent=self.keyword_agent, kg_agent=kg_agent)
+
+    def _extract_artifact_name(self, artifact_json_path: str) -> str:
+        """
+        Extract artifact name from the JSON file path.
+        Example: 'path/to/repo_name_analysis.json' -> 'repo_name'
+        """
+        try:
+            # Get the filename from the path
+            filename = os.path.basename(artifact_json_path)
+            # Remove '_analysis.json' suffix
+            if filename.endswith('_analysis.json'):
+                artifact_name = filename[:-14]  # Remove '_analysis.json'
+            else:
+                # Fallback: remove '.json' extension
+                artifact_name = os.path.splitext(filename)[0]
+            
+            logging.info(f"Extracted artifact name: {artifact_name}")
+            return artifact_name
+        except Exception as e:
+            logging.warning(f"Could not extract artifact name from {artifact_json_path}: {e}")
+            return "unknown_artifact"
 
     def evaluate(self, dimensions=None, verbose=True, include_keyword_eval=True):
         results = {}
@@ -88,10 +112,13 @@ class AURA:
                 results['functionality'] = str(func_result)
 
         # === Save combined CSV ===
-        self._save_all_to_csv(
-            results,
-            output_path="../../algo_outputs/algorithm_4_output/artifact_evals/full_evaluation.csv"
-        )
+        csv_filename = f"{self.artifact_name}_full_evaluation.csv"
+        csv_output_path = f"../../algo_outputs/algorithm_4_output/artifact_evals/{csv_filename}"
+        self._save_all_to_csv(results, csv_output_path)
+        logging.info(f"Saved evaluation results to: {csv_output_path}")
+        
+        # Store the CSV path for external access
+        self.last_csv_path = csv_output_path
 
         # === Keyword Baseline Evaluation ===
         if include_keyword_eval and self.keyword_agent:
@@ -188,6 +215,18 @@ class AURA:
             "keyword_evidence": dimension_evidence,
             "grounding_info": f"LLM evaluation was grounded with keyword evidence: {dimension_evidence['keywords_found'] if dimension_evidence else 'No evidence found'}"
         }
+
+    def get_csv_file_path(self) -> str:
+        """
+        Get the path to the last generated CSV file.
+        Returns the path to the artifact-specific CSV file.
+        """
+        if hasattr(self, 'last_csv_path'):
+            return self.last_csv_path
+        else:
+            # Generate the expected path
+            csv_filename = f"{self.artifact_name}_full_evaluation.csv"
+            return f"../../algo_outputs/algorithm_4_output/artifact_evals/{csv_filename}"
 
     def _save_all_to_csv(self, results: dict, output_path: str):
         output_dir = os.path.dirname(output_path)
