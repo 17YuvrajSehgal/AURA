@@ -5,11 +5,11 @@ from typing import List, Optional, Dict
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
 # === Logging Setup ===
@@ -46,7 +46,7 @@ class DocumentationEvaluationAgent:
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
             keyword_agent: Optional[object] = None,
-            kg_agent: Optional[object] = None,  # <--- NEW
+            kg_agent: Optional[object] = None
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -58,9 +58,9 @@ class DocumentationEvaluationAgent:
         self.keyword_agent = keyword_agent
         self.kg_agent = kg_agent
 
-
         logger.info(f"Initializing DocumentationEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
+        self.guideline_db = self._build_guideline_vector_db()
         self.artifact_docs = self._load_artifact_docs()
         self.sections = self._extract_required_sections()
 
@@ -80,25 +80,48 @@ class DocumentationEvaluationAgent:
         texts = ["\n".join(doc['content']) for doc in doc_files]
         return texts
 
+    def _build_guideline_vector_db(self):
+        logger.info("Building vector DB for conference guidelines.")
+        splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
+        guideline_chunks = splitter.split_text(self.guidelines)
+        embeddings = OpenAIEmbeddings()
+        db = Chroma.from_texts(guideline_chunks, embeddings, persist_directory=f"{self.persist_directory}_guidelines")
+        db.persist()
+        logger.info("Guideline vector DB built and persisted.")
+        return db
+
     def _extract_required_sections(self):
-        logger.info("Extracting required README sections using LLM.")
+        logger.info("Extracting required README sections using RAG on guideline vector DB.")
+        retriever = self.guideline_db.as_retriever(search_kwargs={'k': 6})
+        llm = OpenAI(temperature=0.0)
         parser = PydanticOutputParser(pydantic_object=ReadmeSectionsList)
-        guideline_prompt = PromptTemplate(
-            template=(
-                "Based on the following conference guidelines ,a list of required README sections, "
-                "return a JSON object with a `sections` field. "
-                "For example if it say: It should include a README file detailing the purpose, provenance, setup, and usage of the artifact., Then you should return purpose, provenance, setup, and usage in return"
-                "{format_instructions}\n"
-                "Conference Guidelines:\n{guidelines}"
-            ),
-            input_variables=["guidelines"],
+        prompt = PromptTemplate(
+            template="""
+                You are an expert at extracting required documentation sections from conference guidelines.
+
+                Based only on the retrieved context below, list ONLY the explicit sections/headings that MUST be present in the README or documentation files, ignoring general evaluation axes unless specifically stated as documentation requirements.
+
+                For each section, output its `name` and a brief `description`, based strictly on the retrieved guideline statements. Do NOT include general factors unless the text says these are documentation requirements.
+
+                {format_instructions}
+
+                Retrieved Context:
+                {context}
+
+                Question:
+                Which documentation/README sections are explicitly required?
+            """,
+            input_variables=["context"],
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
-        llm_gpt = OpenAI(temperature=0.0)
-        prompt_and_model = guideline_prompt | llm_gpt | parser
-        result = prompt_and_model.invoke({"guidelines": self.guidelines})
-        logger.info(f"Prompt used for section extraction:\n{guideline_prompt.format(guidelines=self.guidelines)}")
-        logger.info(f"Sections extracted: {[s.name for s in result.sections]}")
+
+        # RAG chain: get relevant context
+        query = "What sections/headings are explicitly required in the artifact README or documentation?"
+        retrieved = retriever.get_relevant_documents(query)
+        context = "\n\n".join([doc.page_content for doc in retrieved])
+
+        output = llm(prompt.format(context=context))
+        result = parser.parse(output)
         return result.sections
 
     def _build_vector_db(self):
@@ -150,45 +173,47 @@ class DocumentationEvaluationAgent:
         if not doc_sections:
             doc_sections = self.sections
 
-        section_questions = ""
-        for section in doc_sections:
-            section_questions += (
-                f"- Does the documentation include a '{section.name}' section? "
-                f"{section.description} Rate from 1-5 with justification.\n"
-            )
-
-        # Include keyword evidence in prompt
+        # Gather evidence
         keyword_context = ""
         if keyword_evidence:
-            keyword_context = f"""
-            KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
-            - Raw documentation score: {keyword_evidence.get('raw_score', 'N/A')}
-            - Weighted documentation score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
-            - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
-            - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
-            
-            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If documentation keywords are abundant, your score should reflect comprehensive documentation. If few documentation keywords are found, explain what's missing.
-            """
+            keyword_context = (
+                "KEYWORD-BASED EVIDENCE:\n"
+                f"- Raw documentation score: {keyword_evidence.get('raw_score', 'N/A')}\n"
+                f"- Weighted documentation score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}\n"
+                f"- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}\n"
+                f"- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}\n"
+            )
 
         kg_evidence = self._get_kg_evidence()
         kg_context = ""
         if kg_evidence:
             kg_context = (
-                f"KNOWLEDGE GRAPH EVIDENCE:\n"
+                "KNOWLEDGE GRAPH EVIDENCE:\n"
                 f"- Files described by README: {', '.join(kg_evidence.get('described_files', []))}\n"
                 f"- README has setup section: {kg_evidence.get('has_setup_section', False)}\n"
             )
 
+        # Chain-of-thought instructions
+        section_questions = ""
+        for section in doc_sections:
+            section_questions += (
+                f"Section: '{section.name}'\n"
+                f"Description: {section.description}\n"
+                "Step-by-step, do the following:\n"
+                "  1. Summarize the relevant evidence from the KEYWORD-BASED EVIDENCE and KNOWLEDGE GRAPH EVIDENCE above for this section.\n"
+                "  2. Based on this evidence, reason whether the section is present and sufficiently detailed.\n"
+                "  3. Assign a score from 1 (poor/missing) to 5 (excellent/complete) for this section, and provide a justification grounded in the evidence.\n"
+            )
+
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
-            "Evaluate ONLY the **documentation** of the artifact according to these required sections:\n\n"
-            f"{section_questions}\n"
+            "Your task is to evaluate ONLY the **documentation** of the artifact according to these required sections.\n\n"
             f"{keyword_context}\n"
             f"{kg_context}\n"
-            "Provide a score and justification for each documentation aspect. "
-            "Then give an overall documentation score and suggestions for improvement. "
-            "Do NOT evaluate other dimensions such as Availability, Functionality, Reusability, or Archival Repository.\n"
-            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
+            "For each required section, follow this chain-of-thought process:\n"
+            f"{section_questions}\n"
+            "After evaluating all sections, provide an overall documentation score (1-5) and suggestions for improvement.\n"
+            "IMPORTANT: Base your evaluation and scores ONLY on the evidence provided above. Do NOT make assumptions or hallucinate information."
         )
         logger.info(f"Documentation evaluation prompt:\n{prompt}")
         return prompt
