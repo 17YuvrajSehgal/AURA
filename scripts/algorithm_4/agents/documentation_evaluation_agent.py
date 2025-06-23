@@ -103,6 +103,8 @@ class DocumentationEvaluationAgent:
 
                 For each section, output its `name` and a brief `description`, based strictly on the retrieved guideline statements. Do NOT include general factors unless the text says these are documentation requirements.
 
+                Return ONLY valid JSON. Do not include any extra text, explanation, or markdown. The output must be a valid JSON object matching the schema below.
+
                 {format_instructions}
 
                 Retrieved Context:
@@ -121,6 +123,20 @@ class DocumentationEvaluationAgent:
         context = "\n\n".join([doc.page_content for doc in retrieved])
 
         output = llm(prompt.format(context=context))
+        # --- CLEAN THE OUTPUT ---
+        if isinstance(output, str):
+            output = output.strip()
+            # Remove leading "Output:" or similar
+            if output.lower().startswith("output:"):
+                output = output[len("output:"):].strip()
+            # Remove markdown code block if present
+            if output.startswith("```json"):
+                output = output[7:]
+            if output.startswith("```"):
+                output = output[3:]
+            if output.endswith("```"):
+                output = output[:-3]
+            output = output.strip()
         result = parser.parse(output)
         return result.sections
 

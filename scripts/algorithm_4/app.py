@@ -7,8 +7,8 @@ st.title("AURA: Unified Artifact Research Assessment")
 
 with st.sidebar:
     st.header("Artifact & Conference")
-    guideline_path = st.text_input("Conference Guidelines Path", value="../../data/conference_guideline_texts/processed/13_icse_2025.md")
-    artifact_json_path = st.text_input("Artifact JSON Path", value="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json")
+    guideline_path = st.text_input("Conference Guidelines Path", value="C:\\workplace\\AURA\\data\\conference_guideline_texts\\processed\\13_icse_2025.md")
+    artifact_json_path = st.text_input("Artifact JSON Path", value="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\PyTy_analysis.json")
     conference_name = st.text_input("Conference Name", value="ICSE 2025")
     
     st.header("Evaluation Options")
@@ -168,41 +168,3 @@ st.info("""
 - **Comparison Mode**: Side-by-side comparison of both methods
 - **Grounded Evaluation**: LLM evaluations with keyword evidence integration
 """)
-
-# Add example usage
-with st.expander("Example Usage"):
-    st.code("""
-# Basic usage with grounding
-aura = AURA(
-    guideline_path="path/to/guidelines.md",
-    artifact_json_path="path/to/artifact.json",
-    criteria_csv_path="path/to/criteria.csv"
-)
-
-# Full evaluation (LLM grounded with keywords)
-results = aura.evaluate()
-
-# Grounded evaluation for specific dimension
-grounded_result = aura.get_grounded_evaluation("documentation")
-
-# Comparison
-comparison = aura.compare_evaluations()
-    """)
-
-# Add grounding explanation
-with st.expander("How Grounding Works"):
-    st.markdown("""
-    **Keyword Grounding Process:**
-    
-    1. **Keyword Analysis**: The keyword agent analyzes the artifact for guideline-derived keywords
-    2. **Evidence Extraction**: For each dimension, extracts relevant keyword scores and found terms
-    3. **LLM Prompting**: The keyword evidence is included in LLM prompts as grounding context
-    4. **Consistency Check**: LLM evaluations are guided to be consistent with keyword evidence
-    5. **Hallucination Prevention**: LLMs are instructed to base evaluations on actual evidence, not assumptions
-    
-    **Benefits:**
-    - Prevents LLM hallucination by providing concrete evidence
-    - Ensures evaluations are grounded in actual artifact content
-    - Maintains qualitative reasoning while adding quantitative validation
-    - Provides transparency about what evidence was found
-    """)
