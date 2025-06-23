@@ -1,15 +1,17 @@
 import json
 import logging
-from typing import List, Optional, Dict
+import re
+from typing import Dict
+from typing import List, Optional
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
 # === Logging Setup ===
@@ -26,12 +28,86 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
+class UsabilityScore(BaseModel):
+    criterion: str = Field(description="Name of the usability criterion")
+    score: int = Field(ge=1, le=5, description="Score from 1 (poor) to 5 (excellent)")
+    justification: str = Field(description="Justification for the score")
+
+
+class UsabilityEvaluationResult(BaseModel):
+    overall_score: int = Field(ge=1, le=5)
+    criterion_scores: List[UsabilityScore]
+    suggestions: Optional[str] = None
+
+class UsabilityCriterionScore(BaseModel):
+    criterion: str
+    score: int = Field(ge=1, le=5)
+    justification: str
+
+class UsabilityEvaluationResult(BaseModel):
+    overall_score: int = Field(ge=1, le=5)
+    criterion_scores: List[UsabilityCriterionScore]
+    suggestions: Optional[str] = None
+
+
 class UsabilityCriterion(BaseModel):
     name: str = Field(description="Usability-related aspect or criterion to check")
     description: str = Field(description="Description of what this aspect means or how to check it")
 
+
 class UsabilityCriteriaList(BaseModel):
     criteria: List[UsabilityCriterion] = Field(description="List of required usability criteria for the conference")
+
+
+def _regex_fallback_parse(raw_output: str) -> dict:
+    try:
+        # Attempt to extract JSON block from malformed string
+        json_match = re.search(r"\{.*\}", raw_output, re.DOTALL)
+        if json_match:
+            partial_json = json_match.group(0)
+            try:
+                return json.loads(partial_json)
+            except json.JSONDecodeError as e:
+                logger.warning(f"Partial JSON found but still invalid: {e}")
+
+        # Fallback to extract individual scores
+        criterion_blocks = re.findall(
+            r'{"criterion"\s*:\s*"(.+?)",\s*"score"\s*:\s*(\d),\s*"justification"\s*:\s*"(.*?)"}',
+            raw_output,
+            re.DOTALL
+        )
+
+        criterion_scores = []
+        for crit, score, justification in criterion_blocks:
+            criterion_scores.append({
+                "criterion": crit.strip(),
+                "score": int(score),
+                "justification": justification.strip()
+            })
+
+        if not criterion_scores:
+            raise ValueError("No criterion blocks extracted")
+
+        # Infer overall score
+        overall_score = round(sum(c["score"] for c in criterion_scores) / len(criterion_scores))
+
+        suggestions_match = re.search(
+            r'"suggestions"\s*:\s*"(.+?)"', raw_output, re.DOTALL
+        )
+        suggestions = suggestions_match.group(1).strip() if suggestions_match else None
+
+        return {
+            "overall_score": overall_score,
+            "criterion_scores": criterion_scores,
+            "suggestions": suggestions
+        }
+
+    except Exception as e:
+        logger.warning(f"Regex fallback parsing failed: {e}")
+        return {"error": f"Regex fallback failed: {e}", "raw_output": raw_output}
+
+
+
 
 class UsabilityEvaluationAgent:
     def __init__(
@@ -135,17 +211,17 @@ class UsabilityEvaluationAgent:
         """Get keyword-based evidence for usability evaluation"""
         if not self.keyword_agent:
             return {}
-        
+
         try:
             keyword_results = self.keyword_agent.evaluate(verbose=False)
             usability_dim = None
-            
+
             # Find usability dimension in keyword results
             for dim in keyword_results.get('dimensions', []):
                 if dim['dimension'].lower() == 'usability':
                     usability_dim = dim
                     break
-            
+
             if usability_dim:
                 return {
                     'raw_score': usability_dim['raw_score'],
@@ -155,13 +231,13 @@ class UsabilityEvaluationAgent:
                 }
         except Exception as e:
             logger.warning(f"Could not get keyword evidence: {e}")
-        
+
         return {}
 
     def _build_eval_prompt(self):
         # Get keyword-based evidence
         keyword_evidence = self._get_keyword_evidence()
-        
+
         # Chain-of-thought: For each criterion, check for related file references and read/verify file if mentioned
         chain_of_thought_steps = ""
         for criterion in self.criteria:
@@ -192,14 +268,38 @@ IMPORTANT: Your evaluation should be consistent with this keyword evidence. If u
             "For each, follow the chain-of-thought process:\n\n"
             f"{chain_of_thought_steps}\n"
             f"{keyword_context}\n"
-            "Do NOT evaluate dimensions such as Documentation, Availability, Functionality, or Reusability.\n"
-            "At the end, provide a detailed usability score and suggestions for improvement.\n"
-            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
+            "Do NOT evaluate dimensions such as Documentation, Availability, Functionality, Reusability, or Archival Repository.\n\n"
+            "Only evaluate the following usability-specific criteria:\n"
+            + "\n".join(f"- {c.name}" for c in self.criteria) +
+            "\n\nReturn a valid JSON object strictly in this format:\n"
+            "{\n"
+            '  "overall_score": 4,\n'
+            '  "criterion_scores": [\n'
+            "    {\n"
+            '      "criterion": "Installation Instructions",\n'
+            '      "score": 5,\n'
+            '      "justification": "The README contains clear setup steps and all dependencies are listed."\n'
+            "    }\n"
+            "  ],\n"
+            '  "suggestions": "Consider adding a Dockerfile for easier deployment."\n'
+            "}\n\n"
+            "STRICT RULES:\n"
+            "- DO NOT include extra criteria or unrelated dimensions like Availability or Documentation.\n"
+            "- Only return valid JSON, no explanation or markdown.\n"
+            "- If unsure about a score, provide a best-effort estimate with justification.\n"
+
+            "IMPORTANT:\n"
+            "- Only return valid JSON, without any commentary, explanation, or markdown.\n"
+            "- Base your evaluation on actual evidence found in the artifact.\n"
+            "- Justify each score.\n"
+            "- Do not include dimensions like Documentation, Functionality, or Availability."
         )
+
         logger.info(f"Usability evaluation prompt:\n{prompt}")
         return prompt
+    
 
-    def evaluate(self, verbose: bool = True) -> str:
+    def evaluate(self, verbose: bool = True) -> UsabilityEvaluationResult | dict:
         prompt = self._build_eval_prompt()
         llm = OpenAI(temperature=0.2)
         qa_chain = RetrievalQA.from_chain_type(
@@ -209,10 +309,39 @@ IMPORTANT: Your evaluation should be consistent with this keyword evidence. If u
         )
         logger.info("Running artifact usability evaluation chain...")
         result = qa_chain({"query": prompt})
-        logger.info(f"LLM output:\n{result['result']}")
+        raw_output = result.get("result", "")
+        logger.info(f"LLM output:\n{raw_output}")
+
         if verbose:
-            print(result['result'])
-        return result['result']
+            print(raw_output)
+
+        # Parse JSON with error recovery
+        try:
+            cleaned = raw_output.strip()
+            if cleaned.startswith("```json"):
+                cleaned = cleaned[7:]
+            elif cleaned.startswith("```"):
+                cleaned = cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+
+            parsed_json = json.loads(cleaned)
+
+            for crit in parsed_json.get("criterion_scores", []):
+                if "justification" not in crit:
+                    crit["justification"] = "No justification provided."
+
+            return UsabilityEvaluationResult(**parsed_json)
+        except Exception as e:
+            logger.warning(f"Failed to parse usability result: {e}")
+            # Fallback to regex parsing
+            fallback_result = _regex_fallback_parse(raw_output)
+            if "error" not in fallback_result:
+                try:
+                    return UsabilityEvaluationResult(**fallback_result)
+                except Exception as fallback_error:
+                    logger.warning(f"Fallback structured parse failed: {fallback_error}")
+            return fallback_result
 
     def get_criteria(self) -> List[UsabilityCriterion]:
         return self.criteria
@@ -223,6 +352,7 @@ IMPORTANT: Your evaluation should be consistent with this keyword evidence. If u
 
     def get_file_content(self, filename: str) -> Optional[str]:
         return self._get_file_content(filename)
+
 
 
 # Example usage (commented out)
