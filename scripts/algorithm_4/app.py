@@ -25,7 +25,7 @@ with st.sidebar:
     if include_keyword_eval:
         criteria_csv_path = st.text_input(
             "Criteria CSV Path", 
-            value="../../algo_outputs/algorithm_1_output/algorithm_1_artifact_evaluation_criteria.csv"
+            value="C:\\workplace\\AURA\\algo_outputs\\algorithm_1_output\\algorithm_1_artifact_evaluation_criteria.csv"
         )
     
     evaluation_mode = st.selectbox(

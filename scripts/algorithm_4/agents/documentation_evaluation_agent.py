@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
@@ -33,6 +33,17 @@ class ReadmeSection(BaseModel):
 
 class ReadmeSectionsList(BaseModel):
     sections: List[ReadmeSection] = Field(description="List of required README sections for the conference")
+
+class SectionScore(BaseModel):
+    section: str = Field(description="Name of the documentation section")
+    score: int = Field(ge=1, le=5, description="Score assigned to the section")
+    justification: str = Field(description="Justification for the score")
+
+class DocumentationEvaluationResult(BaseModel):
+    overall_score: int = Field(ge=1, le=5)
+    section_scores: List[SectionScore]
+    suggestions: Optional[str] = None
+
 
 
 class DocumentationEvaluationAgent:
@@ -234,7 +245,7 @@ class DocumentationEvaluationAgent:
         logger.info(f"Documentation evaluation prompt:\n{prompt}")
         return prompt
 
-    def evaluate(self, verbose: bool = True) -> str:
+    def evaluate(self, verbose: bool = True) -> DocumentationEvaluationResult | dict[str, str | Any]:
         prompt = self._build_eval_prompt()
         llm = OpenAI(temperature=0.2)
         qa_chain = RetrievalQA.from_chain_type(
@@ -247,7 +258,15 @@ class DocumentationEvaluationAgent:
         logger.info(f"LLM output:\n{result['result']}")
         if verbose:
             print(result['result'])
-        return result['result']
+
+        # Try parsing structured output
+        try:
+            parsed_result = json.loads(result['result'])
+            structured = DocumentationEvaluationResult(**parsed_result)
+            return structured
+        except Exception as e:
+            logger.warning(f"Could not parse structured documentation result: {e}")
+            return {"error": "Failed to parse documentation result", "raw_output": result['result']}
 
     def get_sections(self) -> List[ReadmeSection]:
         return self.sections
