@@ -75,16 +75,41 @@ class FunctionalityEvaluationAgent:
         logger.info("Extracting functionality criteria using LLM.")
         parser = PydanticOutputParser(pydantic_object=FunctionalityCriteriaList)
         guideline_prompt = PromptTemplate(
-            template=(
-                "Based on the following conference guidelines, "
-                "return a JSON object with a `criteria` field (a list of functionality aspects that should be evaluated for the artifact). "
-                "These should focus on whether the artifact does what it claims, can be executed as described, produces the expected outputs, and includes relevant scripts or test results. "
-                "{format_instructions}\n"
-                "Conference Guidelines:\n{guidelines}"
-            ),
-            input_variables=["guidelines"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
+            template="""
+                You are an expert at extracting *only* the criteria required to evaluate the **functionality** of a research software artifact, based strictly on the provided conference guidelines.
+        
+                **Functionality criteria** are those that directly relate to:
+                - Whether the artifact works as claimed (performs its intended tasks or computations)
+                - Whether it can be executed successfully (is runnable, produces results as expected)
+                - Whether it includes test cases, test results, or evidence of validation and verification
+                - Whether scripts or instructions are provided to exercise the artifact (e.g., main scripts, demo scripts, test scripts)
+                - Whether input/output examples are provided and produce the expected outputs
+        
+                **You MUST exclude** all criteria relating to:
+                - Documentation quality or completeness (unless documentation is required *for* functionality verification)
+                - Availability, accessibility, or archival status of the artifact
+                - Reusability, extensibility, or future use by others
+                - Licensing, provenance, setup, or general usability
+        
+                **Your task:**
+                1. Read the conference guidelines below.
+                2. Extract ONLY those criteria that directly relate to the artifact's functionality as defined above.
+                3. For each, provide:
+                   - `name`: concise description of the functionality aspect to evaluate (e.g., "Successful Execution", "Test Coverage", "Output Verification")
+                   - `description`: a brief, specific explanation of what to check or how to check it, based strictly on the guideline text.
+        
+                **Output format:**  
+                Return a JSON object with a `criteria` field, where each item has `name` and `description` fields as described above. Exclude anything not directly related to functionality.
+        
+                {format_instructions}
+        
+                Conference Guidelines:
+                {guidelines}
+            """,
+                input_variables=["guidelines"],
+                partial_variables={"format_instructions": parser.get_format_instructions()},
+            )
+
         llm_gpt = OpenAI(temperature=0.0)
         prompt_and_model = guideline_prompt | llm_gpt | parser
         result = prompt_and_model.invoke({"guidelines": self.guidelines})
@@ -176,14 +201,14 @@ class FunctionalityEvaluationAgent:
         keyword_context = ""
         if keyword_evidence:
             keyword_context = f"""
-KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
-- Raw functionality score: {keyword_evidence.get('raw_score', 'N/A')}
-- Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
-- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
-- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
-
-IMPORTANT: Your evaluation should be consistent with this keyword evidence. If functionality keywords (testing, verification, etc.) are abundant, your score should reflect strong functionality evidence. If few functionality keywords are found, explain what's missing.
-"""
+            KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
+            - Raw functionality score: {keyword_evidence.get('raw_score', 'N/A')}
+            - Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
+            - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
+            - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+            
+            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If functionality keywords (testing, verification, etc.) are abundant, your score should reflect strong functionality evidence. If few functionality keywords are found, explain what's missing.
+            """
 
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
