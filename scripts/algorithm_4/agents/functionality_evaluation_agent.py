@@ -8,11 +8,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import OpenAI
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings, OpenAI
 from pydantic import BaseModel, Field
 
-# === Logging Setup ===
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
@@ -22,10 +20,38 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-
 load_dotenv()
 
 
+# ---------- Utility Summarizers ----------
+def summarize_list(lst, label, max_items=7):
+    if not lst:
+        return f"- {label}: None\n"
+    uniq = list(dict.fromkeys(lst))
+    s = f"- {label}: {', '.join(uniq[:max_items])}"
+    if len(uniq) > max_items:
+        s += f", ...and {len(uniq) - max_items} more"
+    return s + "\n"
+
+
+def summarize_output_sections(sections, max_sections=3, max_len=120):
+    if not sections:
+        return "- Output/example/result sections: None\n"
+    lines = []
+    for s in sections[:max_sections]:
+        summary = s['content'][:max_len].replace("\n", " ")
+        lines.append(f"  * {s['file']}::{s['section']}: {summary}")
+    if len(sections) > max_sections:
+        lines.append(f"  ...and {len(sections) - max_sections} more.")
+    return "- Output/example/result sections (sample):\n" + "\n".join(lines) + "\n"
+
+
+def safe_str(obj):
+    # Defend against None and truncate
+    return str(obj)[:300] if obj is not None else ""
+
+
+# --------- Core Agent Classes ----------
 class FunctionalityCriterion(BaseModel):
     name: str = Field(description="Functionality aspect to check")
     description: str = Field(description="Description of what this aspect means or how to check it")
@@ -113,7 +139,6 @@ class FunctionalityEvaluationAgent:
             input_variables=["guidelines"],
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
-
         llm_gpt = OpenAI(temperature=0.0)
         prompt_and_model = guideline_prompt | llm_gpt | parser
         result = prompt_and_model.invoke({"guidelines": self.guidelines})
@@ -159,150 +184,140 @@ class FunctionalityEvaluationAgent:
         return None
 
     def _get_keyword_evidence(self) -> Dict:
-        """Get keyword-based evidence for functionality evaluation"""
         if not self.keyword_agent:
             return {}
-
         try:
             keyword_results = self.keyword_agent.evaluate(verbose=False)
-            functionality_dim = None
-
-            # Find functionality dimension in keyword results
             for dim in keyword_results.get('dimensions', []):
                 if dim['dimension'].lower() == 'functionality':
-                    functionality_dim = dim
-                    break
-
-            if functionality_dim:
-                return {
-                    'raw_score': functionality_dim['raw_score'],
-                    'weighted_score': functionality_dim['weighted_score'],
-                    'keywords_found': functionality_dim['keywords_found'],
-                    'overall_score': keyword_results.get('overall_score', 0)
-                }
+                    return {
+                        'raw_score': dim['raw_score'],
+                        'weighted_score': dim['weighted_score'],
+                        'keywords_found': dim['keywords_found'],
+                        'overall_score': keyword_results.get('overall_score', 0)
+                    }
         except Exception as e:
             logger.warning(f"Could not get keyword evidence: {e}")
-
         return {}
 
     def _get_kg_evidence(self) -> Dict:
         if not self.kg_agent:
             return {}
-
         evidence = {}
-
-        # 1. Does the repo have test files?
+        # 1. Has tests/scripts
         evidence['has_tests'] = self.kg_agent.test_files_exist()
-
-        # 2. Does the repo have executable scripts?
-        # (e.g., 'main.py', 'run.sh', or scripts in root)
         evidence['has_main_py'] = self.kg_agent.file_exists('main.py')
         evidence['has_run_sh'] = self.kg_agent.file_exists('run.sh')
-
-        # 3. Evidence of verification/validation (test files or sections)
-        evidence['test_file_list'] = []
-        test_files = self.kg_agent.run_cypher(
-            "MATCH (t:Test) RETURN t.name AS name"
-        )
-        evidence['test_file_list'] = [t['name'] for t in test_files]
-
-        # 4. Presence of code files described by the README (could indicate demo scripts)
-        evidence['described_files'] = [
-            r['code.name'] for r in self.kg_agent.run_cypher(
-                "MATCH (doc:File {name: 'README.md'})-[:DESCRIBES]->(code:File) RETURN code.name"
-            )
-        ]
-
-        # 5. Presence of output examples (sections containing "output" or "result")
+        # 2. Deduplicate/shorten lists
+        test_files = self.kg_agent.run_cypher("MATCH (t:Test) RETURN t.name AS name")
+        evidence['test_file_list'] = list(dict.fromkeys([t['name'] for t in test_files]))
+        described_files = self.kg_agent.run_cypher(
+            "MATCH (doc:File {name: 'README.md'})-[:DESCRIBES]->(code:File) RETURN code.name")
+        evidence['described_files'] = list(dict.fromkeys([r['code.name'] for r in described_files]))
         output_sections = self.kg_agent.run_cypher(
-            """
-            MATCH (f:File)-[:CONTAINS]->(s:Section)
-            WHERE toLower(s.content) CONTAINS 'output'
-               OR toLower(s.content) CONTAINS 'result'
-            RETURN f.name AS file, s.name AS section, s.content AS content
-            """
-        )
+            "MATCH (f:File)-[:CONTAINS]->(s:Section) WHERE toLower(s.content) CONTAINS 'output' OR toLower(s.content) CONTAINS 'result' RETURN f.name AS file, s.name AS section, s.content AS content")
+        # Only first N and truncated to K chars
         evidence['output_sections'] = [
-            {"file": s["file"], "section": s["section"], "content": s["content"][:200]} for s in output_sections
+            {"file": s["file"], "section": s["section"], "content": s["content"][:120]}
+            for s in output_sections[:5]
         ]
-
-        # 6. Presence of scripts for execution (e.g., files of type 'code' in root)
-        code_files = self.kg_agent.run_cypher(
-            "MATCH (f:File {type: 'code'}) RETURN f.name AS name"
-        )
-        evidence['code_files'] = [c['name'] for c in code_files]
-
+        code_files = self.kg_agent.run_cypher("MATCH (f:File {type: 'code'}) RETURN f.name AS name")
+        evidence['code_files'] = list(dict.fromkeys([c['name'] for c in code_files]))
         return evidence
 
     def _build_eval_prompt(self):
-        # Get keyword-based evidence
         keyword_evidence = self._get_keyword_evidence()
         kg_evidence = self._get_kg_evidence()
 
-        chain_of_thought_steps = ""
-        for criterion in self.criteria:
-            chain_of_thought_steps += (
-                f"Criterion: {criterion.name}\n"
-                f"Description: {criterion.description}\n"
-                "Step 1: Identify claims made in the documentation about the artifact's functionality.\n"
-                "Step 2: Look for scripts or files (such as main.py, run.sh, test scripts, or evaluation scripts) that support these claims.\n"
-                "Step 3: Check whether the necessary files/scripts are present in the repository. If present, inspect their content for relevance and completeness.\n"
-                "Step 4: If test results or output examples are claimed, check if these are present.\n"
-                "Step 5: Based on all information, rate this aspect from 1-5 and justify your score with evidence from the artifact.\n\n"
-            )
+        # ----- Summarize KG Evidence -----
+        kg_context = "KNOWLEDGE GRAPH EVIDENCE:\n"
+        kg_context += f"- Has tests: {safe_str(kg_evidence.get('has_tests'))}\n"
+        kg_context += f"- Has main.py: {safe_str(kg_evidence.get('has_main_py'))}\n"
+        kg_context += f"- Has run.sh: {safe_str(kg_evidence.get('has_run_sh'))}\n"
+        kg_context += summarize_list(kg_evidence.get('test_file_list'), "Test files")
+        kg_context += summarize_list(kg_evidence.get('described_files'), "Code files described by README")
+        kg_context += summarize_list(kg_evidence.get('code_files'), "Code files")
+        kg_context += summarize_output_sections(kg_evidence.get('output_sections'))
 
-        # Include keyword evidence in prompt
+        # Keyword evidence
         keyword_context = ""
         if keyword_evidence:
-            keyword_context = f"""
-            KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
-            - Raw functionality score: {keyword_evidence.get('raw_score', 'N/A')}
-            - Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
-            - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
-            - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
+            keyword_context = (
+                "KEYWORD-BASED EVIDENCE (summarized):\n"
+                f"- Raw functionality score: {keyword_evidence.get('raw_score', 'N/A')}\n"
+                f"- Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A')}\n"
+                f"- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}\n"
+                f"- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A')}\n"
+            )
 
-            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If functionality keywords (testing, verification, etc.) are abundant, your score should reflect strong functionality evidence. If few functionality keywords are found, explain what's missing.
-            """
-
-        kg_context = ""
-        if kg_evidence:
-            kg_context += "KNOWLEDGE GRAPH EVIDENCE:\n"
-            kg_context += f"- Has tests: {kg_evidence.get('has_tests', False)}\n"
-            kg_context += f"- Has main.py: {kg_evidence.get('has_main_py', False)}\n"
-            kg_context += f"- Has run.sh: {kg_evidence.get('has_run_sh', False)}\n"
-            kg_context += f"- Test files: {', '.join(kg_evidence.get('test_file_list', []))}\n"
-            kg_context += f"- Code files described by README: {', '.join(kg_evidence.get('described_files', []))}\n"
-            kg_context += f"- Code files: {', '.join(kg_evidence.get('code_files', []))}\n"
-            if kg_evidence.get('output_sections'):
-                kg_context += f"- Output/example/result sections (first 200 chars):\n"
-                for out in kg_evidence['output_sections']:
-                    kg_context += f"  * {out['file']}::{out['section']}: {out['content']}\n"
-
-            prompt = (
+        # ----- Assemble Prompt -----
+        evidence_chunks = []
+        for criterion in self.criteria:
+            retrieval_query = f"Evidence for {criterion.name}: {criterion.description}"
+            docs = self.db.as_retriever(search_kwargs={'k': 3}).get_relevant_documents(retrieval_query)
+            content = "\n".join([doc.page_content[:300] for doc in docs])
+            evidence_chunks.append(
+                f"Criterion: {criterion.name}\nDescription: {criterion.description}\nEvidence:\n{content}\n"
+                "Step-by-step: ..."
+            )
+        prompt = (
                 f"You are an expert artifact evaluator for {self.conference_name}.\n"
                 "Evaluate ONLY the **Functionality** of the artifact according to the following criteria.\n"
-                f"{keyword_context}\n"
-                f"{kg_context}\n"
-                # (add your chain-of-thought instructions)
-                # ...
-            )
-        logger.info(f"Functionality evaluation prompt:\n{prompt}")
+                + "\n".join(evidence_chunks)
+                + "At the end, provide a functionality score and suggestions."
+        )
+
+        # Warn if too long
+        if len(prompt) > 12000:
+            logger.warning("Prompt is over 12,000 characters. Evidence has been truncated.")
         return prompt
 
-    def evaluate(self, verbose: bool = True) -> str:
-        prompt = self._build_eval_prompt()
+    def evaluate(self, verbose=True):
+        results = []
         llm = OpenAI(temperature=0.2)
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=self.db.as_retriever(search_kwargs={'k': 5}),
-            chain_type="stuff"
-        )
-        logger.info("Running artifact functionality evaluation chain...")
-        result = qa_chain({"query": prompt})
-        logger.info(f"LLM output:\n{result['result']}")
-        if verbose:
-            print(result['result'])
-        return result['result']
+
+        for criterion in self.criteria:
+            # Step 1: Retrieve context for this criterion
+            retrieval_query = f"Show all evidence the artifact supports: {criterion.name}. {criterion.description}"
+            docs = self.db.as_retriever(search_kwargs={'k': 3}).get_relevant_documents(retrieval_query)
+            content = "\n".join([doc.page_content[:250] for doc in docs]) or "No evidence found."
+
+            # Step 2: Get relevant KG/keyword evidence for this criterion (you can add fine-grained filters here)
+            kg_ev = self._get_kg_evidence()
+            keyword_ev = self._get_keyword_evidence()
+            kg_str = ""
+            if kg_ev:  # Add only fields that relate to this criterion!
+                # Example for "test" criterion:
+                if "test" in criterion.name.lower():
+                    kg_str += summarize_list(kg_ev.get('test_file_list'), "Test files")
+                    kg_str += summarize_output_sections(kg_ev.get('output_sections'))
+            keyword_str = ""
+            if keyword_ev:
+                keyword_str = (
+                    f"- Raw functionality score: {keyword_ev.get('raw_score', 'N/A')}\n"
+                    f"- Weighted functionality score: {keyword_ev.get('weighted_score', 'N/A')}\n"
+                    f"- Keywords found: {', '.join(keyword_ev.get('keywords_found', []))}\n"
+                )
+
+            # Step 3: Build short prompt for this criterion
+            prompt = (
+                f"You are evaluating the **Functionality** of a research artifact for the criterion:\n"
+                f"Criterion: {criterion.name}\nDescription: {criterion.description}\n\n"
+                f"Evidence from artifact (retrieved):\n{content}\n"
+                f"Knowledge Graph evidence:\n{kg_str or 'None'}\n"
+                f"Keyword evidence:\n{keyword_str or 'None'}\n"
+                f"Step-by-step, does the artifact satisfy this criterion? Give a 1-5 score and justification. "
+                f"If evidence is missing, state so clearly."
+            )
+
+            # Step 4: LLM call (single criterion, short context!)
+            response = llm.invoke(prompt)
+            results.append(f"### {criterion.name}\n{response}")
+            if verbose:
+                print(f"\n== {criterion.name} ==\n{response}\n")
+
+        # Optionally: aggregate results, compute total score, etc.
+        return "\n\n".join(results)
 
     def get_criteria(self) -> List[FunctionalityCriterion]:
         return self.criteria
