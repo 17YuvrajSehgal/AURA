@@ -51,6 +51,17 @@ def safe_str(obj):
     # Defend against None and truncate
     return str(obj)[:300] if obj is not None else ""
 
+class FunctionalityCriterionScore(BaseModel):
+    criterion: str
+    score: int
+    justification: str
+
+class FunctionalityEvaluationResult(BaseModel):
+    overall_score: float
+    criterion_scores: List[FunctionalityCriterionScore]
+    suggestions: Optional[str] = None
+
+
 
 # --------- Core Agent Classes ----------
 class FunctionalityCriterion(BaseModel):
@@ -277,9 +288,8 @@ class FunctionalityEvaluationAgent:
         from langchain.memory import ConversationBufferMemory
 
         results = []
-        scores = []
+        criterion_scores = []
         memory = ConversationBufferMemory(return_messages=True)
-
         llm = OpenAI(temperature=0.2)
 
         for criterion in self.criteria:
@@ -289,17 +299,13 @@ class FunctionalityEvaluationAgent:
 
             kg_ev = self._get_kg_evidence()
             keyword_ev = self._get_keyword_evidence()
-            kg_str = ""
-            if kg_ev and "test" in criterion.name.lower():
-                kg_str += summarize_list(kg_ev.get('test_file_list'), "Test files")
-                kg_str += summarize_output_sections(kg_ev.get('output_sections'))
-            keyword_str = ""
-            if keyword_ev:
-                keyword_str = (
-                    f"- Raw functionality score: {keyword_ev.get('raw_score', 'N/A')}\n"
-                    f"- Weighted functionality score: {keyword_ev.get('weighted_score', 'N/A')}\n"
-                    f"- Keywords found: {', '.join(keyword_ev.get('keywords_found', []))}\n"
-                )
+            kg_str = summarize_list(kg_ev.get('test_file_list'), "Test files") + summarize_output_sections(
+                kg_ev.get('output_sections')) if "test" in criterion.name.lower() else ""
+            keyword_str = (
+                f"- Raw functionality score: {keyword_ev.get('raw_score', 'N/A')}\n"
+                f"- Weighted functionality score: {keyword_ev.get('weighted_score', 'N/A')}\n"
+                f"- Keywords found: {', '.join(keyword_ev.get('keywords_found', []))}\n"
+            ) if keyword_ev else ""
 
             prompt = (
                 f"You are evaluating the **Functionality** of a research artifact for the criterion:\n"
@@ -308,47 +314,72 @@ class FunctionalityEvaluationAgent:
                 f"Knowledge Graph evidence:\n{kg_str or 'None'}\n"
                 f"Keyword evidence:\n{keyword_str or 'None'}\n"
                 f"Step-by-step, does the artifact satisfy this criterion? Give a 1-5 score and justification. "
-                f"If evidence is missing, state so clearly."
+                f"Respond with a valid JSON like: {{\"criterion\": \"...\", \"score\": <int>, \"justification\": \"...\"}}"
             )
 
             response = llm.invoke(prompt)
-            results.append(f"### {criterion.name}\n{response}")
-
-            # Attempt to extract the score for this criterion (must be present as 1-5 in the LLM output)
-            import re
-            score_match = re.search(r'(\b[1-5]\b)', response)
-            if score_match:
-                scores.append(int(score_match.group(1)))
-            else:
-                scores.append(None)  # Or default
-
-            # Save to memory (for use in final evaluation)
             memory.save_context({"input": prompt}, {"output": response})
+
+            try:
+                parsed = FunctionalityCriterionScore.parse_raw(response)
+                criterion_scores.append(parsed)
+                results.append(parsed.json())
+            except Exception as e:
+                logger.warning(f"Failed to parse response for {criterion.name}: {e}")
+                results.append(response)
 
             if verbose:
                 print(f"\n== {criterion.name} ==\n{response}\n")
 
-        # Aggregate and compute final score using all previous outputs in memory
-        # Provide all previous outputs as context to the final prompt
+        # Final score summary prompt
+        # Final score summary prompt
         full_justifications = "\n\n".join(
             [msg.content for msg in memory.chat_memory.messages if hasattr(msg, "content")])
-        avg_score = (
-            sum([s for s in scores if s is not None]) / len([s for s in scores if s is not None])
-            if any(s is not None for s in scores) else "N/A"
-        )
-
         final_prompt = (
-            f"You are an expert research artifact evaluator. Here are the individual chain-of-thought evaluations for all functionality criteria:\n\n"
-            f"{full_justifications}\n\n"
-            f"Based on the above, assign ONE final functionality score (1-5) for this artifact, "
-            f"with a brief justification (no more than 3 sentences). If some criteria are weak/missing, explain how that affects the final score."
+            f"You are an expert evaluator. Based on these evaluations, assign one final score for functionality.\n"
+            f"Use this JSON format: {{\"overall_score\": <1-5>, \"justification\": \"...\", \"suggestions\": \"...\"}}\n"
+            f"{full_justifications}"
         )
 
-        final_summary = llm.invoke(final_prompt)
+        final_response = llm.invoke(final_prompt)
         if verbose:
-            print(f"\n== FINAL FUNCTIONALITY SCORE ==\n{final_summary}\n")
+            print(f"\n== FINAL FUNCTIONALITY SCORE ==\n{final_response}\n")
 
-        return "\n\n".join(results) + "\n\n== FINAL FUNCTIONALITY SCORE ==\n" + final_summary
+        try:
+            # Primary attempt: strict JSON parsing
+            final_data = json.loads(final_response)
+            return FunctionalityEvaluationResult(
+                overall_score=final_data["overall_score"],
+                criterion_scores=criterion_scores,
+                suggestions=final_data.get("suggestions", "")
+            )
+        except Exception as json_err:
+            logger.warning(f"Failed to parse final summary: {json_err}")
+
+            # Fallback 1: regex-based parsing
+            import re
+            try:
+                score_match = re.search(r"(?i)final\s+functionality\s+score\s*[:\-]?\s*(\d)", final_response)
+                justification_match = re.search(r"(?i)justification\s*[:\-]?\s*(.+?)(?:\n|$)", final_response)
+                suggestions_match = re.search(r"(?i)suggestions\s*[:\-]?\s*(.+?)(?:\n|$)", final_response)
+
+                overall_score = int(score_match.group(1)) if score_match else None
+                justification = justification_match.group(
+                    1).strip() if justification_match else "No justification found."
+                suggestions = suggestions_match.group(1).strip() if suggestions_match else "No suggestions found."
+
+                return FunctionalityEvaluationResult(
+                    overall_score=overall_score or 0,
+                    criterion_scores=criterion_scores,
+                    suggestions=suggestions
+                )
+            except Exception as regex_err:
+                logger.warning(f"Fallback regex parse also failed: {regex_err}")
+
+                return {
+                    "error": "Parsing final functionality summary failed.",
+                    "raw_output": final_response
+                }
 
     def get_criteria(self) -> List[FunctionalityCriterion]:
         return self.criteria

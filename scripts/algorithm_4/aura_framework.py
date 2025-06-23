@@ -4,7 +4,7 @@ import os
 
 from agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
 from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
-from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
+from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent, FunctionalityEvaluationResult
 from agents.keyword_evaluation_agent import KeywordEvaluationAgent
 from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
 from agents.usability_evaluation_agent import UsabilityEvaluationAgent
@@ -49,36 +49,50 @@ class AURA:
             guideline_path, artifact_json_path, conference_name,
             keyword_agent=self.keyword_agent, kg_agent=kg_agent)
 
-    def evaluate(self, dimensions=None, verbose=False, include_keyword_eval=True):
+    def evaluate(self, dimensions=None, verbose=True, include_keyword_eval=True):
         results = {}
         dimensions = dimensions or ['documentation', 'usability', 'accessibility', 'functionality']
 
-        doc_result = self.doc_agent.evaluate(verbose)
+        # === Documentation ===
+        doc_result = self.doc_agent.evaluate(verbose=True)
         if isinstance(doc_result, dict) and "error" in doc_result:
             results['documentation'] = doc_result["raw_output"]
         else:
             results['documentation'] = doc_result
 
-        access_result = self.access_agent.evaluate(verbose)
+        # === Accessibility ===
+        access_result = self.access_agent.evaluate(verbose=True)
         if isinstance(access_result, dict) and "error" in access_result:
             results['accessibility'] = access_result["raw_output"]
         else:
             results['accessibility'] = access_result
 
+        # === Usability ===
         if 'usability' in dimensions:
-            usability_result = self.usability_agent.evaluate(verbose)
+            usability_result = self.usability_agent.evaluate(verbose=True)
             if isinstance(usability_result, dict) and "error" in usability_result:
                 results['usability'] = usability_result["raw_output"]
             else:
                 results['usability'] = usability_result
 
+        # === Functionality ===
         if 'functionality' in dimensions:
-            results['functionality'] = "0 poor functionality"  # self.func_agent.evaluate(verbose)
+            func_result = self.func_agent.evaluate(verbose)
+            if isinstance(func_result, dict) and "error" in func_result:
+                results['functionality'] = func_result["raw_output"]
+            elif isinstance(func_result, FunctionalityEvaluationResult):
+                results['functionality'] = func_result
+            else:
+                # Fallback: assume raw output
+                results['functionality'] = str(func_result)
 
-        # Save all results to a single CSV
-        self._save_all_to_csv(results,
-                              output_path="../../algo_outputs/algorithm_4_output/artifact_evals/full_evaluation.csv")
+        # === Save combined CSV ===
+        self._save_all_to_csv(
+            results,
+            output_path="../../algo_outputs/algorithm_4_output/artifact_evals/full_evaluation.csv"
+        )
 
+        # === Keyword Baseline Evaluation ===
         if include_keyword_eval and self.keyword_agent:
             try:
                 keyword_results = self.keyword_agent.evaluate(verbose=verbose)
@@ -223,3 +237,14 @@ class AURA:
                     if result.suggestions:
                         writer.writerow([dimension, "Suggestions", "", result.suggestions])
 
+                elif dimension == "functionality" and hasattr(result, "criterion_scores"):
+                    for crit in result.criterion_scores:
+                        writer.writerow([
+                            dimension,
+                            crit.criterion,
+                            crit.score,
+                            crit.justification
+                        ])
+                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
+                    if result.suggestions:
+                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
