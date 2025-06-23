@@ -77,16 +77,31 @@ class AccessibilityEvaluationAgent:
         logger.info("Extracting accessibility criteria using LLM.")
         parser = PydanticOutputParser(pydantic_object=AccessibilityCriteriaList)
         guideline_prompt = PromptTemplate(
-            template=(
-                "Based on the following conference guidelines, "
-                "return a JSON object with a `criteria` field (a list of accessibility aspects that should be evaluated for the artifact). "
-                "These should include aspects like whether the artifact is available in a public repository, the clarity of dependency listings, and the installability of the artifact. "
-                "{format_instructions}\n"
-                "Conference Guidelines:\n{guidelines}"
-            ),
+            template="""
+            You are an expert at extracting *only* the accessibility-related criteria for evaluating research software artifacts, based strictly on the provided conference guidelines.
+
+            Accessibility-related criteria refer ONLY to aspects that affect whether and how others can access, obtain, install, or use the artifact. This includes public availability (e.g., in an open repository), clarity of installation/setup instructions, the presence and clarity of dependency files, whether data and code are downloadable, and any restrictions on access. Ignore general factors such as documentation quality, usability, functionality, or reusability unless they are specifically described as affecting access to the artifact.
+
+            **Your task:**
+            1. Read the conference guidelines below.
+            2. Extract ONLY those criteria that pertain directly to accessibility or availability (such as repository access, installability, dependency information, data accessibility, and license openness as it relates to access).
+            3. Do NOT extract general evaluation factors (like 'Functionality', 'Reusability', or 'Documentation') unless they are explicitly required as accessibility/availability aspects.
+            4. For each extracted criterion, provide:
+               - `name`: the accessibility aspect or criterion to check (e.g., "Public Repository Availability", "Installability", "Dependency Clarity")
+               - `description`: a brief, specific explanation of what to look for or how to check it, based strictly on the guideline text.
+
+            **Output format:**  
+            Return a JSON object with a `criteria` field, where each item has `name` and `description` fields as described above. Only include criteria that are accessibility-related, and exclude anything else.
+
+            {format_instructions}
+
+            Conference Guidelines:
+            {guidelines}
+            """,
             input_variables=["guidelines"],
             partial_variables={"format_instructions": parser.get_format_instructions()},
         )
+
         llm_gpt = OpenAI(temperature=0.0)
         prompt_and_model = guideline_prompt | llm_gpt | parser
         result = prompt_and_model.invoke({"guidelines": self.guidelines})
@@ -182,15 +197,14 @@ class AccessibilityEvaluationAgent:
             KEYWORD-BASED EVIDENCE (Use this to ground your evaluation):
             - Raw accessibility score: {keyword_evidence.get('raw_score', 'N/A')}
             - Weighted accessibility score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
-            - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
             - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
-            
-            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If keywords indicate strong accessibility features, your score should reflect that. If few accessibility keywords are found, explain what's missing.
+
+            IMPORTANT: Your evaluation should be consistent with this keyword evidence. If keywords indicate strong accessibility features, your score should reflect that. If few accessibility related information is found, explain what's missing.
             """
 
         prompt = (
             f"You are an expert artifact evaluator for {self.conference_name}.\n"
-            "Evaluate ONLY the **Accessibility** of the artifact according to the following criteria.\n"
+            "Evaluate ONLY the **Accessibility/Availability** of the artifact according to the following criteria.\n"
             "For each, follow the chain-of-thought process:\n\n"
             f"{chain_of_thought_steps}\n"
             f"{keyword_context}\n"
