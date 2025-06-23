@@ -4,12 +4,12 @@ from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from langchain.chains import RetrievalQA
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
 from pydantic import BaseModel, Field
 
 # === Logging Setup ===
@@ -30,8 +30,10 @@ class FunctionalityCriterion(BaseModel):
     name: str = Field(description="Functionality aspect to check")
     description: str = Field(description="Description of what this aspect means or how to check it")
 
+
 class FunctionalityCriteriaList(BaseModel):
-    criteria: List[FunctionalityCriterion] = Field(description="List of required functionality criteria for the conference")
+    criteria: List[FunctionalityCriterion] = Field(
+        description="List of required functionality criteria for the conference")
 
 
 class FunctionalityEvaluationAgent:
@@ -45,6 +47,7 @@ class FunctionalityEvaluationAgent:
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
             keyword_agent: Optional[object] = None,
+            kg_agent: Optional[object] = None,
     ):
         self.guideline_path = guideline_path
         self.artifact_json_path = artifact_json_path
@@ -54,6 +57,7 @@ class FunctionalityEvaluationAgent:
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
         self.keyword_agent = keyword_agent
+        self.kg_agent = kg_agent
 
         logger.info(f"Initializing FunctionalityEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()
@@ -77,38 +81,38 @@ class FunctionalityEvaluationAgent:
         guideline_prompt = PromptTemplate(
             template="""
                 You are an expert at extracting *only* the criteria required to evaluate the **functionality** of a research software artifact, based strictly on the provided conference guidelines.
-        
+
                 **Functionality criteria** are those that directly relate to:
                 - Whether the artifact works as claimed (performs its intended tasks or computations)
                 - Whether it can be executed successfully (is runnable, produces results as expected)
                 - Whether it includes test cases, test results, or evidence of validation and verification
                 - Whether scripts or instructions are provided to exercise the artifact (e.g., main scripts, demo scripts, test scripts)
                 - Whether input/output examples are provided and produce the expected outputs
-        
+
                 **You MUST exclude** all criteria relating to:
                 - Documentation quality or completeness (unless documentation is required *for* functionality verification)
                 - Availability, accessibility, or archival status of the artifact
                 - Reusability, extensibility, or future use by others
                 - Licensing, provenance, setup, or general usability
-        
+
                 **Your task:**
                 1. Read the conference guidelines below.
                 2. Extract ONLY those criteria that directly relate to the artifact's functionality as defined above.
                 3. For each, provide:
                    - `name`: concise description of the functionality aspect to evaluate (e.g., "Successful Execution", "Test Coverage", "Output Verification")
                    - `description`: a brief, specific explanation of what to check or how to check it, based strictly on the guideline text.
-        
-                **Output format:**  
+
+                **Output format:**
                 Return a JSON object with a `criteria` field, where each item has `name` and `description` fields as described above. Exclude anything not directly related to functionality.
-        
+
                 {format_instructions}
-        
+
                 Conference Guidelines:
                 {guidelines}
             """,
-                input_variables=["guidelines"],
-                partial_variables={"format_instructions": parser.get_format_instructions()},
-            )
+            input_variables=["guidelines"],
+            partial_variables={"format_instructions": parser.get_format_instructions()},
+        )
 
         llm_gpt = OpenAI(temperature=0.0)
         prompt_and_model = guideline_prompt | llm_gpt | parser
@@ -158,17 +162,17 @@ class FunctionalityEvaluationAgent:
         """Get keyword-based evidence for functionality evaluation"""
         if not self.keyword_agent:
             return {}
-        
+
         try:
             keyword_results = self.keyword_agent.evaluate(verbose=False)
             functionality_dim = None
-            
+
             # Find functionality dimension in keyword results
             for dim in keyword_results.get('dimensions', []):
                 if dim['dimension'].lower() == 'functionality':
                     functionality_dim = dim
                     break
-            
+
             if functionality_dim:
                 return {
                     'raw_score': functionality_dim['raw_score'],
@@ -178,13 +182,63 @@ class FunctionalityEvaluationAgent:
                 }
         except Exception as e:
             logger.warning(f"Could not get keyword evidence: {e}")
-        
+
         return {}
+
+    def _get_kg_evidence(self) -> Dict:
+        if not self.kg_agent:
+            return {}
+
+        evidence = {}
+
+        # 1. Does the repo have test files?
+        evidence['has_tests'] = self.kg_agent.test_files_exist()
+
+        # 2. Does the repo have executable scripts?
+        # (e.g., 'main.py', 'run.sh', or scripts in root)
+        evidence['has_main_py'] = self.kg_agent.file_exists('main.py')
+        evidence['has_run_sh'] = self.kg_agent.file_exists('run.sh')
+
+        # 3. Evidence of verification/validation (test files or sections)
+        evidence['test_file_list'] = []
+        test_files = self.kg_agent.run_cypher(
+            "MATCH (t:Test) RETURN t.name AS name"
+        )
+        evidence['test_file_list'] = [t['name'] for t in test_files]
+
+        # 4. Presence of code files described by the README (could indicate demo scripts)
+        evidence['described_files'] = [
+            r['code.name'] for r in self.kg_agent.run_cypher(
+                "MATCH (doc:File {name: 'README.md'})-[:DESCRIBES]->(code:File) RETURN code.name"
+            )
+        ]
+
+        # 5. Presence of output examples (sections containing "output" or "result")
+        output_sections = self.kg_agent.run_cypher(
+            """
+            MATCH (f:File)-[:CONTAINS]->(s:Section)
+            WHERE toLower(s.content) CONTAINS 'output'
+               OR toLower(s.content) CONTAINS 'result'
+            RETURN f.name AS file, s.name AS section, s.content AS content
+            """
+        )
+        evidence['output_sections'] = [
+            {"file": s["file"], "section": s["section"], "content": s["content"][:200]} for s in output_sections
+        ]
+
+        # 6. Presence of scripts for execution (e.g., files of type 'code' in root)
+        code_files = self.kg_agent.run_cypher(
+            "MATCH (f:File {type: 'code'}) RETURN f.name AS name"
+        )
+        evidence['code_files'] = [c['name'] for c in code_files]
+
+        return evidence
 
     def _build_eval_prompt(self):
         # Get keyword-based evidence
         keyword_evidence = self._get_keyword_evidence()
-        
+        kg_evidence = self._get_kg_evidence()
+
         chain_of_thought_steps = ""
         for criterion in self.criteria:
             chain_of_thought_steps += (
@@ -206,20 +260,32 @@ class FunctionalityEvaluationAgent:
             - Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}
             - Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}
             - Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}
-            
+
             IMPORTANT: Your evaluation should be consistent with this keyword evidence. If functionality keywords (testing, verification, etc.) are abundant, your score should reflect strong functionality evidence. If few functionality keywords are found, explain what's missing.
             """
 
-        prompt = (
-            f"You are an expert artifact evaluator for {self.conference_name}.\n"
-            "Evaluate ONLY the **Functionality** of the artifact according to the following criteria.\n"
-            "For each, follow the chain-of-thought process:\n\n"
-            f"{chain_of_thought_steps}\n"
-            f"{keyword_context}\n"
-            "Do NOT evaluate Documentation, Usability, Accessibility, or Reusability.\n"
-            "At the end, provide a detailed functionality score and suggestions for improvement.\n"
-            "IMPORTANT: Base your evaluation on actual evidence found in the artifact, not assumptions."
-        )
+        kg_context = ""
+        if kg_evidence:
+            kg_context += "KNOWLEDGE GRAPH EVIDENCE:\n"
+            kg_context += f"- Has tests: {kg_evidence.get('has_tests', False)}\n"
+            kg_context += f"- Has main.py: {kg_evidence.get('has_main_py', False)}\n"
+            kg_context += f"- Has run.sh: {kg_evidence.get('has_run_sh', False)}\n"
+            kg_context += f"- Test files: {', '.join(kg_evidence.get('test_file_list', []))}\n"
+            kg_context += f"- Code files described by README: {', '.join(kg_evidence.get('described_files', []))}\n"
+            kg_context += f"- Code files: {', '.join(kg_evidence.get('code_files', []))}\n"
+            if kg_evidence.get('output_sections'):
+                kg_context += f"- Output/example/result sections (first 200 chars):\n"
+                for out in kg_evidence['output_sections']:
+                    kg_context += f"  * {out['file']}::{out['section']}: {out['content']}\n"
+
+            prompt = (
+                f"You are an expert artifact evaluator for {self.conference_name}.\n"
+                "Evaluate ONLY the **Functionality** of the artifact according to the following criteria.\n"
+                f"{keyword_context}\n"
+                f"{kg_context}\n"
+                # (add your chain-of-thought instructions)
+                # ...
+            )
         logger.info(f"Functionality evaluation prompt:\n{prompt}")
         return prompt
 
@@ -246,7 +312,6 @@ class FunctionalityEvaluationAgent:
 
     def get_file_content(self, filename: str) -> Optional[str]:
         return self._get_file_content(filename)
-
 
 # Example usage (commented out)
 # from functionality_evaluation_agent import FunctionalityEvaluationAgent
