@@ -6,16 +6,20 @@ AURA is a comprehensive, modular framework for automated evaluation of research 
 
 ## Table of Contents
 - [Overview](#overview)
+- [Key Features](#key-features)
 - [Integration with Other Algorithms](#integration-with-other-algorithms)
 - [How AURA Works - Step by Step](#how-aura-works---step-by-step)
 - [Input Requirements](#input-requirements)
 - [Evaluation Dimensions](#evaluation-dimensions)
 - [Evaluation Methods](#evaluation-methods)
 - [Agent Architecture](#agent-architecture)
+- [GraphRAG Enhancement](#graphrag-enhancement)
+- [Integrated Workflow](#integrated-workflow)
 - [Output Formats](#output-formats)
 - [Installation & Setup](#installation--setup)
 - [Usage Guide](#usage-guide)
 - [Advanced Features](#advanced-features)
+- [Repository Cleanup](#repository-cleanup)
 - [Troubleshooting](#troubleshooting)
 - [File Structure](#file-structure)
 - [References](#references)
@@ -29,13 +33,20 @@ AURA automates the evaluation of research artifacts (code, data, documentation, 
 - **Analyzing artifact JSON files** (created by Algorithm 2) for compliance
 - **Providing dual evaluation methods**: LLM-based qualitative assessment + keyword-based quantitative scoring
 - **Generating comprehensive reports** with evidence-based scores and improvement suggestions
+- **Supporting GraphRAG enhancement** for large repositories with complex relationships
+- **Offering integrated workflow** through modern Streamlit interface
 
 ### Key Features
+
 - **Conference-agnostic**: Works with any set of guidelines
 - **Modular design**: Each evaluation dimension handled by dedicated agents
 - **Transparent reasoning**: Chain-of-thought explanations for all scores
 - **Evidence grounding**: LLM evaluations grounded with keyword evidence to prevent hallucination
 - **Multiple evaluation modes**: Full, LLM-only, keyword-only, comparison, and grounded evaluation
+- **GraphRAG support**: Enhanced evaluation for large repositories using knowledge graphs
+- **Integrated workflow**: Complete pipeline from repository URL to evaluation results
+- **Centralized index management**: All ChromaDB indexes stored in organized location
+- **Timing analytics**: Comprehensive performance tracking throughout the pipeline
 
 ---
 
@@ -312,6 +323,8 @@ AURA evaluates artifacts across four primary dimensions:
 - Evaluation mode management
 - Result merging and comparison
 - Error handling and logging
+- Timing analytics and performance tracking
+- CSV output generation with artifact-specific naming
 
 ### LLM Agents
 Each dimension has a dedicated LLM agent with the following structure:
@@ -320,14 +333,14 @@ Each dimension has a dedicated LLM agent with the following structure:
 ```python
 def __init__(self, guideline_path, artifact_json_path, conference_name, keyword_agent=None):
     # Load guidelines and artifact
-    # Build vector database
+    # Build vector database in centralized location
     # Extract evaluation criteria
     # Store keyword agent reference for grounding
 ```
 
 #### Evaluation Process
 1. **Criteria Extraction**: Parse guidelines to extract structured evaluation criteria
-2. **Vector Database**: Build semantic index of artifact content
+2. **Vector Database**: Build semantic index of artifact content in centralized location
 3. **Evidence Retrieval**: Retrieve relevant content for evaluation
 4. **Prompt Construction**: Build chain-of-thought prompts with keyword grounding
 5. **LLM Evaluation**: Generate qualitative assessment with reasoning
@@ -353,6 +366,173 @@ def _get_keyword_evidence(self):
 2. **Keyword Matching**: Count keyword occurrences using word boundaries
 3. **Scoring**: Apply log scaling and weighted scoring
 4. **Reporting**: Generate dimension breakdown and summary
+
+---
+
+## GraphRAG Enhancement
+
+### 🎯 Problem Statement
+
+Large research repositories pose significant challenges for traditional RAG (Retrieval-Augmented Generation) approaches:
+
+#### Why Classic RAG Struggles With Large Artifacts
+
+1. **Token Limit Issues**: LLMs have context length limits, and even vector-based retrieval can miss important context with thousands of chunks
+2. **Chunk Flooding**: Too many similar or repetitive chunks (e.g., code, data descriptions) may bury relevant content
+3. **Lack of Structure**: Classic RAG treats every chunk as "just another document," losing relationships like:
+   - "this script is used in this experiment"
+   - "this file is referenced in setup"
+   - "this notebook analyzes this dataset"
+4. **Poor Scalability**: Large repositories with thousands of files become unmanageable
+
+### 🏗️ Solution: GraphRAG Integration
+
+#### Architecture Overview
+
+```
+Repository JSON → Knowledge Graph (Neo4j) → GraphRAG Agent → Enhanced Evaluation
+     ↓                    ↓                        ↓              ↓
+Algorithm 2         Repository KG Agent      GraphRAG Agent   Enhanced AURA
+```
+
+#### Key Components
+
+##### 1. Repository Knowledge Graph Agent (`repository_knowledge_graph_agent.py`)
+
+**Purpose**: Builds and manages a Neo4j knowledge graph from repository data
+
+**Features**:
+- **Entity Extraction**: Files, functions, classes, imports, documentation sections
+- **Relationship Mapping**: References, describes, imports, used-in, contains
+- **Graph Construction**: Automatic graph building from Algorithm 2 JSON output
+- **Query Interface**: Dimension-specific content retrieval
+
+**Graph Schema**:
+```cypher
+// Node Types
+(:Repository {name: string, type: "repository"})
+(:File {name: string, path: string, type: string, content_type: string})
+(:Directory {name: string, path: string, type: "directory"})
+(:Section {name: string, content: string, type: string})
+(:Function {name: string, type: "function"})
+(:Class {name: string, type: "class"})
+(:Import {module: string, item: string, type: "import"})
+(:License {name: string, type: "license"})
+
+// Relationship Types
+(:Repository)-[:CONTAINS]->(:File)
+(:File)-[:CONTAINS]->(:Section)
+(:File)-[:DEFINES]->(:Function)
+(:File)-[:DEFINES]->(:Class)
+(:File)-[:IMPORTS]->(:Import)
+(:File)-[:REFERENCES]->(:File)
+(:File)-[:DESCRIBES]->(:File)
+(:Directory)-[:CONTAINS]->(:Directory)
+```
+
+##### 2. GraphRAG Agent (`graph_rag_agent.py`)
+
+**Purpose**: Combines knowledge graph traversal with LLM evaluation
+
+**Features**:
+- **Targeted Retrieval**: Graph-based content selection
+- **Multi-hop Queries**: Traverse relationships for comprehensive analysis
+- **Fallback RAG**: Traditional vector-based retrieval as backup
+- **Evidence Grounding**: Keyword evidence integration
+- **Method Comparison**: GraphRAG vs Traditional RAG comparison
+
+#### Performance Benefits
+
+| Aspect | Traditional RAG | GraphRAG |
+|--------|----------------|----------|
+| **Context Relevance** | Vector similarity only | Structure-aware retrieval |
+| **Scalability** | Degrades with size | Scales well |
+| **Explainability** | Black box retrieval | Transparent graph paths |
+| **Relationship Awareness** | None | Full relationship mapping |
+| **Targeted Retrieval** | Limited | Dimension-specific queries |
+| **Multi-hop Reasoning** | Not possible | Natural graph traversal |
+
+---
+
+## Integrated Workflow
+
+### ✨ Features
+
+#### 🔄 Automated Workflow
+- **Step 1**: Input GitHub repository URL
+- **Step 2**: Automatic repository cloning and analysis
+- **Step 3**: AURA evaluation with multiple modes
+
+#### 🎨 Modern UI
+- Beautiful gradient header and styled components
+- Progress indicators and status updates
+- Step-by-step workflow navigation
+- Real-time feedback and error handling
+
+#### 🔧 Flexible Configuration
+- Multiple evaluation modes (Full, LLM Only, Keyword Only, Comparison, Grounded)
+- Configurable evaluation dimensions
+- Customizable conference guidelines and criteria
+
+### 🏃‍♂️ Quick Start
+
+#### 1. Run the Application
+```bash
+cd scripts/algorithm_4
+streamlit run app.py
+```
+
+#### 2. Use the Interface
+1. **Enter Repository URL**: Paste a GitHub repository URL
+2. **Configure Settings**: Choose evaluation options in the sidebar
+3. **Start Analysis**: Click "Start Analysis" to begin the automated process
+4. **View Results**: Review the comprehensive evaluation results
+
+### 📋 Workflow Steps
+
+#### Step 1: Repository Input
+- Enter a GitHub repository URL
+- Choose from example repositories
+- Configure evaluation settings
+
+#### Step 2: Repository Analysis
+- Automatic repository cloning
+- File structure analysis
+- Documentation and code categorization
+- JSON analysis file generation
+
+#### Step 3: AURA Evaluation
+- LLM-based qualitative evaluation
+- Keyword-based quantitative scoring
+- Grounded evaluation with evidence
+- Comprehensive results display
+
+### 🎯 Evaluation Modes
+
+#### Full Evaluation
+- Combines LLM and keyword-based assessments
+- Provides both qualitative and quantitative results
+- Grounded evaluation to prevent hallucination
+
+#### LLM Only
+- Pure qualitative assessment
+- Detailed reasoning and suggestions
+- No keyword grounding
+
+#### Keyword Only
+- Quantitative scoring only
+- Based on guideline-derived criteria
+- Objective and reproducible
+
+#### Comparison Mode
+- Side-by-side comparison of methods
+- Highlights differences and similarities
+- Useful for method validation
+
+#### Grounded Evaluation
+- LLM assessments with keyword evidence
+- Prevents hallucination
+- Provides confidence scores
 
 ---
 
@@ -403,6 +583,12 @@ def _get_keyword_evidence(self):
 }
 ```
 
+### 4. CSV Output
+- **Artifact-specific naming**: `{artifact_name}_full_evaluation.csv`
+- **Comprehensive data**: All evaluation results with scores and justifications
+- **Timing analytics**: Detailed performance metrics for analysis and evaluation phases
+- **Structured format**: Easy to import and analyze in other tools
+
 ---
 
 ## Installation & Setup
@@ -410,6 +596,7 @@ def _get_keyword_evidence(self):
 ### Prerequisites
 - Python 3.8+
 - OpenAI API key (for LLM access)
+- Neo4j Database (for GraphRAG enhancement)
 
 ### Installation Steps
 
@@ -436,7 +623,13 @@ Create a `.env` file in the project root:
 OPENAI_API_KEY=your-openai-api-key-here
 ```
 
-5. **Verify File Structure**
+5. **Set Up Neo4j (for GraphRAG)**
+```bash
+# Using Docker
+docker run -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:latest
+```
+
+6. **Verify File Structure**
 Ensure you have the required input files:
 ```
 AURA/
@@ -447,8 +640,9 @@ AURA/
 ├── algo_outputs/
 │   ├── algorithm_1_output/
 │   │   └── algorithm_1_artifact_evaluation_criteria.csv
-│   └── algorithm_2_output/
-│       └── ml-image-classifier_analysis.json
+│   ├── algorithm_2_output/
+│   │   └── ml-image-classifier_analysis.json
+│   └── indexes/                    # Centralized index storage
 └── scripts/
     └── algorithm_4/
         ├── app.py
@@ -489,34 +683,7 @@ In the Streamlit sidebar, configure:
 - **Keyword Evaluation**: Enable/disable keyword-based evaluation
 - **Evaluation Mode**: Choose from available evaluation modes
 
-### 3. Evaluation Modes
-
-#### Full Evaluation
-- Runs both LLM and keyword-based assessments
-- Provides comprehensive evaluation with grounding
-- Best for complete artifact assessment
-
-#### LLM Only
-- Qualitative evaluation without keyword grounding
-- Faster execution
-- Good for initial assessment
-
-#### Keyword Only
-- Quantitative baseline evaluation
-- Fast and objective
-- Good for large-scale studies
-
-#### Comparison Mode
-- Side-by-side comparison of both methods
-- Helps understand differences between approaches
-- Good for method validation
-
-#### Grounded Evaluation
-- LLM evaluations with keyword evidence integration
-- Shows grounding information
-- Best for detailed analysis
-
-### 4. Programmatic Usage
+### 3. Programmatic Usage
 
 ```python
 from aura_framework import AURA
@@ -536,6 +703,30 @@ grounded_result = aura.get_grounded_evaluation("documentation")
 
 # Comparison
 comparison = aura.compare_evaluations()
+
+# Get timing summary
+timing = aura.get_timing_summary()
+```
+
+### 4. GraphRAG Usage
+
+```python
+from enhanced_aura_framework import EnhancedAURA
+
+# Initialize with GraphRAG enabled
+enhanced_aura = EnhancedAURA(
+    guideline_path="data/conference_guideline_texts/processed/13_icse_2025.md",
+    artifact_json_path="algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json",
+    criteria_csv_path="algo_outputs/algorithm_1_output/algorithm_1_artifact_evaluation_criteria.csv",
+    conference_name="ICSE 2025",
+    use_graphrag=True,  # Enable GraphRAG
+    neo4j_uri="bolt://localhost:7687",
+    neo4j_user="neo4j",
+    neo4j_password="password"
+)
+
+# Run enhanced evaluation
+results = enhanced_aura.evaluate()
 ```
 
 ---
@@ -584,6 +775,47 @@ def _evaluate_artifact_against_criteria(self):
 
 ---
 
+## Repository Cleanup
+
+### Centralized Index Management
+
+AURA now uses a centralized approach for managing all ChromaDB vector indexes:
+
+#### Directory Structure
+```
+algo_outputs/indexes/
+├── accessibility_chroma_index/     # Accessibility evaluation agent indexes
+├── documentation_chroma_index/     # Documentation evaluation agent indexes
+├── functionality_chroma_index/     # Functionality evaluation agent indexes
+├── usability_chroma_index/         # Usability evaluation agent indexes
+├── chroma_index/                   # General documentation indexes
+├── chroma_index_guidelines/        # Conference guidelines indexes
+└── README.md                       # Documentation
+```
+
+#### Benefits
+- **Clean Repository**: No more scattered index folders
+- **Centralized Management**: All indexes in one location
+- **Easy Cleanup**: Delete one directory to remove all indexes
+- **Automatic Setup**: No manual directory creation required
+
+#### Agent Configuration
+All evaluation agents have been updated to use the new centralized paths:
+
+- **DocumentationEvaluationAgent**: `algo_outputs/indexes/documentation_chroma_index`
+- **AccessibilityEvaluationAgent**: `algo_outputs/indexes/accessibility_chroma_index`
+- **FunctionalityEvaluationAgent**: `algo_outputs/indexes/functionality_chroma_index`
+- **UsabilityEvaluationAgent**: `algo_outputs/indexes/usability_chroma_index`
+
+#### Automatic Directory Creation
+Each agent automatically creates the necessary directories if they don't exist:
+```python
+# Ensure indexes directory exists
+os.makedirs(os.path.dirname(self.persist_directory), exist_ok=True)
+```
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -621,6 +853,18 @@ agent = DocumentationEvaluationAgent(
 )
 ```
 
+#### 5. Neo4j Connection Issues
+**Problem**: GraphRAG functionality not working
+**Solution**: Check Neo4j connection:
+```python
+try:
+    graph = Graph("bolt://localhost:7687", auth=("neo4j", "password"))
+    graph.run("RETURN 1")
+    print("Neo4j connection successful")
+except Exception as e:
+    print(f"Neo4j connection failed: {e}")
+```
+
 ### Debug Mode
 Enable detailed logging for troubleshooting:
 
@@ -637,19 +881,27 @@ logging.basicConfig(level=logging.DEBUG)
 scripts/algorithm_4/
 ├── app.py                           # Streamlit web interface
 ├── aura_framework.py                # Core framework orchestration
+├── enhanced_aura_framework.py       # GraphRAG-enhanced framework
+├── repo_analyzer.py                 # Repository analysis wrapper
 ├── README.md                        # This comprehensive guide
+├── GRAPH_RAG_ENHANCEMENT.md         # GraphRAG documentation
+├── README_INTEGRATED.md             # Integrated workflow guide
 ├── requirements.txt                 # Python dependencies
 ├── agents/                          # Evaluation agents
 │   ├── accessibility_evaluation_agent.py
 │   ├── documentation_evaluation_agent.py
 │   ├── functionality_evaluation_agent.py
 │   ├── usability_evaluation_agent.py
-│   └── keyword_evaluation_agent.py
-├── chroma_index/                    # Vector database storage
-├── accessibility_chroma_index/      # Accessibility-specific vector DB
-├── functionality_chroma_index/      # Functionality-specific vector DB
-├── usability_chroma_index/          # Usability-specific vector DB
-└── guidelines_index/                # Guidelines vector database
+│   ├── keyword_evaluation_agent.py
+│   ├── repository_knowledge_graph_agent.py
+│   └── graph_rag_agent.py
+└── algo_outputs/
+    └── indexes/                     # Centralized index storage
+        ├── accessibility_chroma_index/
+        ├── documentation_chroma_index/
+        ├── functionality_chroma_index/
+        ├── usability_chroma_index/
+        └── README.md
 ```
 
 ### Key Files Explained
@@ -658,21 +910,37 @@ scripts/algorithm_4/
 - Streamlit web interface
 - Handles user input and result display
 - Manages different evaluation modes
+- Integrated workflow management
 
 #### `aura_framework.py`
 - Core framework logic
 - Agent initialization and coordination
 - Result merging and comparison
+- Timing analytics and CSV generation
+
+#### `enhanced_aura_framework.py`
+- GraphRAG-enhanced framework
+- Knowledge graph integration
+- Advanced evaluation capabilities
+- Performance monitoring
+
+#### `repo_analyzer.py`
+- Repository analysis wrapper
+- Integration with Algorithm 2
+- Timing data collection
+- Error handling and logging
 
 #### `agents/`
 - Individual evaluation agents
 - Each agent handles one evaluation dimension
 - Contains LLM prompting and grounding logic
+- Centralized index management
 
-#### `*_chroma_index/`
-- Vector database storage for semantic search
-- Built automatically during agent initialization
-- Cached for performance
+#### `algo_outputs/indexes/`
+- Centralized vector database storage
+- Organized by evaluation dimension
+- Automatic directory creation
+- Easy cleanup and management
 
 ---
 
@@ -686,6 +954,7 @@ scripts/algorithm_4/
 - [LangChain Documentation](https://python.langchain.com/)
 - [Streamlit Documentation](https://docs.streamlit.io/)
 - [OpenAI API Documentation](https://platform.openai.com/docs)
+- [Neo4j Documentation](https://neo4j.com/docs/)
 
 ### Related Projects
 - [AURA Paper/Docs](https://github.com/your-org/aura) (if available)
@@ -696,6 +965,7 @@ scripts/algorithm_4/
 - **OpenAI**: Language model access
 - **Streamlit**: Web interface
 - **Chroma**: Vector database
+- **Neo4j**: Graph database for GraphRAG
 - **Pandas**: Data manipulation
 - **NumPy**: Numerical operations
 
@@ -714,7 +984,10 @@ We welcome contributions to improve AURA! Please:
 ### Development Setup
 ```bash
 # Install development dependencies
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
+
+# Set up Neo4j (Docker)
+docker run -p 7474:7474 -p 7687:7687 -e NEO4J_AUTH=neo4j/password neo4j:latest
 
 # Run tests
 python -m pytest tests/
@@ -734,4 +1007,4 @@ For questions, issues, or contributions:
 
 ---
 
-**AURA Framework** - Making artifact evaluation transparent, reproducible, and evidence-based. 
+**AURA Framework** - Making artifact evaluation transparent, reproducible, evidence-based, and scalable. 🚀 
