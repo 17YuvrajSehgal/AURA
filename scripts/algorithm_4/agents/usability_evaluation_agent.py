@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import os
 from typing import Dict
 from typing import List, Optional
 
@@ -115,7 +116,7 @@ class UsabilityEvaluationAgent:
             guideline_path: str,
             artifact_json_path: str,
             conference_name: str = "ICSE 2025",
-            persist_directory: str = "usability_chroma_index",
+            persist_directory: str = "algo_outputs/indexes/usability_chroma_index",
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
@@ -129,6 +130,9 @@ class UsabilityEvaluationAgent:
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
         self.keyword_agent = keyword_agent
+
+        # Ensure indexes directory exists
+        os.makedirs(os.path.dirname(self.persist_directory), exist_ok=True)
 
         logger.info(f"Initializing UsabilityEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()

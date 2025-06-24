@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import os
 from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
@@ -56,7 +57,7 @@ class AccessibilityEvaluationAgent:
             guideline_path: str,
             artifact_json_path: str,
             conference_name: str = "ICSE 2025",
-            persist_directory: str = "accessibility_chroma_index",
+            persist_directory: str = "algo_outputs/indexes/accessibility_chroma_index",
             chunk_size: int = 1024,
             chunk_overlap: int = 100,
             model_name: Optional[str] = None,
@@ -70,6 +71,9 @@ class AccessibilityEvaluationAgent:
         self.chunk_overlap = chunk_overlap
         self.model_name = model_name
         self.keyword_agent = keyword_agent
+
+        # Ensure indexes directory exists
+        os.makedirs(os.path.dirname(self.persist_directory), exist_ok=True)
 
         logger.info(f"Initializing AccessibilityEvaluationAgent for {conference_name}")
         self.guidelines = self._load_guidelines()

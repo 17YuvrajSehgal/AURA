@@ -4,7 +4,7 @@ import time
 import streamlit as st
 
 from scripts.algorithm_4.aura_framework import AURA
-from scripts.algorithm_4.repo_analyzer import analyze_github_repository, get_analysis_summary
+from scripts.algorithm_4.repo_analyzer import analyze_github_repository, get_analysis_summary, format_timing_summary
 
 st.set_page_config(
     page_title="AURA Artifact Evaluator",
@@ -189,9 +189,10 @@ elif st.session_state.current_step == 2:
                 status_text.text("🔍 Analyzing repository structure...")
                 progress_bar.progress(50)
 
-                repo_name, artifact_json_path, result = analyze_github_repository(repo_url)
+                repo_name, artifact_json_path, result, timing_data = analyze_github_repository(repo_url)
                 st.session_state.repo_name = repo_name
                 st.session_state.artifact_json_path = artifact_json_path
+                st.session_state.analysis_timing = timing_data
 
                 status_text.text("💾 Analysis results saved!")
                 progress_bar.progress(100)
@@ -215,6 +216,26 @@ elif st.session_state.current_step == 2:
                     st.metric("Documentation Files", summary["documentation_files"])
                 with col4:
                     st.metric("Code Files", summary["code_files"])
+
+                # Show timing information
+                if timing_data:
+                    st.subheader("⏱️ Analysis Timing")
+                    timing_summary = format_timing_summary(timing_data)
+                    st.info(f"**Timing Summary:** {timing_summary}")
+                    
+                    # Detailed timing breakdown
+                    with st.expander("📊 Detailed Timing Breakdown", expanded=False):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            if timing_data.get("cloning_duration_seconds") is not None:
+                                st.metric("📥 Cloning Time", f"{timing_data['cloning_duration_seconds']}s")
+                            if timing_data.get("analysis_processing_duration_seconds") is not None:
+                                st.metric("🔍 Processing Time", f"{timing_data['analysis_processing_duration_seconds']}s")
+                        with col2:
+                            if timing_data.get("saving_duration_seconds") is not None:
+                                st.metric("💾 Saving Time", f"{timing_data['saving_duration_seconds']}s")
+                            if timing_data.get("analysis_duration_seconds") is not None:
+                                st.metric("🚀 Total Analysis Time", f"{timing_data['analysis_duration_seconds']}s")
 
                 # Show file structure preview
                 with st.expander("📁 Repository Structure Preview", expanded=False):
@@ -263,9 +284,9 @@ elif st.session_state.current_step == 3:
 
                     # Run evaluation based on selected mode
                     if evaluation_mode == "Full Evaluation":
-                        results = aura.evaluate(dimensions=dims, include_keyword_eval=include_keyword_eval)
+                        results = aura.evaluate(dimensions=dims, include_keyword_eval=include_keyword_eval, analysis_timing_data=st.session_state.get('analysis_timing'))
                     elif evaluation_mode == "LLM Only":
-                        results = aura.evaluate(dimensions=dims, include_keyword_eval=False)
+                        results = aura.evaluate(dimensions=dims, include_keyword_eval=False, analysis_timing_data=st.session_state.get('analysis_timing'))
                     elif evaluation_mode == "Keyword Only":
                         if aura.keyword_agent:
                             results = {"keyword_baseline": aura.keyword_agent.evaluate(verbose=False)}
@@ -285,6 +306,40 @@ elif st.session_state.current_step == 3:
                             results[dim] = grounded_result
 
                     st.success("🎉 Evaluation complete!")
+
+                    # Show timing information
+                    timing_summary = aura.get_timing_summary()
+                    if timing_summary.get("analysis_timing") or timing_summary.get("evaluation_timing"):
+                        st.markdown('<div class="success-box">', unsafe_allow_html=True)
+                        st.subheader("⏱️ Timing Information")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            if timing_summary.get("analysis_timing"):
+                                analysis_time = timing_summary["analysis_timing"].get("analysis_duration_seconds", 0)
+                                if analysis_time is not None:
+                                    st.metric("📥 Analysis Time", f"{analysis_time}s")
+                                else:
+                                    st.metric("📥 Analysis Time", "N/A")
+                        
+                        with col2:
+                            if timing_summary.get("evaluation_timing"):
+                                eval_time = timing_summary["evaluation_timing"].get("evaluation_duration_seconds", 0)
+                                if eval_time is not None:
+                                    st.metric("🎯 Evaluation Time", f"{eval_time}s")
+                                else:
+                                    st.metric("🎯 Evaluation Time", "N/A")
+                        
+                        with col3:
+                            if timing_summary.get("total_pipeline_time"):
+                                total_time = timing_summary["total_pipeline_time"]
+                                if total_time is not None and total_time > 0:
+                                    st.metric("🚀 Total Pipeline Time", f"{total_time}s")
+                                else:
+                                    st.metric("🚀 Total Pipeline Time", "N/A")
+                        
+                        st.markdown('</div>', unsafe_allow_html=True)
 
                     # Display results based on mode
                     if evaluation_mode == "Comparison Mode":
@@ -403,7 +458,10 @@ st.markdown("""
         <strong>🔍 Keyword-based Evaluation:</strong> Quantitative scoring based on guideline-derived criteria<br>
         <strong>🔗 Grounded Evaluation:</strong> LLM assessments grounded with keyword evidence to prevent hallucination<br>
         <strong>📊 Comparison Mode:</strong> Compare both evaluation approaches<br>
-        <strong>🧩 Modular Design:</strong> Select specific dimensions to evaluate
+        <strong>🧩 Modular Design:</strong> Select specific dimensions to evaluate<br>
+        <strong>📄 Artifact-Specific CSV:</strong> Results saved with repository name for easy identification<br>
+        <strong>⏱️ Performance Tracking:</strong> Detailed timing data for analysis and evaluation phases<br>
+        <strong>📈 Performance Analytics:</strong> Timing data stored in CSV for performance analysis
     </p>
 </div>
 """, unsafe_allow_html=True)
