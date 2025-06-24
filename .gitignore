@@ -2,6 +2,4 @@
 .venv
 .env
 temp_dir_for_git
-algo_outputs/algorithm_2_output
-algo_outputs/algorithm_3_output
-algo_outputs/algorithm_4_output
+algo_outputs
