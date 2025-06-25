@@ -1,0 +1,1134 @@
+import glob
+import json
+import logging
+import os
+import re
+import string
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Tuple, Any
+
+import networkx as nx
+import nltk
+import numpy as np
+import pandas as pd
+import torch
+from keybert import KeyBERT
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from sentence_transformers import SentenceTransformer, util
+from sklearn.cluster import DBSCAN
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+# Download required NLTK data
+nltk.download('punkt', quiet=True)
+nltk.download('stopwords', quiet=True)
+nltk.download('wordnet', quiet=True)
+nltk.download('averaged_perceptron_tagger', quiet=True)
+
+# Enhanced logging setup
+script_dir = os.path.dirname(os.path.abspath(__file__))
+logs_dir = os.path.join(script_dir, "..", "..", "algo_outputs", "logs")
+os.makedirs(logs_dir, exist_ok=True)
+log_file_path = os.path.join(logs_dir, "enhanced_algorithm_1_execution.log")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(log_file_path),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+
+class NumpyEncoder(json.JSONEncoder):
+    """Custom JSON encoder to handle numpy data types."""
+
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, torch.Tensor):
+            return obj.tolist()
+        return super(NumpyEncoder, self).default(obj)
+
+
+class EnhancedAlgorithm1:
+    """
+    Enhanced Algorithm 1 for extracting evaluation criteria from conference guidelines.
+    Provides hierarchical keywords, confidence scoring, and multiple output formats
+    optimized for downstream NLP and LLM tasks.
+    """
+
+    def __init__(self, model_name='all-MiniLM-L6-v2'):
+        """Initialize the enhanced algorithm with models and configurations."""
+        self.sentence_model = SentenceTransformer(model_name)
+        self.kw_model = KeyBERT(self.sentence_model)
+        self.lemmatizer = WordNetLemmatizer()
+        self.stop_words = set(stopwords.words('english'))
+
+        # Configuration parameters
+        self.config = {
+            'semantic_similarity_threshold': 0.7,
+            'keyword_expansion_top_n': 8,
+            'confidence_threshold': 0.6,
+            'min_keyword_frequency': 2,
+            'max_keywords_per_dimension': 50,
+            'severity_weight_decay': 0.8
+        }
+
+        logger.info(f"Enhanced Algorithm 1 initialized with model: {model_name}")
+
+    def preprocess_texts(self, texts: List[str]) -> List[str]:
+        """Enhanced text preprocessing with lemmatization and better cleaning."""
+        preprocessed = []
+
+        for text in texts:
+            # Tokenize and clean
+            tokens = word_tokenize(text.lower())
+
+            # Remove stopwords, punctuation, and short tokens
+            cleaned_tokens = []
+            for token in tokens:
+                if (token not in self.stop_words and
+                        token not in string.punctuation and
+                        len(token) > 2 and
+                        not token.isnumeric()):
+                    # Lemmatize the token
+                    lemmatized = self.lemmatizer.lemmatize(token)
+                    cleaned_tokens.append(lemmatized)
+
+            cleaned = " ".join(cleaned_tokens)
+            if cleaned.strip():
+                preprocessed.append(cleaned)
+
+        logger.info(f"Preprocessed {len(preprocessed)} documents")
+        return preprocessed
+
+    def extract_conference_metadata(self, file_paths: List[str]) -> Dict[str, Any]:
+        """Extract metadata from conference guideline files."""
+        metadata = {}
+
+        for path in file_paths:
+            filename = os.path.basename(path)
+
+            # Extract conference info from filename (e.g., "13_icse_2025.md")
+            match = re.match(r'(\d+)_([a-zA-Z]+)_(\d{4})', filename)
+            if match:
+                conf_id, conf_name, year = match.groups()
+                metadata[filename] = {
+                    'conference_id': conf_id,
+                    'conference_name': conf_name.upper(),
+                    'year': int(year),
+                    'file_path': path,
+                    'file_size': os.path.getsize(path)
+                }
+            else:
+                metadata[filename] = {
+                    'conference_name': 'UNKNOWN',
+                    'year': None,
+                    'file_path': path,
+                    'file_size': os.path.getsize(path)
+                }
+
+        return metadata
+
+    def generate_hierarchical_seed_keywords(self, dimension_examples: Dict[str, List[str]]) -> Dict[
+        str, Dict[str, List[str]]]:
+        """Generate hierarchical seed keywords for each dimension."""
+        hierarchical_seeds = {}
+
+        for dimension, examples in dimension_examples.items():
+            combined_text = " ".join(examples)
+
+            # Extract keywords with different strategies
+            core_keywords = self.kw_model.extract_keywords(
+                combined_text,
+                keyphrase_ngram_range=(1, 1),
+                stop_words='english',
+                top_n=10
+            )
+
+            semantic_keywords = self.kw_model.extract_keywords(
+                combined_text,
+                keyphrase_ngram_range=(1, 2),
+                stop_words='english',
+                top_n=15
+            )
+
+            contextual_keywords = self.kw_model.extract_keywords(
+                combined_text,
+                keyphrase_ngram_range=(2, 3),
+                stop_words='english',
+                top_n=10
+            )
+
+            hierarchical_seeds[dimension] = {
+                'core_keywords': [kw[0] for kw in core_keywords[:5]],
+                'semantic_keywords': [kw[0] for kw in semantic_keywords[:8]],
+                'contextual_keywords': [kw[0] for kw in contextual_keywords[:5]],
+                'domain_keywords': self._extract_domain_specific_keywords(dimension, examples)
+            }
+
+            logger.debug(f"Generated hierarchical seeds for {dimension}: {hierarchical_seeds[dimension]}")
+
+        return hierarchical_seeds
+
+    def _extract_domain_specific_keywords(self, dimension: str, examples: List[str]) -> List[str]:
+        """Extract domain-specific keywords based on dimension type."""
+        domain_keywords = []
+
+        # Domain-specific keyword extraction based on dimension
+        if dimension == 'reproducibility':
+            domain_keywords = ['reproduce', 'replication', 'reproducible', 'reproducibility', 'replicate']
+        elif dimension == 'documentation':
+            domain_keywords = ['documentation', 'readme', 'guide', 'manual', 'tutorial']
+        elif dimension == 'accessibility':
+            domain_keywords = ['public', 'accessible', 'available', 'open', 'free']
+        elif dimension == 'usability':
+            domain_keywords = ['install', 'setup', 'use', 'demo', 'interface']
+        elif dimension == 'experimental':
+            domain_keywords = ['experiment', 'evaluation', 'benchmark', 'test', 'analysis']
+        elif dimension == 'functionality':
+            domain_keywords = ['function', 'test', 'verify', 'validate', 'correct']
+
+        return domain_keywords
+
+    def build_semantic_relationship_map(self, all_keywords: List[str],
+                                        term_metadata: List[Dict]) -> Dict[str, Any]:
+        """Build semantic relationships between keywords and dimensions."""
+        logger.info("Building semantic relationship map...")
+
+        # Create embeddings for all keywords
+        embeddings = self.sentence_model.encode(all_keywords)
+
+        # Compute similarity matrix
+        similarity_matrix = util.pytorch_cos_sim(embeddings, embeddings).cpu().numpy()
+
+        # Identify keyword clusters
+        keyword_clusters = self._identify_keyword_clusters(similarity_matrix, all_keywords)
+
+        # Find cross-dimension relationships
+        cross_dimension_links = self._find_cross_dimension_links(similarity_matrix, term_metadata)
+
+        # Build semantic hierarchy
+        semantic_hierarchy = self._build_semantic_hierarchy(similarity_matrix, all_keywords)
+
+        # Detect contradictions
+        contradictions = self._detect_contradictory_keywords(similarity_matrix, term_metadata)
+
+        return {
+            'keyword_clusters': keyword_clusters,
+            'cross_dimension_relationships': cross_dimension_links,
+            'semantic_hierarchy': semantic_hierarchy,
+            'contradiction_detection': contradictions,
+            'similarity_matrix': similarity_matrix.tolist()
+        }
+
+    def _identify_keyword_clusters(self, similarity_matrix: np.ndarray,
+                                   keywords: List[str]) -> List[Dict]:
+        """Identify clusters of semantically similar keywords."""
+        # Use DBSCAN to cluster similar keywords
+        clustering = DBSCAN(eps=0.3, min_samples=2, metric='precomputed')
+
+        # Convert similarity to distance, ensuring non-negative values
+        # Clip similarity scores to [0, 1] range first, then convert to distance
+        similarity_clipped = np.clip(similarity_matrix, 0, 1)
+        distances = 1 - similarity_clipped
+
+        # Ensure all distances are non-negative (should be, but double-check)
+        distances = np.maximum(distances, 0)
+
+        cluster_labels = clustering.fit_predict(distances)
+
+        clusters = defaultdict(list)
+        for i, label in enumerate(cluster_labels):
+            if label != -1:  # Not noise
+                clusters[label].append(keywords[i])
+
+        return [{'cluster_id': k, 'keywords': v, 'size': len(v)}
+                for k, v in clusters.items()]
+
+    def _find_cross_dimension_links(self, similarity_matrix: np.ndarray,
+                                    term_metadata: List[Dict]) -> List[Dict]:
+        """Find relationships between keywords from different dimensions."""
+        links = []
+        threshold = self.config['semantic_similarity_threshold']
+
+        for i in range(len(term_metadata)):
+            for j in range(i + 1, len(term_metadata)):
+                if (term_metadata[i]['dimension'] != term_metadata[j]['dimension'] and
+                        similarity_matrix[i][j] > threshold):
+                    links.append({
+                        'keyword1': term_metadata[i]['keyword'],
+                        'dimension1': term_metadata[i]['dimension'],
+                        'keyword2': term_metadata[j]['keyword'],
+                        'dimension2': term_metadata[j]['dimension'],
+                        'similarity': float(similarity_matrix[i][j])
+                    })
+
+        return sorted(links, key=lambda x: x['similarity'], reverse=True)
+
+    def _build_semantic_hierarchy(self, similarity_matrix: np.ndarray,
+                                  keywords: List[str]) -> Dict[str, Any]:
+        """Build a semantic hierarchy of keywords."""
+        # Create a graph from similarity matrix
+        G = nx.Graph()
+
+        for i, keyword in enumerate(keywords):
+            G.add_node(keyword)
+
+        # Add edges based on similarity
+        threshold = self.config['semantic_similarity_threshold']
+        for i in range(len(keywords)):
+            for j in range(i + 1, len(keywords)):
+                if similarity_matrix[i][j] > threshold:
+                    G.add_edge(keywords[i], keywords[j],
+                               weight=similarity_matrix[i][j])
+
+        # Find communities in the graph
+        communities = list(nx.community.greedy_modularity_communities(G))
+
+        # Build hierarchy
+        hierarchy = {
+            'communities': [list(community) for community in communities],
+            'central_keywords': self._find_central_keywords(G),
+            'keyword_degrees': dict(G.degree())
+        }
+
+        return hierarchy
+
+    def _find_central_keywords(self, G: nx.Graph) -> List[str]:
+        """Find central keywords in the semantic graph."""
+        if len(G.nodes()) == 0:
+            return []
+
+        # Use betweenness centrality to find central keywords
+        centrality = nx.betweenness_centrality(G)
+        central_keywords = sorted(centrality.items(),
+                                  key=lambda x: x[1], reverse=True)[:10]
+
+        return [kw for kw, _ in central_keywords]
+
+    def _detect_contradictory_keywords(self, similarity_matrix: np.ndarray,
+                                       term_metadata: List[Dict]) -> List[Dict]:
+        """Detect potentially contradictory keywords."""
+        contradictions = []
+
+        # Look for keywords that are semantically similar but from different dimensions
+        # that might have conflicting requirements
+        for i in range(len(term_metadata)):
+            for j in range(i + 1, len(term_metadata)):
+                if (term_metadata[i]['dimension'] != term_metadata[j]['dimension'] and
+                        similarity_matrix[i][j] > 0.8):  # High similarity
+
+                    # Check if dimensions might conflict
+                    if self._dimensions_might_conflict(term_metadata[i]['dimension'],
+                                                       term_metadata[j]['dimension']):
+                        contradictions.append({
+                            'keyword1': term_metadata[i]['keyword'],
+                            'dimension1': term_metadata[i]['dimension'],
+                            'keyword2': term_metadata[j]['keyword'],
+                            'dimension2': term_metadata[j]['dimension'],
+                            'similarity': float(similarity_matrix[i][j]),
+                            'conflict_type': 'semantic_overlap'
+                        })
+
+        return contradictions
+
+    def _dimensions_might_conflict(self, dim1: str, dim2: str) -> bool:
+        """Check if two dimensions might have conflicting requirements."""
+        conflict_pairs = [
+            ('accessibility', 'functionality'),  # Public vs. proprietary
+            ('usability', 'experimental'),  # Simple vs. complex
+            ('documentation', 'functionality')  # Documentation vs. code quality
+        ]
+
+        return (dim1, dim2) in conflict_pairs or (dim2, dim1) in conflict_pairs
+
+    def extract_evaluation_criteria(self, texts: List[str], dimension_seeds: Dict[str, Dict[str, List[str]]]) -> Tuple[
+        pd.DataFrame, Dict, Dict]:
+        """Extract evaluation criteria using TF-IDF and semantic similarity with hierarchical approach."""
+        logger.info("Starting enhanced evaluation criteria extraction...")
+
+        preprocessed = self.preprocess_texts(texts)
+        logger.info(f"Preprocessed {len(preprocessed)} documents")
+
+        tfidf_matrix, terms, vectorizer = self.compute_tfidf_matrix(preprocessed)
+        logger.info(f"Computed TF-IDF matrix with {len(terms)} unique terms")
+
+        total_score = 0
+        raw_scores = {}
+        extraction_details = {}
+
+        for dim, seed_categories in dimension_seeds.items():
+            logger.info(f"Processing dimension: {dim}")
+            all_keywords = set()
+            category_keywords = {}
+            category_scores = {}
+
+            # Process each category of keywords
+            for category, seeds in seed_categories.items():
+                category_keyword_set = set(seeds)
+                similar_terms_by_seed = {}
+
+                # Expand each seed keyword
+                for seed in seeds:
+                    if seed in terms:
+                        similar_terms = self._find_semantic_similar_terms(seed, list(terms), top_n=5)
+                        category_keyword_set.update(similar_terms)
+                        similar_terms_by_seed[seed] = similar_terms
+                        logger.debug(f"Seed '{seed}' -> Similar terms: {similar_terms}")
+
+                # Calculate score for this category
+                category_score = self.get_keyword_score(tfidf_matrix, terms, category_keyword_set)
+                category_keywords[category] = list(category_keyword_set)
+                category_scores[category] = {
+                    "keywords": list(category_keyword_set),
+                    "score": category_score,
+                    "count": len(category_keyword_set)
+                }
+
+                all_keywords.update(category_keyword_set)
+
+            # Calculate total score for this dimension
+            dimension_score = self.get_keyword_score(tfidf_matrix, terms, all_keywords)
+            raw_scores[dim] = {
+                "keywords": list(all_keywords),
+                "score": dimension_score,
+                "category_scores": category_scores
+            }
+
+            extraction_details[dim] = {
+                "seeds": seed_categories,
+                "category_keywords": category_keywords,
+                "category_scores": category_scores,
+                "total_keywords": len(all_keywords),
+                "score": dimension_score
+            }
+
+            total_score += dimension_score
+            logger.info(f"Dimension '{dim}': {len(all_keywords)} keywords, score: {dimension_score:.2f}")
+
+        # Create DataFrame with enhanced structure
+        E_raw = []
+        for dim, info in raw_scores.items():
+            weight = info["score"] / total_score if total_score > 0 else 0
+            E_raw.append({
+                "dimension": dim,
+                "keywords": ", ".join(info["keywords"]) if info["keywords"] else "",
+                "raw_score": float(info["score"]),
+                "normalized_weight": float(weight),
+                "hierarchical_structure": json.dumps(info["category_scores"]),
+                "category_scores": json.dumps(info["category_scores"]),
+                "keyword_frequencies": json.dumps(self._get_keyword_frequencies(tfidf_matrix, terms, info["keywords"])),
+                "source_documents": len(texts)
+            })
+
+        df_result = pd.DataFrame(E_raw)
+        logger.info(f"Enhanced extraction complete. Total score: {total_score:.2f}")
+
+        # Calculate total keywords extracted
+        total_keywords_extracted = sum(len(info["keywords"]) for info in raw_scores.values())
+
+        return df_result, extraction_details, {
+            "total_documents": len(texts),
+            "total_terms": len(terms),
+            "total_score": total_score,
+            "dimensions_processed": len(dimension_seeds),
+            "total_keywords_extracted": total_keywords_extracted
+        }
+
+    def _get_keyword_frequencies(self, tfidf_matrix, terms, keywords):
+        """Get frequency data for keywords."""
+        frequencies = {}
+        for keyword in keywords:
+            if keyword in terms:
+                term_idx = np.where(terms == keyword)[0][0]
+                freq = tfidf_matrix[:, term_idx].sum()
+                frequencies[keyword] = float(freq)
+        return frequencies
+
+    def _find_semantic_similar_terms(self, seed_term: str, all_terms: List[str], top_n: int = 5) -> List[str]:
+        """Find semantically similar terms using sentence embeddings."""
+        try:
+            seed_embedding = self.sentence_model.encode(seed_term, convert_to_tensor=True)
+            term_embeddings = self.sentence_model.encode(all_terms, convert_to_tensor=True)
+            cosine_scores = util.pytorch_cos_sim(seed_embedding, term_embeddings)[0]
+            top_indices = cosine_scores.topk(top_n).indices
+            return [all_terms[i] for i in top_indices]
+        except Exception as e:
+            logger.warning(f"Error finding similar terms for '{seed_term}': {e}")
+            return []
+
+    def compute_tfidf_matrix(self, texts: List[str]) -> Tuple[Any, np.ndarray, TfidfVectorizer]:
+        """Compute TF-IDF matrix with enhanced parameters."""
+        if not texts:
+            raise ValueError("No valid documents to process after preprocessing.")
+
+        vectorizer = TfidfVectorizer(
+            min_df=1,  # Minimum document frequency
+            max_df=0.95,  # Maximum document frequency (remove very common terms)
+            ngram_range=(1, 2),  # Include bigrams
+            max_features=10000  # Limit features to prevent memory issues
+        )
+
+        tfidf_matrix = vectorizer.fit_transform(texts)
+        terms = vectorizer.get_feature_names_out()
+
+        return tfidf_matrix, terms, vectorizer
+
+    def get_keyword_score(self, tfidf_matrix, terms: np.ndarray, keywords: List[str]) -> float:
+        """Calculate keyword score from TF-IDF matrix."""
+        score = 0
+        for keyword in keywords:
+            if keyword in terms:
+                keyword_idx = np.where(terms == keyword)[0][0]
+                score += tfidf_matrix[:, keyword_idx].sum()
+        return float(score)
+
+    def generate_enhanced_outputs(self, df_result: pd.DataFrame, extraction_results: Dict,
+                                  processing_stats: Dict, confidence_metrics: Dict,
+                                  semantic_relationships: Dict, output_dir: str) -> Dict[str, str]:
+        """Generate multiple output formats optimized for different downstream tasks."""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        saved_files = {}
+
+        # 1. Enhanced CSV with hierarchical information
+        csv_filename = f"enhanced_algorithm_1_criteria_{timestamp}.csv"
+        csv_path = output_path / csv_filename
+        df_result.to_csv(csv_path, index=False)
+        saved_files['enhanced_csv'] = str(csv_path)
+        logger.info(f"Saved enhanced CSV to: {csv_path}")
+
+        # 2. Compatibility CSV (for existing AURA integration)
+        compatibility_csv_path = output_path / "algorithm_1_artifact_evaluation_criteria.csv"
+        compatibility_df = df_result[['dimension', 'keywords', 'raw_score', 'normalized_weight']].copy()
+        compatibility_df.to_csv(compatibility_csv_path, index=False)
+        saved_files['compatibility_csv'] = str(compatibility_csv_path)
+        logger.info(f"Saved compatibility CSV to: {compatibility_csv_path}")
+
+        # 3. AURA Integration Format
+        aura_integration = self._create_aura_integration_format(df_result, confidence_metrics)
+        aura_filename = f"aura_integration_data_{timestamp}.json"
+        aura_path = output_path / aura_filename
+        with open(aura_path, 'w', encoding='utf-8') as f:
+            json.dump(aura_integration, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
+        saved_files['aura_integration'] = str(aura_path)
+        logger.info(f"Saved AURA integration data to: {aura_path}")
+
+        # 4. Research Analysis Format
+        research_analysis = self._create_research_analysis_format(
+            extraction_results, processing_stats, semantic_relationships
+        )
+        research_filename = f"research_analysis_{timestamp}.json"
+        research_path = output_path / research_filename
+        with open(research_path, 'w', encoding='utf-8') as f:
+            json.dump(research_analysis, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
+        saved_files['research_analysis'] = str(research_path)
+        logger.info(f"Saved research analysis to: {research_path}")
+
+        # 5. Human Review Format
+        human_review = self._create_human_review_format(df_result, confidence_metrics)
+        review_filename = f"human_review_data_{timestamp}.json"
+        review_path = output_path / review_filename
+        with open(review_path, 'w', encoding='utf-8') as f:
+            json.dump(human_review, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
+        saved_files['human_review'] = str(review_path)
+        logger.info(f"Saved human review data to: {review_path}")
+
+        # 6. ML Features Format
+        ml_features = self._create_ml_features_format(df_result, semantic_relationships)
+        ml_filename = f"ml_features_{timestamp}.json"
+        ml_path = output_path / ml_filename
+        with open(ml_path, 'w', encoding='utf-8') as f:
+            json.dump(ml_features, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
+        saved_files['ml_features'] = str(ml_path)
+        logger.info(f"Saved ML features to: {ml_path}")
+
+        # 7. Comprehensive Report
+        report_filename = f"enhanced_algorithm_1_report_{timestamp}.txt"
+        report_path = output_path / report_filename
+        self._generate_comprehensive_report(
+            report_path, df_result, extraction_results, processing_stats,
+            confidence_metrics, semantic_relationships
+        )
+        saved_files['comprehensive_report'] = str(report_path)
+        logger.info(f"Saved comprehensive report to: {report_path}")
+
+        # 8. Detailed JSON with all data
+        detailed_results = {
+            "metadata": {
+                "timestamp": datetime.now().isoformat(),
+                "script_version": "enhanced_algorithm_1.py",
+                "processing_stats": processing_stats,
+                "model_info": {
+                    "sentence_model": "all-MiniLM-L6-v2",
+                    "keybert_model": "all-MiniLM-L6-v2"
+                }
+            },
+            "evaluation_criteria": df_result.to_dict('records'),
+            "extraction_details": extraction_results,
+            "confidence_metrics": confidence_metrics,
+            "semantic_relationships": semantic_relationships,
+            "summary": {
+                "total_dimensions": len(df_result),
+                "total_keywords": sum(len(row['keywords'].split(', ')) for _, row in df_result.iterrows()),
+                "highest_weight_dimension": df_result.loc[df_result['normalized_weight'].idxmax(), 'dimension'],
+                "lowest_weight_dimension": df_result.loc[df_result['normalized_weight'].idxmin(), 'dimension'],
+                "average_confidence": np.mean(
+                    [metrics['overall_confidence'] for metrics in confidence_metrics.values()])
+            }
+        }
+
+        detailed_filename = f"enhanced_algorithm_1_detailed_{timestamp}.json"
+        detailed_path = output_path / detailed_filename
+        with open(detailed_path, 'w', encoding='utf-8') as f:
+            json.dump(detailed_results, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
+        saved_files['detailed_json'] = str(detailed_path)
+        logger.info(f"Saved detailed JSON to: {detailed_path}")
+
+        return saved_files
+
+    def _create_aura_integration_format(self, df_result: pd.DataFrame,
+                                        confidence_metrics: Dict) -> Dict:
+        """Create format optimized for AURA framework integration."""
+        aura_data = {
+            "structured_criteria": [],
+            "grounding_evidence": {},
+            "confidence_weights": {},
+            "hierarchical_keywords": {},
+            "severity_weights": {}
+        }
+
+        for _, row in df_result.iterrows():
+            dimension = row['dimension']
+
+            # Structured criteria
+            criteria_entry = {
+                "dimension": dimension,
+                "keywords": row['keywords'].split(', '),
+                "raw_score": row['raw_score'],
+                "normalized_weight": row['normalized_weight'],
+                "hierarchical_structure": json.loads(row['hierarchical_structure']),
+                "category_scores": json.loads(row['category_scores']),
+                "keyword_frequencies": json.loads(row['keyword_frequencies'])
+            }
+            aura_data["structured_criteria"].append(criteria_entry)
+
+            # Grounding evidence
+            aura_data["grounding_evidence"][dimension] = {
+                "keywords_found": row['keywords'].split(', '),
+                "frequency_data": json.loads(row['keyword_frequencies']),
+                "category_breakdown": json.loads(row['category_scores'])
+            }
+
+            # Confidence weights
+            if dimension in confidence_metrics:
+                aura_data["confidence_weights"][dimension] = {
+                    "overall_confidence": confidence_metrics[dimension]['overall_confidence'],
+                    "reliability_flag": confidence_metrics[dimension]['reliability_flag'],
+                    "detailed_metrics": confidence_metrics[dimension]['detailed_metrics']
+                }
+
+            # Hierarchical keywords
+            aura_data["hierarchical_keywords"][dimension] = json.loads(row['hierarchical_structure'])
+
+            # Severity weights (based on keyword categories)
+            category_scores = json.loads(row['category_scores'])
+            severity_weights = {}
+            for category, score_info in category_scores.items():
+                for keyword in score_info['keywords']:
+                    severity_weights[keyword] = {
+                        'category': category,
+                        'weight': score_info['score'],
+                        'severity': self._get_severity_level(category)
+                    }
+            aura_data["severity_weights"][dimension] = severity_weights
+
+        return aura_data
+
+    def _create_research_analysis_format(self, extraction_results: Dict,
+                                         processing_stats: Dict,
+                                         semantic_relationships: Dict) -> Dict:
+        """Create format for research analysis and insights."""
+        return {
+            "conference_comparison": {
+                "total_conferences": processing_stats.get('total_documents', 0),
+                "conference_metadata": processing_stats.get('conference_metadata', {}),
+                "dimension_distribution": self._analyze_dimension_distribution(extraction_results)
+            },
+            "trend_analysis": {
+                "keyword_clusters": semantic_relationships.get('keyword_clusters', []),
+                "cross_dimension_relationships": semantic_relationships.get('cross_dimension_relationships', []),
+                "semantic_hierarchy": semantic_relationships.get('semantic_hierarchy', {})
+            },
+            "methodology_report": {
+                "processing_stats": processing_stats,
+                "extraction_methods": {
+                    "hierarchical_approach": "Multi-category keyword extraction",
+                    "semantic_analysis": "Embedding-based similarity",
+                    "confidence_scoring": "Multi-metric validation"
+                }
+            }
+        }
+
+    def _create_human_review_format(self, df_result: pd.DataFrame,
+                                    confidence_metrics: Dict) -> Dict:
+        """Create format for human review and validation."""
+        review_data = {
+            "keyword_validation_sheet": [],
+            "quality_assessment": {},
+            "recommendation_report": {}
+        }
+
+        for _, row in df_result.iterrows():
+            dimension = row['dimension']
+
+            # Keyword validation sheet
+            keywords = row['keywords'].split(', ')
+            validation_entry = {
+                "dimension": dimension,
+                "keywords": keywords,
+                "validation_status": "pending",
+                "confidence_score": confidence_metrics.get(dimension, {}).get('overall_confidence', 0),
+                "reliability_flag": confidence_metrics.get(dimension, {}).get('reliability_flag', 'unknown')
+            }
+            review_data["keyword_validation_sheet"].append(validation_entry)
+
+            # Quality assessment
+            if dimension in confidence_metrics:
+                review_data["quality_assessment"][dimension] = {
+                    "overall_quality": confidence_metrics[dimension]['overall_confidence'],
+                    "detailed_metrics": confidence_metrics[dimension]['detailed_metrics'],
+                    "recommendations": self._generate_quality_recommendations(
+                        confidence_metrics[dimension]
+                    )
+                }
+
+        return review_data
+
+    def _create_ml_features_format(self, df_result: pd.DataFrame,
+                                   semantic_relationships: Dict) -> Dict:
+        """Create format for machine learning applications."""
+        return {
+            "feature_vectors": self._create_feature_vectors(df_result),
+            "training_data": self._prepare_training_data(df_result),
+            "embeddings": {
+                "keyword_embeddings": semantic_relationships.get('similarity_matrix', []),
+                "dimension_embeddings": self._create_dimension_embeddings(df_result)
+            }
+        }
+
+    def _get_severity_level(self, category: str) -> str:
+        """Get severity level for keyword category."""
+        severity_map = {
+            'core_keywords': 'high',
+            'semantic_keywords': 'medium',
+            'contextual_keywords': 'low',
+            'domain_keywords': 'medium'
+        }
+        return severity_map.get(category, 'medium')
+
+    def _analyze_dimension_distribution(self, extraction_results: Dict) -> Dict:
+        """Analyze distribution of dimensions across conferences."""
+        dimension_counts = defaultdict(int)
+        dimension_scores = defaultdict(list)
+
+        for dimension, results in extraction_results.items():
+            dimension_counts[dimension] += 1
+            dimension_scores[dimension].append(results['score'])
+
+        return {
+            "dimension_frequency": dict(dimension_counts),
+            "dimension_score_stats": {
+                dim: {
+                    "mean": np.mean(scores),
+                    "std": np.std(scores),
+                    "min": np.min(scores),
+                    "max": np.max(scores)
+                }
+                for dim, scores in dimension_scores.items()
+            }
+        }
+
+    def _generate_quality_recommendations(self, confidence_metrics: Dict) -> List[str]:
+        """Generate recommendations for improving quality."""
+        recommendations = []
+        metrics = confidence_metrics['detailed_metrics']
+
+        if metrics['source_coverage'] < 0.5:
+            recommendations.append("Increase source document coverage for better representation")
+
+        if metrics['keyword_consensus'] < 0.6:
+            recommendations.append("Improve keyword consensus across extraction methods")
+
+        if metrics['semantic_coherence'] < 0.7:
+            recommendations.append("Enhance semantic coherence of extracted keywords")
+
+        if metrics['frequency_stability'] < 0.8:
+            recommendations.append("Address frequency stability issues in keyword extraction")
+
+        return recommendations
+
+    def _create_feature_vectors(self, df_result: pd.DataFrame) -> Dict:
+        """Create feature vectors for ML applications."""
+        feature_vectors = {}
+
+        for _, row in df_result.iterrows():
+            dimension = row['dimension']
+
+            # Create feature vector
+            features = {
+                "raw_score": row['raw_score'],
+                "normalized_weight": row['normalized_weight'],
+                "keyword_count": len(row['keywords'].split(', ')),
+                "source_documents": row['source_documents']
+            }
+
+            # Add category-specific features
+            category_scores = json.loads(row['category_scores'])
+            for category, score_info in category_scores.items():
+                features[f"{category}_score"] = score_info['score']
+                features[f"{category}_count"] = score_info['count']
+
+            feature_vectors[dimension] = features
+
+        return feature_vectors
+
+    def _prepare_training_data(self, df_result: pd.DataFrame) -> List[Dict]:
+        """Prepare training data for ML models."""
+        training_data = []
+
+        for _, row in df_result.iterrows():
+            training_example = {
+                "dimension": row['dimension'],
+                "keywords": row['keywords'].split(', '),
+                "raw_score": row['raw_score'],
+                "normalized_weight": row['normalized_weight'],
+                "features": self._create_feature_vectors(pd.DataFrame([row]))[row['dimension']]
+            }
+            training_data.append(training_example)
+
+        return training_data
+
+    def _create_dimension_embeddings(self, df_result: pd.DataFrame) -> Dict:
+        """Create embeddings for dimensions."""
+        dimension_embeddings = {}
+
+        for _, row in df_result.iterrows():
+            dimension = row['dimension']
+            keywords = row['keywords'].split(', ')
+
+            # Create dimension embedding from keywords
+            if keywords:
+                dimension_text = f"{dimension}: {', '.join(keywords)}"
+                embedding = self.sentence_model.encode(dimension_text)
+                dimension_embeddings[dimension] = embedding.tolist()
+
+        return dimension_embeddings
+
+    def _generate_comprehensive_report(self, report_path: Path, df_result: pd.DataFrame,
+                                       extraction_results: Dict, processing_stats: Dict,
+                                       confidence_metrics: Dict, semantic_relationships: Dict):
+        """Generate comprehensive processing report."""
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write("Enhanced AURA Algorithm 1 - Comprehensive Processing Report\n")
+            f.write("=" * 70 + "\n\n")
+            f.write(f"Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Script: enhanced_algorithm_1.py\n\n")
+
+            # Processing Statistics
+            f.write("PROCESSING STATISTICS\n")
+            f.write("-" * 25 + "\n")
+            f.write(f"Total documents processed: {processing_stats['total_documents']}\n")
+            f.write(f"Total unique terms: {processing_stats['total_terms']}\n")
+            f.write(f"Total evaluation score: {processing_stats['total_score']:.2f}\n")
+            f.write(f"Dimensions processed: {processing_stats['dimensions_processed']}\n")
+            f.write(f"Total keywords extracted: {processing_stats['total_keywords_extracted']}\n\n")
+
+            # Conference Information
+            f.write("CONFERENCE INFORMATION\n")
+            f.write("-" * 25 + "\n")
+            conference_metadata = processing_stats.get('conference_metadata', {})
+            if conference_metadata:
+                for filename, metadata in conference_metadata.items():
+                    f.write(f"{filename}: {metadata.get('conference_name', 'Unknown')} {metadata.get('year', 'N/A')}\n")
+            else:
+                f.write(f"Processed {processing_stats['total_documents']} conference guideline files\n")
+            f.write("\n")
+
+            # Evaluation Criteria Summary
+            f.write("EVALUATION CRITERIA SUMMARY\n")
+            f.write("-" * 30 + "\n")
+            for _, row in df_result.iterrows():
+                f.write(f"{row['dimension'].upper()}:\n")
+                f.write(f"  - Raw Score: {row['raw_score']:.2f}\n")
+                f.write(f"  - Normalized Weight: {row['normalized_weight']:.3f}\n")
+                f.write(f"  - Keywords: {row['keywords']}\n")
+                f.write(
+                    f"  - Confidence: {confidence_metrics.get(row['dimension'], {}).get('overall_confidence', 0):.3f}\n")
+                f.write(
+                    f"  - Reliability: {confidence_metrics.get(row['dimension'], {}).get('reliability_flag', 'unknown')}\n\n")
+
+            # Semantic Analysis
+            f.write("SEMANTIC ANALYSIS\n")
+            f.write("-" * 20 + "\n")
+            f.write(f"Keyword clusters identified: {len(semantic_relationships['keyword_clusters'])}\n")
+            f.write(f"Cross-dimension relationships: {len(semantic_relationships['cross_dimension_relationships'])}\n")
+            f.write(f"Semantic communities: {len(semantic_relationships['semantic_hierarchy']['communities'])}\n")
+            f.write(f"Contradictions detected: {len(semantic_relationships['contradiction_detection'])}\n\n")
+
+            # Quality Assessment
+            f.write("QUALITY ASSESSMENT\n")
+            f.write("-" * 20 + "\n")
+            avg_confidence = np.mean([metrics['overall_confidence'] for metrics in confidence_metrics.values()])
+            f.write(f"Average confidence score: {avg_confidence:.3f}\n")
+            f.write("Dimension confidence breakdown:\n")
+            for dimension, metrics in confidence_metrics.items():
+                f.write(f"  {dimension}: {metrics['overall_confidence']:.3f} ({metrics['reliability_flag']})\n")
+            f.write("\n")
+
+            # Files Generated
+            f.write("FILES GENERATED\n")
+            f.write("-" * 15 + "\n")
+            f.write("- Enhanced CSV with hierarchical information\n")
+            f.write("- Compatibility CSV for existing AURA integration\n")
+            f.write("- AURA integration format (JSON)\n")
+            f.write("- Research analysis format (JSON)\n")
+            f.write("- Human review format (JSON)\n")
+            f.write("- ML features format (JSON)\n")
+            f.write("- Comprehensive report (TXT)\n")
+            f.write("- Detailed JSON with all data\n")
+
+    def _calculate_criteria_confidence(self, extraction_results: Dict, conference_metadata: Dict) -> Dict[str, Dict]:
+        """Calculate confidence scores for extracted criteria."""
+        confidence_metrics = {}
+
+        for dimension, results in extraction_results.items():
+            metrics = {}
+
+            # Source coverage: how many documents contributed to this dimension
+            metrics['source_coverage'] = 1.0  # All documents contribute to all dimensions
+
+            # Keyword consensus: agreement between different keyword categories
+            metrics['keyword_consensus'] = self._calculate_keyword_consensus(results['category_keywords'])
+
+            # Semantic coherence: how well keywords cluster together
+            metrics['semantic_coherence'] = 0.7  # Default value, could be enhanced
+
+            # Frequency stability: distribution of keyword frequencies
+            metrics['frequency_stability'] = 0.8  # Default value, could be enhanced
+
+            # Cross-validation score: consistency across different extraction methods
+            metrics['cross_validation_score'] = self._calculate_cross_validation_score(results['category_scores'])
+
+            # Overall confidence score (weighted average)
+            overall_confidence = (
+                    metrics['source_coverage'] * 0.2 +
+                    metrics['keyword_consensus'] * 0.3 +
+                    metrics['semantic_coherence'] * 0.2 +
+                    metrics['frequency_stability'] * 0.2 +
+                    metrics['cross_validation_score'] * 0.1
+            )
+
+            confidence_metrics[dimension] = {
+                'overall_confidence': overall_confidence,
+                'detailed_metrics': metrics,
+                'reliability_flag': self._get_reliability_flag(overall_confidence)
+            }
+
+        return confidence_metrics
+
+    def _calculate_keyword_consensus(self, category_keywords: Dict) -> float:
+        """Calculate agreement between different keyword categories."""
+        all_keywords = []
+        for category, keywords in category_keywords.items():
+            all_keywords.extend(keywords)
+
+        if not all_keywords:
+            return 0.0
+
+        # Calculate overlap between categories
+        category_keywords_list = list(category_keywords.values())
+        overlaps = 0
+        total_comparisons = 0
+
+        for i in range(len(category_keywords_list)):
+            for j in range(i + 1, len(category_keywords_list)):
+                overlap = len(set(category_keywords_list[i]) & set(category_keywords_list[j]))
+                total = len(set(category_keywords_list[i]) | set(category_keywords_list[j]))
+                if total > 0:
+                    overlaps += overlap / total
+                total_comparisons += 1
+
+        return overlaps / total_comparisons if total_comparisons > 0 else 0.0
+
+    def _calculate_cross_validation_score(self, category_scores: Dict) -> float:
+        """Calculate cross-validation score across different extraction methods."""
+        if not category_scores:
+            return 0.0
+
+        scores = [info['score'] for info in category_scores.values()]
+
+        # Calculate consistency across categories
+        mean_score = np.mean(scores)
+        std_score = np.std(scores)
+
+        if mean_score == 0:
+            return 0.0
+
+        # Consistency score (lower std relative to mean = higher consistency)
+        consistency = max(0, 1 - (std_score / mean_score))
+
+        return consistency
+
+    def _get_reliability_flag(self, confidence_score: float) -> str:
+        """Get reliability flag based on confidence score."""
+        if confidence_score >= 0.8:
+            return 'high'
+        elif confidence_score >= 0.6:
+            return 'medium'
+        else:
+            return 'low'
+
+    def run_enhanced_extraction(self, input_dir: str, output_dir: str) -> Dict[str, str]:
+        """Main method to run the enhanced extraction process."""
+        logger.info("Starting Enhanced AURA Algorithm 1")
+
+        # Load conference guidelines
+        pattern = os.path.join(input_dir, "*.md")
+        all_guideline_files = glob.glob(pattern)
+        logger.info(f"Found {len(all_guideline_files)} guideline files")
+
+        if not all_guideline_files:
+            raise ValueError("No guideline files found in input directory")
+
+        # Extract conference metadata
+        conference_metadata = self.extract_conference_metadata(all_guideline_files)
+
+        # Load and process texts
+        conference_texts = []
+        for path in all_guideline_files:
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                    conference_texts.append(content)
+                    logger.info(f"Loaded: {os.path.basename(path)} ({len(content)} characters)")
+            except Exception as e:
+                logger.error(f"Error reading {path}: {e}")
+
+        if not conference_texts:
+            raise ValueError("No content found in guideline files")
+
+        # Define dimension examples
+        dimension_examples = {
+            "reproducibility": [
+                "This artifact should allow users to reproduce the results with minimal effort. All scripts, datasets, and environment variables must be provided."
+            ],
+            "documentation": [
+                "A detailed README file with setup instructions and API usage must be included. The documentation should be beginner-friendly."
+            ],
+            "accessibility": [
+                "Ensure all components are publicly available. Do not restrict access to datasets, code, or dependencies."
+            ],
+            "usability": [
+                "The artifact should include a user interface or example demo. The installation process should be straightforward."
+            ],
+            "experimental": [
+                "The paper must be supported by rigorous experiments and statistical evaluation. Include charts, benchmarks, and reproducibility metrics."
+            ],
+            "functionality": [
+                "Code must perform its intended function correctly. Include unit tests or verification examples to validate outputs."
+            ]
+        }
+
+        # Generate hierarchical seed keywords
+        logger.info("Generating hierarchical seed keywords...")
+        hierarchical_seeds = self.generate_hierarchical_seed_keywords(dimension_examples)
+
+        # Extract evaluation criteria
+        logger.info("Extracting evaluation criteria...")
+        df_result, extraction_results, processing_stats = \
+            self.extract_evaluation_criteria(conference_texts, hierarchical_seeds)
+
+        # Calculate confidence metrics
+        confidence_metrics = self._calculate_criteria_confidence(extraction_results, conference_metadata)
+
+        # Build semantic relationship map
+        all_keywords = []
+        term_metadata = []
+        for dim, results in extraction_results.items():
+            for category, keywords in results['category_keywords'].items():
+                for keyword in keywords:
+                    all_keywords.append(keyword)
+                    term_metadata.append({
+                        'keyword': keyword,
+                        'dimension': dim,
+                        'category': category,
+                        'weight': results['category_scores'][category]['score']
+                    })
+
+        semantic_relationships = self.build_semantic_relationship_map(all_keywords, term_metadata)
+
+        # Generate outputs
+        logger.info("Generating enhanced outputs...")
+        saved_files = self.generate_enhanced_outputs(
+            df_result, extraction_results, processing_stats,
+            confidence_metrics, semantic_relationships, output_dir
+        )
+
+        # Final summary
+        logger.info("=" * 70)
+        logger.info("ENHANCED AURA ALGORITHM 1 - EXTRACTION COMPLETE")
+        logger.info("=" * 70)
+        logger.info(f"Processed {processing_stats['total_documents']} conference guideline files")
+        logger.info(f"Extracted criteria for {processing_stats['dimensions_processed']} dimensions")
+        logger.info(f"Total evaluation score: {processing_stats['total_score']:.2f}")
+        logger.info(
+            f"Average confidence: {np.mean([m['overall_confidence'] for m in confidence_metrics.values()]):.3f}")
+        logger.info(f"Output files saved to: {output_dir}")
+        logger.info("Files generated:")
+        for file_type, path in saved_files.items():
+            logger.info(f"  - {file_type}: {os.path.basename(path)}")
+        logger.info("=" * 70)
+
+        return saved_files
+
+
+def main():
+    """Main execution function for enhanced Algorithm 1."""
+    logger.info("Starting Enhanced AURA Algorithm 1")
+
+    # Setup paths
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    input_dir = os.path.join(script_dir, "..", "..", "data", "conference_guideline_texts", "processed")
+    output_dir = os.path.join(script_dir, "..", "..", "algo_outputs", "algorithm_1_output")
+
+    # Initialize enhanced algorithm
+    enhanced_algo = EnhancedAlgorithm1()
+
+    try:
+        # Run enhanced extraction
+        saved_files = enhanced_algo.run_enhanced_extraction(input_dir, output_dir)
+
+        logger.info("Enhanced Algorithm 1 completed successfully!")
+        return saved_files
+
+    except Exception as e:
+        logger.error(f"Error in enhanced extraction: {e}")
+        raise
+
+
+if __name__ == "__main__":
+    main()
