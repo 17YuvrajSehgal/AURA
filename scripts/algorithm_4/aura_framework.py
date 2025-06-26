@@ -5,14 +5,14 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from .agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
-from .agents.documentation_evaluation_agent import DocumentationEvaluationAgent
-from .agents.experimental_evaluation_agent import ExperimentalEvaluationAgent
-from .agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
-from .agents.llm_evaluator import LLMEvaluator
-from .agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
-from .agents.reproducibility_evaluation_agent import ReproducibilityEvaluationAgent
-from .agents.usability_evaluation_agent import UsabilityEvaluationAgent
+from scripts.algorithm_4.agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
+from scripts.algorithm_4.agents.documentation_evaluation_agent import DocumentationEvaluationAgent
+from scripts.algorithm_4.agents.experimental_evaluation_agent import ExperimentalEvaluationAgent
+from scripts.algorithm_4.agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
+from scripts.algorithm_4.agents.llm_evaluator import LLMEvaluator
+from scripts.algorithm_4.agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
+from scripts.algorithm_4.agents.reproducibility_evaluation_agent import ReproducibilityEvaluationAgent
+from scripts.algorithm_4.agents.usability_evaluation_agent import UsabilityEvaluationAgent
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class ArtifactEvaluationResult(BaseModel):
 
 
 class AURAFramework:
-    def __init__(self, artifact_json_path: str, neo4j_uri: str = "bolt://localhost:7687", openai_api_key: str = None):
+    def __init__(self, artifact_json_path: str, neo4j_uri: str = "bolt://localhost:7687", openai_api_key: str = None, use_llm: bool = True):
         """
         Initialize the AURA evaluation framework.
         
@@ -49,6 +49,7 @@ class AURAFramework:
             artifact_json_path: Path to the artifact JSON file
             neo4j_uri: Neo4j database URI for knowledge graph
             openai_api_key: OpenAI API key for LLM augmentation
+            use_llm: Whether to use the LLM evaluator (default True)
         """
         self.artifact_json_path = artifact_json_path
         self.neo4j_uri = neo4j_uri
@@ -59,14 +60,16 @@ class AURAFramework:
             neo4j_uri=neo4j_uri
         )
 
-        # Initialize LLM evaluator
-        self.llm_evaluator = LLMEvaluator(
-            openai_api_key=openai_api_key,
-            model_name="gpt-4-turbo",
-            temperature=0.1
-        )
+        # Initialize LLM evaluator if enabled
+        self.llm_evaluator = None
+        if use_llm:
+            self.llm_evaluator = LLMEvaluator(
+                openai_api_key=openai_api_key,
+                model_name="gpt-4-turbo",
+                temperature=0.1
+            )
 
-        # Initialize evaluation agents with LLM augmentation
+        # Initialize evaluation agents with or without LLM augmentation
         self.agents = {
             "accessibility": AccessibilityEvaluationAgent(self.kg_agent, self.llm_evaluator),
             "documentation": DocumentationEvaluationAgent(self.kg_agent, self.llm_evaluator),

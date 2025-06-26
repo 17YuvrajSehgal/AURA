@@ -135,6 +135,9 @@ with st.sidebar:
         ["Full Evaluation", "LLM Only", "Keyword Only", "Comparison Mode", "Grounded Evaluation"]
     )
 
+    # LLM evaluation toggle
+    use_llm = st.checkbox("Enable LLM-based Evaluation", value=True, help="If unchecked, only rule-based (keyword) evaluation will be used.")
+
 # Main content area: Only evaluation
 st.header("🎯 AURA Artifact Evaluation")
 
@@ -200,7 +203,7 @@ if artifact_json_path and os.path.exists(artifact_json_path):
                     progress_bar.progress((idx+1)/total_dims)
         with st.spinner("Running AURA evaluation..."):
             try:
-                framework = AURAFramework(artifact_json_path)
+                framework = AURAFramework(artifact_json_path, use_llm=use_llm)
                 result = framework.evaluate_artifact(progress_callback=streamlit_logger)
                 progress_bar.progress(1.0)
                 progress_box.markdown("**Evaluation complete!**")
