@@ -187,6 +187,18 @@ def analyze_repository(repo_path_or_url: str, temp_base_dir="./temp_dir_for_git"
     else:
         raise ValueError(f"Input must be a GitHub URL, a directory, or a supported archive file: {repo_path_or_url}")
 
+    # Calculate repository size in MB
+    repo_size_mb = 0.0
+    if os.path.exists(repo_path):
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(repo_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                if os.path.isfile(fp):
+                    total_size += os.path.getsize(fp)
+        repo_size_mb = round(total_size / (1024 * 1024), 2)
+        logging.info(f"Repository size: {repo_size_mb} MB")
+
     # 1) Gather all relevant files under repo_path
     file_paths = generate_file_list(
         repo_path,
@@ -236,7 +248,9 @@ def analyze_repository(repo_path_or_url: str, temp_base_dir="./temp_dir_for_git"
         "documentation_files": M,  # list of {path, content}
         "code_files": C,  # list of {path, content}
         "license_files": L,  # list of {path, content}
-        "tree_structure": tree_lines  # ← no embedded "\n"—just an array of strings
+        "tree_structure": tree_lines,  # ← no embedded "\n"—just an array of strings
+        "repo_path": repo_path,  # Add the repository path
+        "repo_size_mb": repo_size_mb  # Add repository size in MB
     }
 
 

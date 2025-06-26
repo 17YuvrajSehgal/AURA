@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from typing import List
+import time
 
 from pydantic import BaseModel, Field
 
@@ -38,6 +39,7 @@ class ArtifactEvaluationResult(BaseModel):
     acceptance_prediction: bool
     overall_justification: str = Field(default="")
     recommendations: List[str] = Field(default_factory=list)
+    timing: dict = Field(default_factory=dict)
 
 
 class AURAFramework:
@@ -54,11 +56,18 @@ class AURAFramework:
         self.artifact_json_path = artifact_json_path
         self.neo4j_uri = neo4j_uri
 
+        # --- Timing: Analysis ---
+        analysis_start = time.time()
+
         # Initialize knowledge graph agent
         self.kg_agent = RepositoryKnowledgeGraphAgent(
             artifact_json_path=artifact_json_path,
             neo4j_uri=neo4j_uri
         )
+        analysis_finish = time.time()
+        self.analysis_time = analysis_finish - analysis_start
+        self.analysis_start = analysis_start
+        self.analysis_finish = analysis_finish
 
         # Initialize LLM evaluator if enabled
         self.llm_evaluator = None
@@ -78,7 +87,6 @@ class AURAFramework:
             "reproducibility": ReproducibilityEvaluationAgent(self.kg_agent, self.llm_evaluator),
             "usability": UsabilityEvaluationAgent(self.kg_agent, self.llm_evaluator),
         }
-
         # Load scoring criteria
         self.criteria_scores = self._load_criteria_scores()
 
@@ -121,6 +129,7 @@ class AURAFramework:
         """
         Evaluate the artifact using all agents and return comprehensive results.
         """
+        eval_start = time.time()
         if progress_callback:
             progress_callback("Starting artifact evaluation with AURA framework...")
         logger.info("Starting artifact evaluation with AURA framework...")
@@ -165,13 +174,25 @@ class AURAFramework:
         recommendations = self._generate_recommendations()
         if progress_callback:
             progress_callback("Artifact evaluation complete.")
+        eval_finish = time.time()
+        eval_time = eval_finish - eval_start
+
+        timing = {
+            "analysis_start_time": self.analysis_start,
+            "analysis_finish_time": self.analysis_finish,
+            "analysis_duration_seconds": round(self.analysis_time, 2),
+            "evaluation_start_time": eval_start,
+            "evaluation_finish_time": eval_finish,
+            "evaluation_duration_seconds": round(eval_time, 2)
+        }
 
         return ArtifactEvaluationResult(
             criteria_scores=self.criteria_scores,
             total_weighted_score=total_score,
             acceptance_prediction=acceptance,
             overall_justification=overall_justification,
-            recommendations=recommendations
+            recommendations=recommendations,
+            timing=timing
         )
 
     def _calculate_total_weighted_score(self) -> float:
