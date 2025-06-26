@@ -77,7 +77,7 @@ class AURAFramework:
         try:
             # Get the path relative to the current script location
             script_dir = os.path.dirname(os.path.abspath(__file__))
-            criteria_file = os.path.join(script_dir, "../../algo_outputs/algorithm_1_output/aura_integration_data_20250626_013157.json")
+            criteria_file = os.path.join(script_dir, "../../algo_outputs/algorithm_1_output/aura_integration_data_20250626_044643.json")
             
             with open(criteria_file, "r", encoding="utf-8") as f:
                 data = json.load(f)

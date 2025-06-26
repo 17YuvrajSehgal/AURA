@@ -5,6 +5,9 @@ import os
 from typing import Optional, Dict, Any, List
 
 from py2neo import Graph, Node, Relationship
+import networkx as nx
+import matplotlib.pyplot as plt
+from pyvis.network import Network
 
 logging.basicConfig(level=logging.INFO)
 
@@ -125,6 +128,16 @@ class RepositoryKnowledgeGraphAgent:
                     self.graph.merge(Relationship(file_node, "IS_TEST", test_node))
 
         logging.info("Knowledge graph build complete.")
+        # After building, export an interactive HTML visualization
+        try:
+            self.export_graph_html()
+        except Exception as e:
+            logging.warning(f"Failed to export graph HTML visualization: {e}")
+        # Optionally, comment out PNG export
+        # try:
+        #     self.export_graph_png()
+        # except Exception as e:
+        #     logging.warning(f"Failed to export graph visualization: {e}")
 
     def _infer_file_type(self, filename: str) -> str:
         if filename.lower().endswith(".md"):
@@ -216,3 +229,59 @@ class RepositoryKnowledgeGraphAgent:
 
     def close(self):
         self.graph = None
+
+    def export_graph_html(self, output_path=None):
+        from pyvis.network import Network
+        import os
+
+        # Always save to project-root algo_outputs/kg_viz.html
+        if output_path is None:
+            output_dir = os.path.join(os.getcwd(), "algo_outputs")
+            os.makedirs(output_dir, exist_ok=True)
+            output_path = os.path.join(output_dir, "kg_viz.html")
+        else:
+            output_path = os.path.abspath(output_path)
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        net = Network(height="700px", width="100%", notebook=False, directed=True)
+        results = self.graph.run("MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 300")
+        node_ids = set()
+        for record in results:
+            n = record['n']
+            m = record['m']
+            r = record['r']
+            for node in [n, m]:
+                if node.identity not in node_ids:
+                    net.add_node(node.identity, label=node.get('name', str(node.identity)),
+                                 title=str(dict(node)), group=node.get('type', 'Other'))
+                    node_ids.add(node.identity)
+            net.add_edge(n.identity, m.identity, label=type(r).__name__)
+        net.write_html(output_path)
+
+
+    def export_graph_png(self, output_path="../../algo_outputs/graph_viz.png"):
+        """
+        Export a PNG visualization of the graph for the query MATCH (n)-[r]->(m) RETURN n, r, m
+        """
+        # Query the graph
+        results = self.graph.run("MATCH (n)-[r]->(m) RETURN n, r, m").data()
+        G = nx.MultiDiGraph()
+        for record in results:
+            n = record['n']
+            m = record['m']
+            r = record['r']
+            n_label = f"{n['name']}\n({n['type']})" if 'type' in n else n['name']
+            m_label = f"{m['name']}\n({m['type']})" if 'type' in m else m['name']
+            G.add_node(n_label)
+            G.add_node(m_label)
+            G.add_edge(n_label, m_label, label=r.__class__.__name__ if hasattr(r, '__class__') else str(r))
+        plt.figure(figsize=(12, 8))
+        pos = nx.spring_layout(G, k=0.5, iterations=50)
+        nx.draw(G, pos, with_labels=True, node_color='skyblue', edge_color='gray', node_size=2000, font_size=10, font_weight='bold', arrows=True)
+        edge_labels = {(u, v): d['label'] for u, v, d in G.edges(data=True)}
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, font_color='red')
+        plt.tight_layout()
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        plt.savefig(output_path)
+        plt.close()
+        logging.info(f"Graph visualization saved to {output_path}")

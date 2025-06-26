@@ -6,6 +6,7 @@ import re
 import subprocess
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from scripts.algorithm_4.aura_framework import AURAFramework
 
@@ -239,6 +240,17 @@ if artifact_json_path and os.path.exists(artifact_json_path):
                                 st.write(f"... and {len(criterion.llm_evidence) - 5} more")
                 # Reset button
                 st.markdown("---")
+                # Show KG visualization if available
+                kg_html_path = os.path.abspath(os.path.join("algo_outputs", "kg_viz.html"))
+                if os.path.exists(kg_html_path):
+                    st.subheader("📊 Knowledge Graph Visualization (Interactive)")
+                    with open(kg_html_path, "r", encoding="utf-8") as html_file:
+                        graph_html = html_file.read()
+                        components.html(graph_html, height=700, scrolling=True)
+                else:
+                    st.warning(
+                        "🚧 Knowledge graph HTML visualization not found. Please ensure the evaluation process was completed successfully.")
+
                 if st.button("🔄 Start New Evaluation"):
                     st.session_state.artifact_json_path = ""
                     st.rerun()
