@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Acceptance threshold based on ICSE 2025 standards
-ACCEPTANCE_THRESHOLD = 0.75
+ACCEPTANCE_THRESHOLD = 0.50
 
 
 class CriterionScore(BaseModel):

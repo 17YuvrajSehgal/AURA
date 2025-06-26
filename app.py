@@ -4,11 +4,12 @@ import time
 import glob
 import re
 import subprocess
+import json
 
 import streamlit as st
 import streamlit.components.v1 as components
 
-from scripts.algorithm_4.aura_framework import AURAFramework
+from scripts.algorithm_4.aura_framework import AURAFramework, ACCEPTANCE_THRESHOLD
 
 st.set_page_config(
     page_title="AURA Artifact Evaluator",
@@ -182,7 +183,36 @@ artifact_json_path = st.text_input(
 if artifact_json_path:
     st.session_state.artifact_json_path = artifact_json_path
 
+def load_json(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"Failed to load JSON: {e}")
+        return {}
+
 if artifact_json_path and os.path.exists(artifact_json_path):
+    # Load analysis JSON
+    analysis_data = load_json(artifact_json_path)
+    tree_structure = analysis_data.get("tree_structure", [])
+    repo_size_mb = analysis_data.get("repo_size_mb", None)
+    repo_name = os.path.basename(artifact_json_path).replace("_analysis.json", "")
+
+    # Try to find the corresponding evaluation JSON
+    eval_json_path = artifact_json_path.replace("algorithm_2_output", "algorithm_4_output").replace("_analysis.json", "_aura_evaluation.json")
+    eval_data = load_json(eval_json_path) if os.path.exists(eval_json_path) else {}
+
+    timing = eval_data.get("timing", {})
+
+    # Show metadata in the UI
+    with st.expander("📦 Artifact Metadata", expanded=True):
+        st.write(f"**Repository Name:** `{repo_name}`")
+        if repo_size_mb is not None:
+            st.write(f"**Repository Size:** {repo_size_mb} MB")
+        if tree_structure:
+            st.write("**Repository Structure:**")
+            st.code("\n".join(tree_structure), language="text")
+
     st.markdown('<div class="status-box">', unsafe_allow_html=True)
     st.info(f"Using analysis file: {artifact_json_path}")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -208,10 +238,17 @@ if artifact_json_path and os.path.exists(artifact_json_path):
                 progress_bar.progress(1.0)
                 progress_box.markdown("**Evaluation complete!**")
                 st.success("🎉 Evaluation complete!")
+
+                # Show timing info after evaluation
+                if hasattr(result, 'timing') and result.timing:
+                    st.subheader("⏱️ Timing Information")
+                    for k, v in result.timing.items():
+                        st.write(f"- **{k.replace('_', ' ').title()}**: {v}")
+
                 # Show overall results
                 st.subheader("Overall Results")
                 st.metric("Total Weighted Score", f"{result.total_weighted_score:.3f}")
-                st.metric("Acceptance Threshold", "0.750")
+                st.metric("Acceptance Threshold", f"{ACCEPTANCE_THRESHOLD:.3f}")
                 if result.acceptance_prediction:
                     st.success("✅ Prediction: ACCEPTED")
                 else:
