@@ -25,13 +25,15 @@ def main(repo_url):
     # Step 1: Run algorithm_2 to analyze the repo and generate artifact JSON
     script_dir = os.path.dirname(os.path.abspath(__file__))
     algo2_path = os.path.abspath(os.path.join(script_dir, "..", "algorithm_2", "algorithm_2.py"))
-    output_dir = os.path.abspath(os.path.join(script_dir, "..", "..", "algo_outputs", "algorithm_2_output"))
-    os.makedirs(output_dir, exist_ok=True)
+    output_dir_algo2 = os.path.abspath(os.path.join(script_dir, "..", "..", "algo_outputs", "algorithm_2_output"))
+    output_dir_algo4 = os.path.abspath(os.path.join(script_dir, "..", "..", "algo_outputs", "algorithm_4_output"))
+    os.makedirs(output_dir_algo2, exist_ok=True)
+    os.makedirs(output_dir_algo4, exist_ok=True)
     repo_name = repo_url.rstrip("/").split("/")[-1].replace('.git', '')
-    artifact_json_path = os.path.join(output_dir, f"{repo_name}_analysis.json")
+    artifact_json_path = os.path.join(output_dir_algo2, f"{repo_name}_analysis.json")
     print(f"\n[1/2] Running repository analysis (algorithm_2) ...")
     result = subprocess.run([
-        sys.executable, algo2_path, repo_url, os.path.join('.', 'temp_dir_for_git'), output_dir
+        sys.executable, algo2_path, repo_url, os.path.join('.', 'temp_dir_for_git'), output_dir_algo2
     ], capture_output=True, text=True)
     if result.returncode != 0:
         print(f"✗ Analysis failed: {result.stderr}")
@@ -45,7 +47,7 @@ def main(repo_url):
     print(f"\n[2/2] Running AURA framework evaluation ...")
     framework = AURAFramework(artifact_json_path, use_llm=False)
     result = framework.evaluate_artifact()
-    eval_json_path = os.path.join(output_dir, f"{repo_name}_aura_evaluation.json")
+    eval_json_path = os.path.join(output_dir_algo4, f"{repo_name}_aura_evaluation.json")
     with open(eval_json_path, "w", encoding="utf-8") as f:
         json.dump(result.dict(), f, indent=2)
     print(f"✓ Evaluation complete! Results saved at: {eval_json_path}")

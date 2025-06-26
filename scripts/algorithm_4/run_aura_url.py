@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 Simple runner script for the AURA Framework on a GitHub repository URL.
+- The analysis JSON will be saved in algo_outputs/algorithm_2_output
+- The AURA evaluation JSON will be saved in algo_outputs/algorithm_4_output
 """
 import sys
 import os
