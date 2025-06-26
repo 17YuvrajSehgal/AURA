@@ -5,14 +5,14 @@ from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from pathlib import Path
 
-from agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
-from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
-from agents.experimental_evaluation_agent import ExperimentalEvaluationAgent
-from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
-from agents.reproducibility_evaluation_agent import ReproducibilityEvaluationAgent
-from agents.usability_evaluation_agent import UsabilityEvaluationAgent
-from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
-from agents.llm_evaluator import LLMEvaluator
+from .agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
+from .agents.documentation_evaluation_agent import DocumentationEvaluationAgent
+from .agents.experimental_evaluation_agent import ExperimentalEvaluationAgent
+from .agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
+from .agents.reproducibility_evaluation_agent import ReproducibilityEvaluationAgent
+from .agents.usability_evaluation_agent import UsabilityEvaluationAgent
+from .agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
+from .agents.llm_evaluator import LLMEvaluator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

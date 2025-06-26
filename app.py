@@ -1,10 +1,11 @@
 import os
 import time
+import glob
+import re
 
 import streamlit as st
 
-from scripts.algorithm_4.aura_framework import AURA
-from scripts.algorithm_4.repo_analyzer import analyze_github_repository, get_analysis_summary, format_timing_summary
+from scripts.algorithm_4.aura_framework import AURAFramework
 
 st.set_page_config(
     page_title="AURA Artifact Evaluator",
@@ -75,34 +76,46 @@ if 'repo_name' not in st.session_state:
 # Sidebar configuration
 with st.sidebar:
     st.header("🎯 Workflow Steps")
-
-    # Step indicator
-    steps = ["1. Repository Input", "2. Analysis", "3. Evaluation"]
-    for i, step in enumerate(steps, 1):
-        if i == st.session_state.current_step:
-            st.markdown(f"**{step}** 🔄")
-        elif i < st.session_state.current_step:
-            st.markdown(f"✅ {step}")
-        else:
-            st.markdown(f"⏳ {step}")
-
+    st.markdown("**1. Configuration** ✅")
+    st.markdown("**2. Evaluation** ⏳")
     st.markdown("---")
-
     st.header("⚙️ Configuration")
 
-    # Conference settings
-    conference_name = st.text_input("Conference Name", value="ICSE 2025")
-    guideline_path = st.text_input(
-        "Conference Guidelines Path",
-        value="C:\\workplace\\AURA\\data\\conference_guideline_texts\\processed\\13_icse_2025.md"
-    )
+    # --- Conference dropdown and auto-path logic ---
+    processed_dir = os.path.join("data", "conference_guideline_texts", "processed")
+    md_files = glob.glob(os.path.join(processed_dir, "*.md"))
+    conference_options = []
+    conference_map = {}
+    for f in md_files:
+        fname = os.path.basename(f)
+        # Try to extract a readable name, e.g., '13_icse_2025.md' -> 'ICSE 2025'
+        match = re.match(r"\d+_([a-zA-Z]+)_?(\d{4})?\.md", fname)
+        if match:
+            conf = match.group(1).upper()
+            year = match.group(2) if match.group(2) else ''
+            label = f"{conf} {year}".strip()
+        else:
+            # fallback: use filename without extension
+            label = fname.replace(".md", "").replace("_", " ").title()
+        conference_options.append(label)
+        conference_map[label] = f
+    conference_options = sorted(conference_options)
+
+    # Select conference
+    selected_conference = st.selectbox("Select Conference", conference_options, index=conference_options.index("ICSE 2025") if "ICSE 2025" in conference_options else 0)
+    guideline_path = os.path.abspath(conference_map[selected_conference])
+
+    st.text_input("Conference Name", value=selected_conference, disabled=True)
+    st.text_input("Conference Guidelines Path", value=guideline_path, disabled=True)
+
+    # --- End conference dropdown logic ---
 
     # Evaluation options
     st.subheader("Evaluation Dimensions")
     dims = st.multiselect(
         "Select Dimensions",
-        ['documentation', 'usability', 'accessibility', 'functionality'],
-        default=['documentation', 'usability', 'accessibility', 'functionality']
+        ['documentation', 'usability', 'accessibility', 'functionality', 'experimental', 'reproducibility'],
+        default=['documentation', 'usability', 'accessibility', 'functionality', 'experimental', 'reproducibility']
     )
 
     # Keyword evaluation
@@ -119,334 +132,73 @@ with st.sidebar:
         ["Full Evaluation", "LLM Only", "Keyword Only", "Comparison Mode", "Grounded Evaluation"]
     )
 
-# Main content area
-if st.session_state.current_step == 1:
-    st.header("📥 Step 1: Repository Input")
+# Main content area: Only evaluation
+st.header("🎯 AURA Artifact Evaluation")
 
-    col1, col2 = st.columns([2, 1])
+# Let user select or input artifact JSON path
+artifact_json_path = st.text_input(
+    "Artifact JSON Path",
+    value=st.session_state.artifact_json_path if 'artifact_json_path' in st.session_state and st.session_state.artifact_json_path else "",
+    help="Provide the path to the artifact analysis JSON file."
+)
+if artifact_json_path:
+    st.session_state.artifact_json_path = artifact_json_path
 
-    with col1:
-        st.subheader("GitHub Repository URL")
-        repo_url = st.text_input(
-            "Enter GitHub repository URL",
-            placeholder="https://github.com/username/repository",
-            help="Enter the full GitHub URL of the repository you want to analyze"
-        )
+if artifact_json_path and os.path.exists(artifact_json_path):
+    st.markdown('<div class="status-box">', unsafe_allow_html=True)
+    st.info(f"Using analysis file: {artifact_json_path}")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # Example repositories
-        st.subheader("📋 Example Repositories")
-        example_repos = [
-            "https://github.com/sneh2001patel/ml-image-classifier",
-            "https://github.com/nntzuekai/Respector",
-            "https://github.com/SageSELab/MotorEase",
-            "https://github.com/sola-st/PyTy"
-        ]
-
-        for repo in example_repos:
-            if st.button(f"Use: {repo.split('/')[-1]}", key=f"example_{repo}"):
-                repo_url = repo
-                st.session_state.repo_url = repo
-                st.rerun()
-
-    with col2:
-        st.subheader("ℹ️ Information")
-        st.info("""
-        **What happens next:**
-        1. Repository will be cloned locally
-        2. Files will be analyzed and categorized
-        3. JSON analysis file will be generated
-        4. AURA evaluation will be performed
-        
-        **Supported repositories:**
-        - Public GitHub repositories
-        - Repositories with documentation files
-        - Code repositories with README files
-        """)
-
-    if st.button("🚀 Start Analysis", type="primary", disabled=not repo_url):
-        if repo_url:
-            st.session_state.repo_url = repo_url
-            st.session_state.current_step = 2
-            st.rerun()
-
-elif st.session_state.current_step == 2:
-    st.header("🔍 Step 2: Repository Analysis")
-
-    if not st.session_state.repo_analysis_complete:
-        with st.spinner("Analyzing repository..."):
+    if st.button("🚀 Start Evaluation", type="primary"):
+        with st.spinner("Running AURA evaluation..."):
             try:
-                # Progress indicators
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-
-                # Step 1: Clone and analyze repository
-                status_text.text("📥 Cloning repository...")
-                progress_bar.progress(25)
-
-                repo_url = st.session_state.repo_url
-
-                # Analyze repository
-                status_text.text("🔍 Analyzing repository structure...")
-                progress_bar.progress(50)
-
-                repo_name, artifact_json_path, result, timing_data = analyze_github_repository(repo_url)
-                st.session_state.repo_name = repo_name
-                st.session_state.artifact_json_path = artifact_json_path
-                st.session_state.analysis_timing = timing_data
-
-                status_text.text("💾 Analysis results saved!")
-                progress_bar.progress(100)
-                status_text.text("✅ Analysis complete!")
-
-                st.session_state.repo_analysis_complete = True
-
-                # Show analysis summary
-                st.markdown('<div class="success-box">', unsafe_allow_html=True)
-                st.success("Repository analysis completed successfully!")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-                # Display analysis summary
-                summary = get_analysis_summary(result)
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Repository", repo_name)
-                with col2:
-                    st.metric("Files Analyzed", summary["total_files"])
-                with col3:
-                    st.metric("Documentation Files", summary["documentation_files"])
-                with col4:
-                    st.metric("Code Files", summary["code_files"])
-
-                # Show timing information
-                if timing_data:
-                    st.subheader("⏱️ Analysis Timing")
-                    timing_summary = format_timing_summary(timing_data)
-                    st.info(f"**Timing Summary:** {timing_summary}")
-                    
-                    # Detailed timing breakdown
-                    with st.expander("📊 Detailed Timing Breakdown", expanded=False):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            if timing_data.get("cloning_duration_seconds") is not None:
-                                st.metric("📥 Cloning Time", f"{timing_data['cloning_duration_seconds']}s")
-                            if timing_data.get("analysis_processing_duration_seconds") is not None:
-                                st.metric("🔍 Processing Time", f"{timing_data['analysis_processing_duration_seconds']}s")
-                        with col2:
-                            if timing_data.get("saving_duration_seconds") is not None:
-                                st.metric("💾 Saving Time", f"{timing_data['saving_duration_seconds']}s")
-                            if timing_data.get("analysis_duration_seconds") is not None:
-                                st.metric("🚀 Total Analysis Time", f"{timing_data['analysis_duration_seconds']}s")
-
-                # Show file structure preview
-                with st.expander("📁 Repository Structure Preview", expanded=False):
-                    tree_lines = result.get("tree_structure", [])
-                    st.code("\n".join(tree_lines[:20]))  # Show first 20 lines
-                    if len(tree_lines) > 20:
-                        st.info(f"... and {len(tree_lines) - 20} more files/directories")
-
-                time.sleep(1)  # Brief pause to show completion
-
+                # Initialize AURAFramework
+                framework = AURAFramework(artifact_json_path)
+                result = framework.evaluate_artifact()
+                st.success("🎉 Evaluation complete!")
+                # Show overall results
+                st.subheader("Overall Results")
+                st.metric("Total Weighted Score", f"{result.total_weighted_score:.3f}")
+                st.metric("Acceptance Threshold", "0.750")
+                if result.acceptance_prediction:
+                    st.success("✅ Prediction: ACCEPTED")
+                else:
+                    st.error("❌ Prediction: REJECTED")
+                st.info(result.overall_justification)
+                if result.recommendations:
+                    st.subheader("Recommendations")
+                    for i, rec in enumerate(result.recommendations, 1):
+                        st.write(f"{i}. {rec}")
+                # Show per-dimension results
+                st.subheader("Dimension Evaluations")
+                for criterion in result.criteria_scores:
+                    with st.expander(f"{criterion.dimension.capitalize()} Evaluation", expanded=False):
+                        st.metric("Score", f"{criterion.llm_evaluated_score:.3f}")
+                        st.metric("Weight", f"{criterion.normalized_weight:.3f}")
+                        st.write(f"**Justification:** {criterion.justification}")
+                        if criterion.evidence:
+                            st.write("**Evidence:**")
+                            for ev in criterion.evidence[:5]:
+                                st.write(f"- {ev}")
+                            if len(criterion.evidence) > 5:
+                                st.write(f"... and {len(criterion.evidence) - 5} more")
+                        st.write(f"**LLM Justification:** {criterion.llm_justification}")
+                        if criterion.llm_evidence:
+                            st.write("**LLM Additional Evidence:**")
+                            for ev in criterion.llm_evidence[:5]:
+                                st.write(f"- {ev}")
+                            if len(criterion.llm_evidence) > 5:
+                                st.write(f"... and {len(criterion.llm_evidence) - 5} more")
+                # Reset button
+                st.markdown("---")
+                if st.button("🔄 Start New Evaluation"):
+                    st.session_state.artifact_json_path = ""
+                    st.rerun()
             except Exception as e:
-                st.error(f"Analysis failed: {str(e)}")
+                st.error(f"Evaluation failed: {str(e)}")
                 st.exception(e)
-                st.session_state.current_step = 1
-
-    # Show analysis results and proceed to evaluation
-    if st.session_state.repo_analysis_complete:
-        st.markdown('<div class="status-box">', unsafe_allow_html=True)
-        st.info(f"✅ Repository '{st.session_state.repo_name}' analyzed successfully!")
-        st.info(f"📄 Analysis file: {st.session_state.artifact_json_path}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        if st.button("🎯 Proceed to Evaluation", type="primary"):
-            st.session_state.current_step = 3
-            st.rerun()
-
-elif st.session_state.current_step == 3:
-    st.header("🎯 Step 3: AURA Evaluation")
-
-    if st.session_state.artifact_json_path and os.path.exists(st.session_state.artifact_json_path):
-        st.markdown('<div class="status-box">', unsafe_allow_html=True)
-        st.info(f"Evaluating repository: {st.session_state.repo_name}")
-        st.info(f"Using analysis file: {st.session_state.artifact_json_path}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        if st.button("🚀 Start Evaluation", type="primary"):
-            with st.spinner("Running AURA evaluation..."):
-                try:
-                    # Initialize AURA framework
-                    aura = AURA(
-                        guideline_path,
-                        st.session_state.artifact_json_path,
-                        conference_name,
-                        criteria_csv_path
-                    )
-
-                    # Run evaluation based on selected mode
-                    if evaluation_mode == "Full Evaluation":
-                        results = aura.evaluate(dimensions=dims, include_keyword_eval=include_keyword_eval, analysis_timing_data=st.session_state.get('analysis_timing'))
-                    elif evaluation_mode == "LLM Only":
-                        results = aura.evaluate(dimensions=dims, include_keyword_eval=False, analysis_timing_data=st.session_state.get('analysis_timing'))
-                    elif evaluation_mode == "Keyword Only":
-                        if aura.keyword_agent:
-                            results = {"keyword_baseline": aura.keyword_agent.evaluate(verbose=False)}
-                        else:
-                            st.error("Keyword agent not available. Please check the criteria CSV path.")
-                            st.stop()
-                    elif evaluation_mode == "Comparison Mode":
-                        results = aura.compare_evaluations(verbose=False)
-                    elif evaluation_mode == "Grounded Evaluation":
-                        if not aura.keyword_agent:
-                            st.error(
-                                "Keyword agent not available for grounded evaluation. Please check the criteria CSV path.")
-                            st.stop()
-                        results = {}
-                        for dim in dims:
-                            grounded_result = aura.get_grounded_evaluation(dim, verbose=False)
-                            results[dim] = grounded_result
-
-                    st.success("🎉 Evaluation complete!")
-
-                    # Show timing information
-                    timing_summary = aura.get_timing_summary()
-                    if timing_summary.get("analysis_timing") or timing_summary.get("evaluation_timing"):
-                        st.markdown('<div class="success-box">', unsafe_allow_html=True)
-                        st.subheader("⏱️ Timing Information")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            if timing_summary.get("analysis_timing"):
-                                analysis_time = timing_summary["analysis_timing"].get("analysis_duration_seconds", 0)
-                                if analysis_time is not None:
-                                    st.metric("📥 Analysis Time", f"{analysis_time}s")
-                                else:
-                                    st.metric("📥 Analysis Time", "N/A")
-                        
-                        with col2:
-                            if timing_summary.get("evaluation_timing"):
-                                eval_time = timing_summary["evaluation_timing"].get("evaluation_duration_seconds", 0)
-                                if eval_time is not None:
-                                    st.metric("🎯 Evaluation Time", f"{eval_time}s")
-                                else:
-                                    st.metric("🎯 Evaluation Time", "N/A")
-                        
-                        with col3:
-                            if timing_summary.get("total_pipeline_time"):
-                                total_time = timing_summary["total_pipeline_time"]
-                                if total_time is not None and total_time > 0:
-                                    st.metric("🚀 Total Pipeline Time", f"{total_time}s")
-                                else:
-                                    st.metric("🚀 Total Pipeline Time", "N/A")
-                        
-                        st.markdown('</div>', unsafe_allow_html=True)
-
-                    # Display results based on mode
-                    if evaluation_mode == "Comparison Mode":
-                        st.subheader("📊 Evaluation Comparison")
-                        st.text(results["comparison_notes"])
-
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.subheader("🤖 LLM Evaluations (Grounded)")
-                            for dim in dims:
-                                if dim in results["llm_evaluations"]:
-                                    st.text_area(f"{dim.capitalize()}", results["llm_evaluations"][dim], height=200)
-
-                        with col2:
-                            st.subheader("🔍 Keyword Evaluation")
-                            if "keyword_baseline" in results["llm_evaluations"]:
-                                keyword_result = results["llm_evaluations"]["keyword_baseline"]
-                                if "error" not in keyword_result:
-                                    st.text_area("Keyword Summary", keyword_result["summary"], height=400)
-                                else:
-                                    st.error(f"Keyword evaluation error: {keyword_result['error']}")
-
-                    elif evaluation_mode == "Grounded Evaluation":
-                        st.subheader("🔗 Grounded Evaluations (LLM + Keyword Evidence)")
-
-                        for dim, grounded_result in results.items():
-                            if "error" in grounded_result:
-                                st.error(f"{dim.capitalize()}: {grounded_result['error']}")
-                                continue
-
-                            with st.expander(f"{dim.capitalize()} Evaluation", expanded=True):
-                                col1, col2 = st.columns([2, 1])
-
-                                with col1:
-                                    st.subheader("🤖 LLM Evaluation (Grounded)")
-                                    st.text_area("Evaluation", grounded_result["llm_evaluation"], height=300,
-                                                 key=f"llm_{dim}")
-
-                                with col2:
-                                    st.subheader("🔍 Keyword Evidence")
-                                    if grounded_result["keyword_evidence"]:
-                                        evidence = grounded_result["keyword_evidence"]
-                                        st.metric("Raw Score", evidence["raw_score"])
-                                        st.metric("Weighted Score", f"{evidence['weighted_score']:.2f}")
-
-                                        if evidence["keywords_found"]:
-                                            st.write("**Keywords Found:**")
-                                            for kw in evidence["keywords_found"][:5]:
-                                                st.write(f"• {kw}")
-                                            if len(evidence["keywords_found"]) > 5:
-                                                st.write(f"... and {len(evidence['keywords_found']) - 5} more")
-                                        else:
-                                            st.write("No keywords found")
-                                    else:
-                                        st.write("No keyword evidence available")
-
-                                st.info(grounded_result["grounding_info"])
-
-                    else:
-                        # Display individual evaluations
-                        for key, value in results.items():
-                            if key == "keyword_baseline":
-                                st.subheader("🔍 Keyword-Based Evaluation")
-                                if isinstance(value, dict) and "error" not in value:
-                                    st.text_area("Summary", value["summary"], height=300)
-
-                                    # Show detailed breakdown
-                                    if "dimensions" in value:
-                                        st.subheader("📊 Dimension Breakdown")
-                                        for dim in value["dimensions"]:
-                                            col1, col2, col3 = st.columns(3)
-                                            with col1:
-                                                st.metric(f"{dim['dimension'].capitalize()}",
-                                                          f"{dim['weighted_score']:.2f}")
-                                            with col2:
-                                                st.metric("Raw Score", dim['raw_score'])
-                                            with col3:
-                                                st.metric("Weight", f"{dim['weight']:.3f}")
-
-                                    # Show overall score
-                                    st.metric("🎯 Overall Score", f"{value['overall_score']:.2f}")
-                                else:
-                                    st.error(f"Keyword evaluation error: {value}")
-                            else:
-                                st.subheader(f"📝 {key.capitalize()} Evaluation")
-                                if evaluation_mode == "Full Evaluation":
-                                    st.info(
-                                        "💡 This LLM evaluation was grounded with keyword evidence to prevent hallucination")
-                                st.code(value)
-
-                    # Reset button to start over
-                    st.markdown("---")
-                    if st.button("🔄 Start New Analysis"):
-                        st.session_state.current_step = 1
-                        st.session_state.repo_analysis_complete = False
-                        st.session_state.artifact_json_path = None
-                        st.session_state.repo_name = None
-                        st.rerun()
-
-                except Exception as e:
-                    st.error(f"Evaluation failed: {str(e)}")
-                    st.exception(e)
-    else:
-        st.error("Analysis file not found. Please go back to step 2.")
-        if st.button("⬅️ Go Back to Analysis"):
-            st.session_state.current_step = 2
-            st.rerun()
+else:
+    st.warning("Please provide a valid artifact JSON path to start evaluation.")
 
 # Footer with information
 st.markdown("---")
