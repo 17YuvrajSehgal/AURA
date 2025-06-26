@@ -2,6 +2,7 @@ import json
 import logging
 import mimetypes
 import os
+import sys
 
 from anytree import Node, RenderTree
 from git import Repo
@@ -19,7 +20,7 @@ def is_github_url(url: str) -> bool:
     return url.startswith("http://") or url.startswith("https://")
 
 
-def clone_repository(repo_url: str, temp_base_dir="../../temp_dir_for_git") -> str:
+def clone_repository(repo_url: str, temp_base_dir="./temp_dir_for_git") -> str:
     repo_name = repo_url.rstrip("/").split("/")[-1]
     clone_path = os.path.join(temp_base_dir, repo_name)
 
@@ -46,7 +47,7 @@ def generate_file_list(
     """
     Walk through `root` and collect up to `max_files_per_dir` files per folder
     whose extension ∈ allowed_extensions. If fewer found, sample up to
-    min_files_to_include_anyway “extra” files (of any extension) per folder.
+    min_files_to_include_anyway "extra" files (of any extension) per folder.
     Skips files larger than max_file_size_kb.
     """
     file_paths = []
@@ -143,7 +144,7 @@ def generate_tree_lines(file_paths: list, root_dir: str) -> list:
     return lines
 
 
-def analyze_repository(repo_path_or_url: str, temp_base_dir="../../temp_dir_for_git") -> dict:
+def analyze_repository(repo_path_or_url: str, temp_base_dir="./temp_dir_for_git") -> dict:
     is_temp = False
     if is_github_url(repo_path_or_url):
         repo_path = clone_repository(repo_path_or_url, temp_base_dir=temp_base_dir)
@@ -205,7 +206,7 @@ def analyze_repository(repo_path_or_url: str, temp_base_dir="../../temp_dir_for_
     }
 
 
-def save_analysis_result(result: dict, repo_name: str, output_dir="../../algo_outputs/algorithm_2_output"):
+def save_analysis_result(result: dict, repo_name: str, output_dir="./algo_outputs/algorithm_2_output"):
     """
     Write the `result` dict to JSON. Because `tree_structure` is already a list of simple strings,
     the output JSON will not contain any '\\n' escape characters.
@@ -220,17 +221,23 @@ def save_analysis_result(result: dict, repo_name: str, output_dir="../../algo_ou
 
 
 # Example usage
-#if __name__ == "__main__":
-    #repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
-    #repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
-    #repo_url = "https://github.com/nntzuekai/Respector"
-    #repo_url = "https://github.com/SageSELab/MotorEase"
-    #repo_url = "https://github.com/SageSELab/UI-Bug-Localization-Study"
-    #repo_url =  "https://github.com/JackyChok/AI_Code_Detection_Education"
-    #repo_url = "https://github.com/JackyChok/AI_Code_Detection_Education"
-    #repo_url = "https://github.com/huiAlex/TRIAD"
-    #repo_url = "https://github.com/sola-st/PyTy"
-    # result = analyze_repository(repo_url)
-    #
-    # repo_name = repo_url.rstrip("/").split("/")[-1]
-    # save_analysis_result(result, repo_name)
+if __name__ == "__main__":
+    # Usage: python algorithm_2.py <repo_url> [<temp_base_dir>] [<output_dir>]
+
+    # repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
+    # repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
+    # repo_url = "https://github.com/nntzuekai/Respector"
+    # repo_url = "https://github.com/SageSELab/MotorEase"
+    # repo_url = "https://github.com/SageSELab/UI-Bug-Localization-Study"
+    # repo_url =  "https://github.com/JackyChok/AI_Code_Detection_Education"
+    # repo_url = "https://github.com/JackyChok/AI_Code_Detection_Education"
+    # repo_url = "https://github.com/huiAlex/TRIAD"
+    # repo_url = "https://github.com/sola-st/PyTy"
+
+
+    repo_url = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/JackyChok/AI_Code_Detection_Education"
+    temp_base_dir = sys.argv[2] if len(sys.argv) > 2 else "../../temp_dir_for_git"
+    output_dir = sys.argv[3] if len(sys.argv) > 3 else "../../algo_outputs/algorithm_2_output"
+    result = analyze_repository(repo_url, temp_base_dir=temp_base_dir)
+    repo_name = repo_url.rstrip("/").split("/")[-1]
+    save_analysis_result(result, repo_name, output_dir=output_dir)

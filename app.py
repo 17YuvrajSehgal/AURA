@@ -1,7 +1,9 @@
 import os
+import sys
 import time
 import glob
 import re
+import subprocess
 
 import streamlit as st
 
@@ -134,6 +136,38 @@ with st.sidebar:
 
 # Main content area: Only evaluation
 st.header("🎯 AURA Artifact Evaluation")
+
+# --- GitHub URL to JSON Analysis Integration ---
+st.subheader("Analyze GitHub Repository")
+repo_url = st.text_input(
+    "GitHub Repository URL",
+    value="",
+    help="Enter the full GitHub URL of the repository you want to analyze."
+)
+if st.button("Analyze Repository and Generate JSON", type="primary", disabled=not repo_url):
+    if repo_url:
+        with st.spinner("Running repository analysis (algorithm_2)..."):
+            try:
+                # Run algorithm_2.py as a subprocess with the repo_url as argument
+                script_path = os.path.join("scripts", "algorithm_2", "algorithm_2.py")
+                temp_base_dir = os.path.join(".", "temp_dir_for_git")
+                output_dir = os.path.join(".", "algo_outputs", "algorithm_2_output")
+                result = subprocess.run([
+                    sys.executable, script_path, repo_url, temp_base_dir, output_dir
+                ], capture_output=True, text=True)
+                if result.returncode != 0:
+                    st.error(f"Analysis failed: {result.stderr}")
+                else:
+                    # Determine repo name and output path
+                    repo_name = repo_url.rstrip("/").split("/")[-1]
+                    output_json = os.path.join(output_dir, f"{repo_name}_analysis.json")
+                    if os.path.exists(output_json):
+                        st.success(f"Analysis complete! JSON saved at: {output_json}")
+                        st.session_state.artifact_json_path = output_json
+                    else:
+                        st.error(f"Expected output JSON not found: {output_json}")
+            except Exception as e:
+                st.error(f"Error running analysis: {str(e)}")
 
 # Let user select or input artifact JSON path
 artifact_json_path = st.text_input(
