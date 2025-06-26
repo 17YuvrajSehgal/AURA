@@ -274,5 +274,5 @@ if __name__ == "__main__":
     print("\nUsage: Import this module and call main(artifact_path, skip_evaluation=False)")
     print("Example:")
     print("    from test_framework import main")
-    print("    main('../../algo_outputs/algorithm_2_output/AI_Code_Detection_Education_analysis.json')")
+    print("    main('.../../algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json')")
     sys.exit(0)
