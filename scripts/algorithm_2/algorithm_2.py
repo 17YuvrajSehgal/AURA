@@ -3,6 +3,8 @@ import logging
 import mimetypes
 import os
 import sys
+import shutil
+import tempfile
 
 from anytree import Node, RenderTree
 from git import Repo
@@ -144,14 +146,46 @@ def generate_tree_lines(file_paths: list, root_dir: str) -> list:
     return lines
 
 
+def is_archive_file(path: str) -> bool:
+    return any(path.lower().endswith(ext) for ext in ['.zip', '.tar', '.tar.gz', '.tgz', '.tar.bz2', '.tar.xz'])
+
+
+def extract_archive(archive_path: str, extract_to: str) -> str:
+    try:
+        shutil.unpack_archive(archive_path, extract_to)
+        logging.info(f"Extracted archive {archive_path} to {extract_to}")
+        # Find the top-level directory (if any)
+        entries = os.listdir(extract_to)
+        if len(entries) == 1 and os.path.isdir(os.path.join(extract_to, entries[0])):
+            return os.path.join(extract_to, entries[0])
+        return extract_to
+    except Exception as e:
+        logging.error(f"Failed to extract archive {archive_path}: {e}")
+        raise
+
+
 def analyze_repository(repo_path_or_url: str, temp_base_dir="./temp_dir_for_git") -> dict:
     is_temp = False
+    temp_dir = None
     if is_github_url(repo_path_or_url):
         repo_path = clone_repository(repo_path_or_url, temp_base_dir=temp_base_dir)
         is_temp = True
-    else:
+        logging.info(f"Analyzing cloned GitHub repository: {repo_path}")
+    elif os.path.isfile(repo_path_or_url) and is_archive_file(repo_path_or_url):
+        # Handle local archive file
+        temp_dir = tempfile.mkdtemp(prefix="artifact_extract_")
+        try:
+            repo_path = extract_archive(repo_path_or_url, temp_dir)
+            is_temp = True
+            logging.info(f"Analyzing extracted archive: {repo_path}")
+        except Exception as e:
+            logging.error(f"Could not analyze archive {repo_path_or_url}: {e}")
+            raise
+    elif os.path.isdir(repo_path_or_url):
         repo_path = repo_path_or_url
-        logging.info(f"Using local repository path: {repo_path}")
+        logging.info(f"Analyzing local directory: {repo_path}")
+    else:
+        raise ValueError(f"Input must be a GitHub URL, a directory, or a supported archive file: {repo_path_or_url}")
 
     # 1) Gather all relevant files under repo_path
     file_paths = generate_file_list(
@@ -222,9 +256,16 @@ def save_analysis_result(result: dict, repo_name: str, output_dir="./algo_output
 
 # Example usage
 if __name__ == "__main__":
-    # Usage: python algorithm_2.py <repo_url> [<temp_base_dir>] [<output_dir>]
+    # Usage: python algorithm_2.py <repo_url_or_path> [<temp_base_dir>] [<output_dir>]
+    repo_url_or_path = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/JackyChok/AI_Code_Detection_Education"
+    temp_base_dir = sys.argv[2] if len(sys.argv) > 2 else "../../temp_dir_for_git"
+    output_dir = sys.argv[3] if len(sys.argv) > 3 else "../../algo_outputs/algorithm_2_output"
+    result = analyze_repository(repo_url_or_path, temp_base_dir=temp_base_dir)
+    repo_name = os.path.basename(repo_url_or_path.rstrip("/\\")).replace('.zip','').replace('.tar.gz','').replace('.tar','').replace('.tgz','').replace('.tar.bz2','').replace('.tar.xz','')
+    save_analysis_result(result, repo_name, output_dir=output_dir)
 
-    # repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
+
+# repo_url = "https://github.com/sneh2001patel/ml-image-classifier"
     # repo_url = "https://github.com/17YuvrajSehgal/COSC-4P02-PROJECT"
     # repo_url = "https://github.com/nntzuekai/Respector"
     # repo_url = "https://github.com/SageSELab/MotorEase"
@@ -233,11 +274,3 @@ if __name__ == "__main__":
     # repo_url = "https://github.com/JackyChok/AI_Code_Detection_Education"
     # repo_url = "https://github.com/huiAlex/TRIAD"
     # repo_url = "https://github.com/sola-st/PyTy"
-
-
-    repo_url = sys.argv[1] if len(sys.argv) > 1 else "https://github.com/JackyChok/AI_Code_Detection_Education"
-    temp_base_dir = sys.argv[2] if len(sys.argv) > 2 else "../../temp_dir_for_git"
-    output_dir = sys.argv[3] if len(sys.argv) > 3 else "../../algo_outputs/algorithm_2_output"
-    result = analyze_repository(repo_url, temp_base_dir=temp_base_dir)
-    repo_name = repo_url.rstrip("/").split("/")[-1]
-    save_analysis_result(result, repo_name, output_dir=output_dir)
