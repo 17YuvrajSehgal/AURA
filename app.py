@@ -184,11 +184,25 @@ if artifact_json_path and os.path.exists(artifact_json_path):
     st.markdown('</div>', unsafe_allow_html=True)
 
     if st.button("🚀 Start Evaluation", type="primary"):
+        progress_box = st.empty()
+        progress_bar = st.progress(0)
+        progress_msgs = []
+        def streamlit_logger(msg):
+            progress_msgs.append(msg)
+            # Show last 5 messages for brevity
+            progress_box.markdown("\n".join([f"- {m}" for m in progress_msgs[-5:]]))
+            # Update progress bar based on known dimensions
+            total_dims = 6  # reproducibility, documentation, accessibility, usability, experimental, functionality
+            for d in ["reproducibility", "documentation", "accessibility", "usability", "experimental", "functionality"]:
+                if d in msg.lower():
+                    idx = ["reproducibility", "documentation", "accessibility", "usability", "experimental", "functionality"].index(d)
+                    progress_bar.progress((idx+1)/total_dims)
         with st.spinner("Running AURA evaluation..."):
             try:
-                # Initialize AURAFramework
                 framework = AURAFramework(artifact_json_path)
-                result = framework.evaluate_artifact()
+                result = framework.evaluate_artifact(progress_callback=streamlit_logger)
+                progress_bar.progress(1.0)
+                progress_box.markdown("**Evaluation complete!**")
                 st.success("🎉 Evaluation complete!")
                 # Show overall results
                 st.subheader("Overall Results")

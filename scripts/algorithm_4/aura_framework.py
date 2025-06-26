@@ -106,17 +106,22 @@ class AURAFramework:
             CriterionScore(dimension="functionality", raw_score=5.09, normalized_weight=0.155),
         ]
     
-    def evaluate_artifact(self) -> ArtifactEvaluationResult:
+    def evaluate_artifact(self, progress_callback=None) -> ArtifactEvaluationResult:
         """
         Evaluate the artifact using all agents and return comprehensive results.
         """
+        if progress_callback:
+            progress_callback("Starting artifact evaluation with AURA framework...")
         logger.info("Starting artifact evaluation with AURA framework...")
         
         # Evaluate each dimension
-        for criterion in self.criteria_scores:
+        for idx, criterion in enumerate(self.criteria_scores):
             dimension = criterion.dimension
             if dimension in self.agents:
-                logger.info(f"Evaluating {dimension} dimension...")
+                msg = f"Evaluating {dimension} dimension..."
+                if progress_callback:
+                    progress_callback(msg)
+                logger.info(msg)
                 try:
                     agent_result = self.agents[dimension].evaluate()
                     criterion.llm_evaluated_score = agent_result["score"]
@@ -133,9 +138,13 @@ class AURAFramework:
                     criterion.justification = f"Evaluation failed: {str(e)}"
             else:
                 logger.warning(f"No agent found for dimension: {dimension}")
+                if progress_callback:
+                    progress_callback(f"No agent found for dimension: {dimension}")
         
         # Calculate total weighted score
         total_score = self._calculate_total_weighted_score()
+        if progress_callback:
+            progress_callback(f"Total weighted score calculated: {total_score:.3f}")
         
         # Determine acceptance
         acceptance = total_score >= ACCEPTANCE_THRESHOLD
@@ -143,6 +152,8 @@ class AURAFramework:
         # Generate overall justification and recommendations
         overall_justification = self._generate_overall_justification()
         recommendations = self._generate_recommendations()
+        if progress_callback:
+            progress_callback("Artifact evaluation complete.")
         
         return ArtifactEvaluationResult(
             criteria_scores=self.criteria_scores,
