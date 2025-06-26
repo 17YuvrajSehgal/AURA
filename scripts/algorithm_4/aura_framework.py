@@ -27,6 +27,8 @@ class CriterionScore(BaseModel):
     llm_evaluated_score: float = Field(default=0.0)
     justification: str = Field(default="")
     evidence: List[str] = Field(default_factory=list)
+    llm_justification: str = Field(default="")
+    llm_evidence: List[str] = Field(default_factory=list)
 
 class ArtifactEvaluationResult(BaseModel):
     criteria_scores: List[CriterionScore]
@@ -120,6 +122,11 @@ class AURAFramework:
                     criterion.llm_evaluated_score = agent_result["score"]
                     criterion.justification = agent_result["justification"]
                     criterion.evidence = agent_result.get("evidence", [])
+                    # Save LLM justification and evidence if present
+                    if "llm_justification" in agent_result:
+                        criterion.llm_justification = agent_result["llm_justification"]
+                    if "llm_evidence" in agent_result:
+                        criterion.llm_evidence = agent_result["llm_evidence"]
                 except Exception as e:
                     logger.error(f"Error evaluating {dimension}: {e}")
                     criterion.llm_evaluated_score = 0.0

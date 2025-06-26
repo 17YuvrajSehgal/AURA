@@ -78,6 +78,8 @@ class ExperimentalEvaluationAgent:
             result["justification"] = llm_data.get("revised_justification", result["justification"])
             if llm_data.get("additional_evidence"):
                 result["evidence"].extend(llm_data["additional_evidence"])
+            result["llm_justification"] = llm_data.get("revised_justification", "")
+            result["llm_evidence"] = llm_data.get("additional_evidence", [])
         return result
     
     def _get_experimental_context(self):
