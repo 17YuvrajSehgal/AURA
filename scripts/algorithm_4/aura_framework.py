@@ -1,416 +1,255 @@
-import csv
+import json
 import logging
 import os
-import time
-from datetime import datetime
+from typing import Dict, List, Optional, Any
+from pydantic import BaseModel, Field
+from pathlib import Path
 
-from scripts.algorithm_4.agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
-from scripts.algorithm_4.agents.documentation_evaluation_agent import DocumentationEvaluationAgent
-from scripts.algorithm_4.agents.functionality_evaluation_agent import FunctionalityEvaluationAgent, \
-    FunctionalityEvaluationResult
-from scripts.algorithm_4.agents.keyword_evaluation_agent import KeywordEvaluationAgent
-from scripts.algorithm_4.agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
-from scripts.algorithm_4.agents.usability_evaluation_agent import UsabilityEvaluationAgent
+from agents.accessibility_evaluation_agent import AccessibilityEvaluationAgent
+from agents.documentation_evaluation_agent import DocumentationEvaluationAgent
+from agents.experimental_evaluation_agent import ExperimentalEvaluationAgent
+from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
+from agents.reproducibility_evaluation_agent import ReproducibilityEvaluationAgent
+from agents.usability_evaluation_agent import UsabilityEvaluationAgent
+from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Acceptance threshold based on ICSE 2025 standards
+ACCEPTANCE_THRESHOLD = 0.75
 
-class AURA:
-    def __init__(self, guideline_path, artifact_json_path, conference_name="ICSE 2025", criteria_csv_path=None):
-        self.guideline_path = guideline_path
+class CriterionScore(BaseModel):
+    dimension: str
+    raw_score: float
+    normalized_weight: float
+    llm_evaluated_score: float = Field(default=0.0)
+    justification: str = Field(default="")
+    evidence: List[str] = Field(default_factory=list)
+
+class ArtifactEvaluationResult(BaseModel):
+    criteria_scores: List[CriterionScore]
+    total_weighted_score: float
+    acceptance_prediction: bool
+    overall_justification: str = Field(default="")
+    recommendations: List[str] = Field(default_factory=list)
+
+class AURAFramework:
+    def __init__(self, artifact_json_path: str, neo4j_uri: str = "bolt://localhost:7687"):
+        """
+        Initialize the AURA evaluation framework.
+        
+        Args:
+            artifact_json_path: Path to the artifact JSON file
+            neo4j_uri: Neo4j database URI for knowledge graph
+        """
         self.artifact_json_path = artifact_json_path
-        self.conference_name = conference_name
-        self.criteria_csv_path = criteria_csv_path
+        self.neo4j_uri = neo4j_uri
         
-        # Extract artifact name from the JSON file path
-        self.artifact_name = self._extract_artifact_name(artifact_json_path)
-
-        self.keyword_agent = None
-        if criteria_csv_path:
-            try:
-                self.keyword_agent = KeywordEvaluationAgent(
-                    criteria_csv_path, artifact_json_path, conference_name)
-                logging.info("Keyword evaluation agent initialized successfully")
-            except Exception as e:
-                logging.warning(f"Could not initialize keyword agent: {e}")
-
-        kg_agent = RepositoryKnowledgeGraphAgent(
-            artifact_json_path=self.artifact_json_path,
-            neo4j_uri="bolt://localhost:7687",
-            neo4j_user="neo4j",
-            neo4j_password="12345678",
-            clear_existing=True,
+        # Initialize knowledge graph agent
+        self.kg_agent = RepositoryKnowledgeGraphAgent(
+            artifact_json_path=artifact_json_path,
+            neo4j_uri=neo4j_uri
         )
-
-        self.doc_agent = DocumentationEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name,
-            keyword_agent=self.keyword_agent, kg_agent=kg_agent)
-        self.usability_agent = UsabilityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name,
-            keyword_agent=self.keyword_agent)
-        self.access_agent = AccessibilityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name,
-            keyword_agent=self.keyword_agent)
-        self.func_agent = FunctionalityEvaluationAgent(
-            guideline_path, artifact_json_path, conference_name,
-            keyword_agent=self.keyword_agent, kg_agent=kg_agent)
-
-    def _extract_artifact_name(self, artifact_json_path: str) -> str:
-        """
-        Extract artifact name from the JSON file path.
-        Example: 'path/to/repo_name_analysis.json' -> 'repo_name'
-        """
+        
+        # Initialize evaluation agents
+        self.agents = {
+            "accessibility": AccessibilityEvaluationAgent(self.kg_agent),
+            "documentation": DocumentationEvaluationAgent(self.kg_agent),
+            "experimental": ExperimentalEvaluationAgent(self.kg_agent),
+            "functionality": FunctionalityEvaluationAgent(self.kg_agent),
+            "reproducibility": ReproducibilityEvaluationAgent(self.kg_agent),
+            "usability": UsabilityEvaluationAgent(self.kg_agent),
+        }
+        
+        # Load scoring criteria
+        self.criteria_scores = self._load_criteria_scores()
+        
+    def _load_criteria_scores(self) -> List[CriterionScore]:
+        """Load the pre-defined criteria scores from the integration data."""
         try:
-            # Get the filename from the path
-            filename = os.path.basename(artifact_json_path)
-            # Remove '_analysis.json' suffix
-            if filename.endswith('_analysis.json'):
-                artifact_name = filename[:-14]  # Remove '_analysis.json'
-            else:
-                # Fallback: remove '.json' extension
-                artifact_name = os.path.splitext(filename)[0]
+            # Get the path relative to the current script location
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            criteria_file = os.path.join(script_dir, "../../algo_outputs/algorithm_1_output/aura_integration_data_20250626_013157.json")
             
-            logging.info(f"Extracted artifact name: {artifact_name}")
-            return artifact_name
+            with open(criteria_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            
+            criteria_scores = []
+            for criterion in data["structured_criteria"]:
+                criteria_scores.append(CriterionScore(
+                    dimension=criterion["dimension"],
+                    raw_score=criterion["raw_score"],
+                    normalized_weight=criterion["normalized_weight"]
+                ))
+            return criteria_scores
         except Exception as e:
-            logging.warning(f"Could not extract artifact name from {artifact_json_path}: {e}")
-            return "unknown_artifact"
-
-    def evaluate(self, dimensions=None, verbose=True, include_keyword_eval=True, analysis_timing_data=None):
-        # Initialize evaluation timing
-        evaluation_timing = {
-            "evaluation_start_time": datetime.now().isoformat(),
-            "evaluation_end_time": None,
-            "evaluation_duration_seconds": None,
-            "documentation_evaluation_time": None,
-            "accessibility_evaluation_time": None,
-            "usability_evaluation_time": None,
-            "functionality_evaluation_time": None,
-            "keyword_evaluation_time": None
-        }
-        
-        evaluation_start = time.time()
-        
-        results = {}
-        dimensions = dimensions or ['documentation', 'usability', 'accessibility', 'functionality']
-
-        # === Documentation ===
-        doc_start = time.time()
-        doc_result = self.doc_agent.evaluate(verbose=True)
-        doc_end = time.time()
-        evaluation_timing["documentation_evaluation_time"] = round(doc_end - doc_start, 2)
-        
-        if isinstance(doc_result, dict) and "error" in doc_result:
-            results['documentation'] = doc_result["raw_output"]
-        else:
-            results['documentation'] = doc_result
-
-        # === Accessibility ===
-        access_start = time.time()
-        access_result = self.access_agent.evaluate(verbose=True)
-        access_end = time.time()
-        evaluation_timing["accessibility_evaluation_time"] = round(access_end - access_start, 2)
-        
-        if isinstance(access_result, dict) and "error" in access_result:
-            results['accessibility'] = access_result["raw_output"]
-        else:
-            results['accessibility'] = access_result
-
-        # === Usability ===
-        if 'usability' in dimensions:
-            usability_start = time.time()
-            usability_result = self.usability_agent.evaluate(verbose=True)
-            usability_end = time.time()
-            evaluation_timing["usability_evaluation_time"] = round(usability_end - usability_start, 2)
-            
-            if isinstance(usability_result, dict) and "error" in usability_result:
-                results['usability'] = usability_result["raw_output"]
-            else:
-                results['usability'] = usability_result
-
-        # === Functionality ===
-        if 'functionality' in dimensions:
-            func_start = time.time()
-            func_result = self.func_agent.evaluate(verbose)
-            func_end = time.time()
-            evaluation_timing["functionality_evaluation_time"] = round(func_end - func_start, 2)
-            
-            if isinstance(func_result, dict) and "error" in func_result:
-                results['functionality'] = func_result["raw_output"]
-            elif isinstance(func_result, FunctionalityEvaluationResult):
-                results['functionality'] = func_result
-            else:
-                # Fallback: assume raw output
-                results['functionality'] = str(func_result)
-
-        # === Save combined CSV ===
-        csv_filename = f"{self.artifact_name}_full_evaluation.csv"
-        csv_output_path = f"../../algo_outputs/algorithm_4_output/artifact_evals/{csv_filename}"
-        
-        # Combine timing data
-        combined_timing = {
-            "analysis_timing": analysis_timing_data,
-            "evaluation_timing": evaluation_timing
-        }
-        
-        self._save_all_to_csv(results, csv_output_path, combined_timing)
-        logging.info(f"Saved evaluation results to: {csv_output_path}")
-        
-        # Store the CSV path for external access
-        self.last_csv_path = csv_output_path
-
-        # === Keyword Baseline Evaluation ===
-        if include_keyword_eval and self.keyword_agent:
-            try:
-                keyword_start = time.time()
-                keyword_results = self.keyword_agent.evaluate(verbose=verbose)
-                keyword_end = time.time()
-                evaluation_timing["keyword_evaluation_time"] = round(keyword_end - keyword_start, 2)
-                
-                results['keyword_baseline'] = keyword_results
-                logging.info("Keyword-based evaluation completed")
-            except Exception as e:
-                logging.error(f"Error in keyword evaluation: {e}")
-                results['keyword_baseline'] = {"error": str(e)}
-
-        # End evaluation timing
-        evaluation_end = time.time()
-        evaluation_timing["evaluation_end_time"] = datetime.now().isoformat()
-        evaluation_timing["evaluation_duration_seconds"] = round(evaluation_end - evaluation_start, 2)
-        
-        # Store timing data for external access
-        self.last_evaluation_timing = evaluation_timing
-        self.last_analysis_timing = analysis_timing_data
-        
-        logging.info(f"Evaluation timing: Total={evaluation_timing['evaluation_duration_seconds']}s")
-        
-        return results
-
-    def evaluate_summary(self, verbose=False, include_keyword_eval=True):
-        results = self.evaluate(verbose=verbose, include_keyword_eval=include_keyword_eval)
-        summary_parts = []
-
-        for dim in ['documentation', 'usability', 'accessibility', 'functionality']:
-            if dim in results:
-                summary_parts.append(f"{dim.capitalize()}:\n{results[dim]}")
-
-        if 'keyword_baseline' in results:
-            keyword_result = results['keyword_baseline']
-            if 'error' not in keyword_result:
-                summary_parts.append(f"Keyword Baseline:\n{keyword_result['summary']}")
-            else:
-                summary_parts.append(f"Keyword Baseline: Error - {keyword_result['error']}")
-
-        return "\n\n".join(summary_parts)
-
-    def compare_evaluations(self, verbose=False):
-        if not self.keyword_agent:
-            return {"error": "Keyword agent not available"}
-
-        llm_results = self.evaluate(include_keyword_eval=False, verbose=verbose)
-        keyword_results = self.keyword_agent.evaluate(verbose=verbose)
-
-        return {
-            "llm_evaluations": llm_results,
-            "keyword_evaluation": keyword_results,
-            "comparison_notes": self._generate_comparison_notes(llm_results, keyword_results)
-        }
-
-    def _generate_comparison_notes(self, llm_results, keyword_results):
-        notes = [
-            "Evaluation Method Comparison:",
-            "=" * 40,
-            "",
-            "LLM-based Evaluation (Grounded with Keyword Evidence):",
-            "- Qualitative assessment with detailed reasoning",
-            "- Context-aware analysis grounded in keyword evidence",
-            "- Provides specific improvement suggestions",
-            "- Uses keyword scores to prevent hallucination",
-            "",
-            "Keyword-based Evaluation:",
-            "- Quantitative scoring based on keyword presence",
-            "- Objective and reproducible",
-            "- Provides numerical baseline",
-            "- May miss semantic meaning",
-            "",
-            f"Keyword Overall Score: {keyword_results['overall_score']:.2f}",
-            ""
+            logger.error(f"Failed to load criteria scores: {e}")
+            # Fallback to default criteria based on ICSE 2025
+            return self._get_default_criteria()
+    
+    def _get_default_criteria(self) -> List[CriterionScore]:
+        """Default criteria based on ICSE 2025 guidelines."""
+        return [
+            CriterionScore(dimension="reproducibility", raw_score=6.78, normalized_weight=0.207),
+            CriterionScore(dimension="documentation", raw_score=5.04, normalized_weight=0.154),
+            CriterionScore(dimension="accessibility", raw_score=4.55, normalized_weight=0.139),
+            CriterionScore(dimension="usability", raw_score=6.47, normalized_weight=0.198),
+            CriterionScore(dimension="experimental", raw_score=4.84, normalized_weight=0.148),
+            CriterionScore(dimension="functionality", raw_score=5.09, normalized_weight=0.155),
         ]
-
-        if 'keyword_baseline' in llm_results:
-            for dim in keyword_results.get('dimensions', []):
-                notes.append(f"{dim['dimension'].capitalize()}: {dim['weighted_score']:.2f} (raw: {dim['raw_score']})")
-
-        return "\n".join(notes)
-
-    def get_grounded_evaluation(self, dimension: str, verbose: bool = True):
-        if not self.keyword_agent:
-            return {"error": "Keyword agent not available for grounding"}
-
-        keyword_results = self.keyword_agent.evaluate(verbose=False)
-        dimension_evidence = next(
-            (dim for dim in keyword_results.get('dimensions', []) if dim['dimension'].lower() == dimension.lower()),
-            None
-        )
-
-        if dimension == 'documentation':
-            result = self.doc_agent.evaluate(verbose)
-        elif dimension == 'usability':
-            result = self.usability_agent.evaluate(verbose)
-        elif dimension == 'accessibility':
-            result = self.access_agent.evaluate(verbose)
-        elif dimension == 'functionality':
-            result = self.func_agent.evaluate(verbose)
-        else:
-            return {"error": f"Unknown dimension: {dimension}"}
-
-        return {
-            "llm_evaluation": result,
-            "keyword_evidence": dimension_evidence,
-            "grounding_info": f"LLM evaluation was grounded with keyword evidence: {dimension_evidence['keywords_found'] if dimension_evidence else 'No evidence found'}"
-        }
-
-    def get_timing_summary(self) -> dict:
+    
+    def evaluate_artifact(self) -> ArtifactEvaluationResult:
         """
-        Get a summary of timing data for both analysis and evaluation
+        Evaluate the artifact using all agents and return comprehensive results.
+        """
+        logger.info("Starting artifact evaluation with AURA framework...")
         
-        Returns:
-            dict: Summary of timing information
-        """
-        summary = {
-            "analysis_timing": getattr(self, 'last_analysis_timing', None),
-            "evaluation_timing": getattr(self, 'last_evaluation_timing', None)
-        }
-        
-        if summary["analysis_timing"] and summary["evaluation_timing"]:
-            try:
-                total_analysis = summary["analysis_timing"].get("analysis_duration_seconds", 0)
-                total_evaluation = summary["evaluation_timing"].get("evaluation_duration_seconds", 0)
-                
-                # Convert to float and handle None values
-                total_analysis = float(total_analysis) if total_analysis is not None else 0.0
-                total_evaluation = float(total_evaluation) if total_evaluation is not None else 0.0
-                
-                summary["total_pipeline_time"] = total_analysis + total_evaluation
-                summary["total_analysis_time"] = total_analysis
-                summary["total_evaluation_time"] = total_evaluation
-            except (TypeError, ValueError):
-                summary["total_pipeline_time"] = 0.0
-                summary["total_analysis_time"] = 0.0
-                summary["total_evaluation_time"] = 0.0
-        
-        return summary
-
-    def get_csv_file_path(self) -> str:
-        """
-        Get the path to the last generated CSV file.
-        Returns the path to the artifact-specific CSV file.
-        """
-        if hasattr(self, 'last_csv_path'):
-            return self.last_csv_path
-        else:
-            # Generate the expected path
-            csv_filename = f"{self.artifact_name}_full_evaluation.csv"
-            return f"../../algo_outputs/algorithm_4_output/artifact_evals/{csv_filename}"
-
-    def _save_all_to_csv(self, results: dict, output_path: str, timing_data: dict = None):
-        output_dir = os.path.dirname(output_path)
-        if output_dir:
-            os.makedirs(output_dir, exist_ok=True)
-
-        with open(output_path, mode="w", newline="", encoding="utf-8") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(["Dimension", "Section/Criterion", "Score", "Justification"])
-
-            # Write evaluation results
-            for dimension, result in results.items():
-                if isinstance(result, dict) and "error" in result:
-                    continue
-
-                if dimension == "documentation" and hasattr(result, "section_scores"):
-                    for section in result.section_scores:
-                        writer.writerow([
-                            dimension,
-                            section.section,
-                            section.score,
-                            section.justification
-                        ])
-                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
-                    if result.suggestions:
-                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
-
-                elif dimension == "accessibility" and hasattr(result, "criterion_scores"):
-                    for crit in result.criterion_scores:
-                        writer.writerow([
-                            dimension,
-                            crit.criterion,
-                            crit.score,
-                            crit.justification
-                        ])
-                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
-                    if result.suggestions:
-                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
-
-                elif dimension == "usability" and hasattr(result, "criterion_scores"):
-                    for crit in result.criterion_scores:
-                        writer.writerow([
-                            dimension,
-                            crit.criterion,
-                            crit.score,
-                            crit.justification
-                        ])
-                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
-                    if result.suggestions:
-                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
-
-                elif dimension == "functionality" and hasattr(result, "criterion_scores"):
-                    for crit in result.criterion_scores:
-                        writer.writerow([
-                            dimension,
-                            crit.criterion,
-                            crit.score,
-                            crit.justification
-                        ])
-                    writer.writerow([dimension, "Overall Score", result.overall_score, ""])
-                    if result.suggestions:
-                        writer.writerow([dimension, "Suggestions", "", result.suggestions])
-
-            # Add timing data section
-            if timing_data:
-                writer.writerow([])  # Empty row for separation
-                writer.writerow(["TIMING DATA", "", "", ""])
-                
-                # Analysis timing
-                if timing_data.get("analysis_timing"):
-                    writer.writerow(["Analysis Timing", "", "", ""])
-                    analysis_timing = timing_data["analysis_timing"]
-                    for key, value in analysis_timing.items():
-                        if value is not None:
-                            writer.writerow([f"analysis.{key}", "", "", value])
-                
-                # Evaluation timing
-                if timing_data.get("evaluation_timing"):
-                    writer.writerow(["Evaluation Timing", "", "", ""])
-                    evaluation_timing = timing_data["evaluation_timing"]
-                    for key, value in evaluation_timing.items():
-                        if value is not None:
-                            writer.writerow([f"evaluation.{key}", "", "", value])
-                
-                # Summary timing
-                writer.writerow(["Timing Summary", "", "", ""])
-                total_analysis_time = timing_data.get("analysis_timing", {}).get("analysis_duration_seconds", 0)
-                total_evaluation_time = timing_data.get("evaluation_timing", {}).get("evaluation_duration_seconds", 0)
-                
-                # Convert to float and handle None values
+        # Evaluate each dimension
+        for criterion in self.criteria_scores:
+            dimension = criterion.dimension
+            if dimension in self.agents:
+                logger.info(f"Evaluating {dimension} dimension...")
                 try:
-                    total_analysis_time = float(total_analysis_time) if total_analysis_time is not None else 0.0
-                    total_evaluation_time = float(total_evaluation_time) if total_evaluation_time is not None else 0.0
-                    total_time = total_analysis_time + total_evaluation_time
-                except (TypeError, ValueError):
-                    total_analysis_time = 0.0
-                    total_evaluation_time = 0.0
-                    total_time = 0.0
-                
-                writer.writerow(["Total Analysis Time (seconds)", "", "", total_analysis_time])
-                writer.writerow(["Total Evaluation Time (seconds)", "", "", total_evaluation_time])
-                writer.writerow(["Total Pipeline Time (seconds)", "", "", total_time])
+                    agent_result = self.agents[dimension].evaluate()
+                    criterion.llm_evaluated_score = agent_result["score"]
+                    criterion.justification = agent_result["justification"]
+                    criterion.evidence = agent_result.get("evidence", [])
+                except Exception as e:
+                    logger.error(f"Error evaluating {dimension}: {e}")
+                    criterion.llm_evaluated_score = 0.0
+                    criterion.justification = f"Evaluation failed: {str(e)}"
+            else:
+                logger.warning(f"No agent found for dimension: {dimension}")
+        
+        # Calculate total weighted score
+        total_score = self._calculate_total_weighted_score()
+        
+        # Determine acceptance
+        acceptance = total_score >= ACCEPTANCE_THRESHOLD
+        
+        # Generate overall justification and recommendations
+        overall_justification = self._generate_overall_justification()
+        recommendations = self._generate_recommendations()
+        
+        return ArtifactEvaluationResult(
+            criteria_scores=self.criteria_scores,
+            total_weighted_score=total_score,
+            acceptance_prediction=acceptance,
+            overall_justification=overall_justification,
+            recommendations=recommendations
+        )
+    
+    def _calculate_total_weighted_score(self) -> float:
+        """Calculate the total weighted score across all dimensions."""
+        total = 0.0
+        for criterion in self.criteria_scores:
+            total += criterion.llm_evaluated_score * criterion.normalized_weight
+        return total
+    
+    def _generate_overall_justification(self) -> str:
+        """Generate overall justification based on evaluation results."""
+        strengths = []
+        weaknesses = []
+        
+        for criterion in self.criteria_scores:
+            if criterion.llm_evaluated_score >= 0.8:
+                strengths.append(criterion.dimension)
+            elif criterion.llm_evaluated_score < 0.5:
+                weaknesses.append(criterion.dimension)
+        
+        justification = f"Total weighted score: {self._calculate_total_weighted_score():.3f}. "
+        
+        if strengths:
+            justification += f"Strong performance in: {', '.join(strengths)}. "
+        if weaknesses:
+            justification += f"Areas needing improvement: {', '.join(weaknesses)}. "
+        
+        return justification
+    
+    def _generate_recommendations(self) -> List[str]:
+        """Generate specific recommendations for improvement."""
+        recommendations = []
+        
+        for criterion in self.criteria_scores:
+            if criterion.llm_evaluated_score < 0.6:
+                if criterion.dimension == "documentation":
+                    recommendations.append("Improve README documentation with clear setup and usage instructions")
+                elif criterion.dimension == "functionality":
+                    recommendations.append("Ensure artifact is executable and includes verification evidence")
+                elif criterion.dimension == "reproducibility":
+                    recommendations.append("Provide Docker containers or detailed environment setup")
+                elif criterion.dimension == "accessibility":
+                    recommendations.append("Ensure artifact is publicly accessible with proper licensing")
+                elif criterion.dimension == "experimental":
+                    recommendations.append("Include comprehensive experimental setup and data")
+                elif criterion.dimension == "usability":
+                    recommendations.append("Improve user experience and ease of use")
+        
+        return recommendations
+    
+    def save_results(self, result: ArtifactEvaluationResult, output_path: str):
+        """Save evaluation results to JSON file."""
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(result.dict(), f, indent=2)
+        logger.info(f"Results saved to {output_path}")
+    
+    def print_results(self, result: ArtifactEvaluationResult):
+        """Print evaluation results in a formatted way."""
+        print("\n" + "="*60)
+        print("AURA FRAMEWORK - ICSE 2025 ARTIFACT EVALUATION")
+        print("="*60)
+        
+        for criterion in result.criteria_scores:
+            print(f"\n{criterion.dimension.upper()}")
+            print(f"  Score: {criterion.llm_evaluated_score:.3f} (Weight: {criterion.normalized_weight:.3f})")
+            print(f"  Justification: {criterion.justification}")
+            if criterion.evidence:
+                print(f"  Evidence: {', '.join(criterion.evidence[:3])}...")
+        
+        print(f"\n{'='*60}")
+        print(f"TOTAL WEIGHTED SCORE: {result.total_weighted_score:.3f}")
+        print(f"ACCEPTANCE THRESHOLD: {ACCEPTANCE_THRESHOLD:.3f}")
+        
+        if result.acceptance_prediction:
+            print("✅ PREDICTION: ACCEPTED")
+        else:
+            print("❌ PREDICTION: REJECTED")
+        
+        print(f"\nOverall Justification: {result.overall_justification}")
+        
+        if result.recommendations:
+            print("\nRecommendations:")
+            for i, rec in enumerate(result.recommendations, 1):
+                print(f"  {i}. {rec}")
+        
+        print("="*60)
+    
+    def close(self):
+        """Clean up resources."""
+        if hasattr(self, 'kg_agent'):
+            self.kg_agent.close()
+
+def main():
+    """Main function to run the AURA evaluation framework."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="AURA Framework for ICSE 2025 Artifact Evaluation")
+    parser.add_argument("artifact_json", help="Path to artifact JSON file")
+    parser.add_argument("--output", "-o", help="Output file for results", default="aura_evaluation_results.json")
+    parser.add_argument("--neo4j-uri", help="Neo4j database URI", default="bolt://localhost:7687")
+    
+    args = parser.parse_args()
+    
+    # Initialize and run evaluation
+    framework = AURAFramework(args.artifact_json, args.neo4j_uri)
+    
+    try:
+        result = framework.evaluate_artifact()
+        framework.print_results(result)
+        framework.save_results(result, args.output)
+    finally:
+        framework.close()
+
+if __name__ == "__main__":
+    main()
