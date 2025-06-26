@@ -1,345 +1,368 @@
 import json
 import logging
 import re
-import os
-from typing import List, Optional, Dict, Any
+from typing import Dict, List, Any, Optional
 
-from dotenv import load_dotenv
-from langchain.chains import RetrievalQA
-from langchain.output_parsers import OutputFixingParser
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_openai import OpenAI
-from langchain_openai import OpenAIEmbeddings
-from pydantic import BaseModel, Field
-
-# === Logging Setup ===
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    handlers=[
-        logging.FileHandler("documentation_evaluation_agent.log"),
-        logging.StreamHandler()
-    ]
-)
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-
-class ReadmeSection(BaseModel):
-    name: str = Field(description="Name of the required README section")
-    description: str = Field(description="Brief explanation of what this section should contain")
-
-
-class ReadmeSectionsList(BaseModel):
-    sections: List[ReadmeSection] = Field(description="List of required README sections for the conference")
-
-class SectionScore(BaseModel):
-    section: str = Field(description="Name of the documentation section")
-    score: int = Field(ge=1, le=5, description="Score assigned to the section")
-    justification: str = Field(description="Justification for the score")
-
-class DocumentationEvaluationResult(BaseModel):
-    overall_score: int = Field(ge=1, le=5)
-    section_scores: List[SectionScore]
-    suggestions: Optional[str] = None
-
-
-
 class DocumentationEvaluationAgent:
-    def __init__(
-            self,
-            guideline_path: str,
-            artifact_json_path: str,
-            conference_name: str,
-            persist_directory: str = "algo_outputs/indexes/documentation_chroma_index",
-            chunk_size: int = 1024,
-            chunk_overlap: int = 100,
-            model_name: Optional[str] = None,
-            keyword_agent: Optional[object] = None,
-            kg_agent: Optional[object] = None
-    ):
-        self.guideline_path = guideline_path
-        self.artifact_json_path = artifact_json_path
-        self.conference_name = conference_name
-        self.persist_directory = persist_directory
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.model_name = model_name
-        self.keyword_agent = keyword_agent
+    """
+    Evaluates artifact documentation based on ICSE 2025 criteria:
+    - Documentation: Quality and comprehensiveness of documentation
+    - README: Purpose, provenance, setup, and usage details
+    - Setup Instructions: Clarity and completeness for executable artifacts
+    - Usage Instructions: Clarity for replicating main results
+    """
+    
+    def __init__(self, kg_agent):
         self.kg_agent = kg_agent
-
-        # Ensure indexes directory exists
-        os.makedirs(os.path.dirname(self.persist_directory), exist_ok=True)
-
-        logger.info(f"Initializing DocumentationEvaluationAgent for {conference_name}")
-        self.guidelines = self._load_guidelines()
-        self.guideline_db = self._build_guideline_vector_db()
-        self.artifact_docs = self._load_artifact_docs()
-        self.sections = self._extract_required_sections()
-
-        # Vector DB for documentation
-        self.db = self._build_vector_db()
-
-    def _load_guidelines(self):
-        logger.info(f"Loading conference guidelines from: {self.guideline_path}")
-        with open(self.guideline_path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    def _load_artifact_docs(self):
-        logger.info(f"Loading artifact documentation from: {self.artifact_json_path}")
-        with open(self.artifact_json_path, "r", encoding="utf-8") as f:
-            artifact = json.load(f)
-        doc_files = artifact['documentation_files']
-        texts = ["\n".join(doc['content']) for doc in doc_files]
-        return texts
-
-    def _build_guideline_vector_db(self):
-        logger.info("Building vector DB for conference guidelines.")
-        splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        guideline_chunks = splitter.split_text(self.guidelines)
-        embeddings = OpenAIEmbeddings()
-        db = Chroma.from_texts(guideline_chunks, embeddings, persist_directory=f"{self.persist_directory}_guidelines")
-        db.persist()
-        logger.info("Guideline vector DB built and persisted.")
-        return db
-
-    def _extract_required_sections(self):
-        logger.info("Extracting required README sections using RAG on guideline vector DB.")
-        retriever = self.guideline_db.as_retriever(search_kwargs={'k': 6})
-        llm = OpenAI(temperature=0.0)
-        parser = PydanticOutputParser(pydantic_object=ReadmeSectionsList)
-        prompt = PromptTemplate(
-            template="""
-                You are an expert at extracting required documentation sections from conference guidelines.
-
-                Based only on the retrieved context below, list ONLY the explicit sections/headings that MUST be present in the README or documentation files, ignoring general evaluation axes unless specifically stated as documentation requirements.
-
-                For each section, output its `name` and a brief `description`, based strictly on the retrieved guideline statements. Do NOT include general factors unless the text says these are documentation requirements.
-
-                Return ONLY valid JSON. Do not include any extra text, explanation, or markdown. The output must be a valid JSON object matching the schema below.
-
-                {format_instructions}
-
-                Retrieved Context:
-                {context}
-
-                Question:
-                Which documentation/README sections are explicitly required?
-            """,
-            input_variables=["context"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
-
-        # RAG chain: get relevant context
-        query = "What sections/headings are explicitly required in the artifact README or documentation?"
-        retrieved = retriever.get_relevant_documents(query)
-        context = "\n\n".join([doc.page_content for doc in retrieved])
-
-        output = llm(prompt.format(context=context))
-        # --- CLEAN THE OUTPUT ---
-        if isinstance(output, str):
-            output = output.strip()
-            # Remove leading "Output:" or similar
-            if output.lower().startswith("output:"):
-                output = output[len("output:"):].strip()
-            # Remove markdown code block if present
-            if output.startswith("```json"):
-                output = output[7:]
-            if output.startswith("```"):
-                output = output[3:]
-            if output.endswith("```"):
-                output = output[:-3]
-            output = output.strip()
-        # Clean output to extract only the JSON object
-        clean_output = output.strip()
-
-        # Remove common prefixes or wrappers
-        if clean_output.lower().startswith("answer:"):
-            clean_output = clean_output[len("answer:"):].strip()
-        if clean_output.startswith("```json"):
-            clean_output = clean_output[7:].strip()
-        elif clean_output.startswith("```"):
-            clean_output = clean_output[3:].strip()
-        if clean_output.endswith("```"):
-            clean_output = clean_output[:-3].strip()
-
-        # Parse clean JSON output
-        result = parser.parse(clean_output)
-
-        return result.sections
-
-    def _build_vector_db(self):
-        logger.info("Building vector DB for documentation files.")
-        splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        all_chunks = []
-        for text in self.artifact_docs:
-            all_chunks.extend(splitter.split_text(text))
-        embeddings = OpenAIEmbeddings()
-        db = Chroma.from_texts(all_chunks, embeddings, persist_directory=self.persist_directory)
-        db.persist()
-        logger.info("Vector DB built and persisted.")
-        return db
-
-    def _get_keyword_evidence(self) -> Dict:
-        """Get keyword-based evidence for documentation evaluation"""
-        if not self.keyword_agent:
-            return {}
-
-        try:
-            keyword_results = self.keyword_agent.evaluate(verbose=False)
-            documentation_dim = None
-
-            # Find documentation dimension in keyword results
-            for dim in keyword_results.get('dimensions', []):
-                if dim['dimension'].lower() == 'documentation':
-                    documentation_dim = dim
+        self.artifact = self._load_artifact()
+        
+    def _load_artifact(self) -> Dict:
+        """Load artifact data from JSON file."""
+        with open(self.kg_agent.artifact_json_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    
+    def evaluate(self) -> Dict[str, Any]:
+        """
+        Evaluate documentation quality of the artifact.
+        
+        Returns:
+            Dict with score, justification, and evidence
+        """
+        logger.info("Evaluating artifact documentation...")
+        
+        evidence = []
+        score_components = []
+        
+        # 1. Check for README file and its quality
+        readme_score, readme_evidence = self._evaluate_readme()
+        score_components.append(readme_score)
+        evidence.extend(readme_evidence)
+        
+        # 2. Check for setup instructions
+        setup_score, setup_evidence = self._evaluate_setup_instructions()
+        score_components.append(setup_score)
+        evidence.extend(setup_evidence)
+        
+        # 3. Check for usage instructions
+        usage_score, usage_evidence = self._evaluate_usage_instructions()
+        score_components.append(usage_score)
+        evidence.extend(usage_evidence)
+        
+        # 4. Check for comprehensive documentation
+        comprehensive_score, comprehensive_evidence = self._evaluate_comprehensive_documentation()
+        score_components.append(comprehensive_score)
+        evidence.extend(comprehensive_evidence)
+        
+        # Calculate overall score (weighted average)
+        overall_score = sum(score_components) / len(score_components)
+        
+        # Generate justification
+        justification = self._generate_justification(readme_score, setup_score, usage_score, comprehensive_score)
+        
+        return {
+            "score": overall_score,
+            "justification": justification,
+            "evidence": evidence,
+            "components": {
+                "readme": readme_score,
+                "setup_instructions": setup_score,
+                "usage_instructions": usage_score,
+                "comprehensive_documentation": comprehensive_score
+            }
+        }
+    
+    def _evaluate_readme(self) -> tuple[float, List[str]]:
+        """Evaluate README file quality and completeness."""
+        evidence = []
+        score = 0.0
+        
+        readme_files = []
+        for doc_file in self.artifact.get("documentation_files", []):
+            if "readme" in doc_file.get("path", "").lower():
+                readme_files.append(doc_file)
+        
+        if not readme_files:
+            evidence.append("No README file found")
+            return 0.0, evidence
+        
+        evidence.append(f"Found {len(readme_files)} README file(s)")
+        score += 0.2
+        
+        # Analyze the main README file
+        main_readme = readme_files[0]
+        content = main_readme.get("content", "")
+        if isinstance(content, list):
+            content = "\n".join(content)
+        
+        # Check for required sections
+        required_sections = [
+            ("purpose", ["purpose", "description", "about", "overview"]),
+            ("provenance", ["provenance", "citation", "reference", "paper"]),
+            ("setup", ["setup", "install", "installation", "requirements"]),
+            ("usage", ["usage", "how to use", "examples", "commands"])
+        ]
+        
+        for section_name, keywords in required_sections:
+            if self._has_section(content, keywords):
+                evidence.append(f"README contains {section_name} section")
+                score += 0.2
+            else:
+                evidence.append(f"README missing {section_name} section")
+        
+        # Check for code blocks and examples
+        if self._has_code_blocks(content):
+            evidence.append("README contains code examples")
+            score += 0.1
+        
+        # Check for proper formatting
+        if self._has_proper_formatting(content):
+            evidence.append("README has good formatting")
+            score += 0.1
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_setup_instructions(self) -> tuple[float, List[str]]:
+        """Evaluate setup instructions clarity and completeness."""
+        evidence = []
+        score = 0.0
+        
+        # Check for setup instructions in README
+        setup_found = False
+        for doc_file in self.artifact.get("documentation_files", []):
+            if "readme" in doc_file.get("path", "").lower():
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                
+                if self._has_setup_instructions(content):
+                    evidence.append("Setup instructions found in README")
+                    score += 0.4
+                    setup_found = True
                     break
-
-            if documentation_dim:
-                return {
-                    'raw_score': documentation_dim['raw_score'],
-                    'weighted_score': documentation_dim['weighted_score'],
-                    'keywords_found': documentation_dim['keywords_found'],
-                    'overall_score': keyword_results.get('overall_score', 0)
-                }
-        except Exception as e:
-            logger.warning(f"Could not get keyword evidence: {e}")
-
-        return {}
-
-    def _build_eval_prompt(self):
-        # Get keyword-based evidence
-        keyword_evidence = self._get_keyword_evidence()
-
-        # Focus only on documentation section(s)
-        doc_sections = [s for s in self.sections if "documentation" in s.name.lower() or "readme" in s.name.lower()]
-        # Fallback: if none detected, use all as a defensive approach
-        if not doc_sections:
-            doc_sections = self.sections
-
-        # Gather evidence
-        keyword_context = ""
-        if keyword_evidence:
-            keyword_context = (
-                "KEYWORD-BASED EVIDENCE:\n"
-                f"- Raw documentation score: {keyword_evidence.get('raw_score', 'N/A')}\n"
-                f"- Weighted documentation score: {keyword_evidence.get('weighted_score', 'N/A'):.2f}\n"
-                f"- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}\n"
-                f"- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A'):.2f}\n"
-            )
-
-        kg_evidence = self._get_kg_evidence()
-        kg_context = ""
-        if kg_evidence:
-            kg_context = (
-                "KNOWLEDGE GRAPH EVIDENCE:\n"
-                f"- Files described by README: {', '.join(kg_evidence.get('described_files', []))}\n"
-                f"- README has setup section: {kg_evidence.get('has_setup_section', False)}\n"
-            )
-
-        # Chain-of-thought instructions
-        section_questions = ""
-        for section in doc_sections:
-            section_questions += (
-                f"Section: '{section.name}'\n"
-                f"Description: {section.description}\n"
-                "Step-by-step, do the following:\n"
-                "  1. Summarize the relevant evidence from the KEYWORD-BASED EVIDENCE and KNOWLEDGE GRAPH EVIDENCE above for this section.\n"
-                "  2. Based on this evidence, reason whether the section is present and sufficiently detailed.\n"
-                "  3. Assign a score from 1 (poor/missing) to 5 (excellent/complete) for this section, and provide a justification grounded in the evidence.\n"
-            )
-
-        # Add format instructions for structured JSON output
-        llm = OpenAI(temperature=0.0)
-        result_parser = PydanticOutputParser(pydantic_object=DocumentationEvaluationResult)
-        parser = OutputFixingParser.from_llm(parser=result_parser, llm=llm)
-
-        format_instructions = result_parser.get_format_instructions()
-
-        prompt = (
-            f"You are an expert artifact evaluator for {self.conference_name}.\n"
-            "Your task is to evaluate ONLY the **documentation** of the artifact according to these required sections.\n\n"
-            f"{keyword_context}\n"
-            f"{kg_context}\n"
-            "For each required section, follow this chain-of-thought process:\n"
-            f"{section_questions}\n"
-            "After evaluating all sections, provide:\n"
-            "- An overall documentation score (1 to 5)\n"
-            "- For each section: the name, a score from 1 to 5, and a justification\n"
-            "- Suggestions for improvement\n\n"
-            f"Return a valid JSON object matching this schema:\n{format_instructions}\n"
-            "IMPORTANT: Only return a single JSON object. Do NOT include any markdown or extra commentary."
-        )
-
-        logger.info(f"Documentation evaluation prompt:\n{prompt}")
-        return prompt, parser
-
-    def evaluate(self, verbose: bool = True) -> DocumentationEvaluationResult | dict[str, str | Any]:
-        prompt, parser = self._build_eval_prompt()
-
-        llm = OpenAI(temperature=0.2)
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=self.db.as_retriever(search_kwargs={'k': 5}),
-            chain_type="stuff"
-        )
-        logger.info("Running artifact documentation evaluation chain...")
-        result = qa_chain({"query": prompt})
-        raw_output = result.get('result', '')
-        logger.info(f"LLM output:\n{raw_output}")
-
-        if verbose:
-            print(raw_output)
-
-        try:
-            # Clean malformed JSON if any
-            cleaned = raw_output.strip()
-
-            if cleaned.lower().startswith("output:"):
-                cleaned = cleaned[len("output:"):].strip()
-            if cleaned.startswith("```json"):
-                cleaned = cleaned[7:]
-            elif cleaned.startswith("```"):
-                cleaned = cleaned[3:]
-            if cleaned.endswith("```"):
-                cleaned = cleaned[:-3]
-
-            # Fix common truncation
-            if cleaned.count("{") > cleaned.count("}"):
-                cleaned = re.sub(r',\s*{[^{}]*$', '', cleaned) + "]}"  # close the list + object
-
-            parsed_json = json.loads(cleaned)
-
-            # Add default justification if missing
-            for score in parsed_json.get("section_scores", []):
-                if "justification" not in score:
-                    score["justification"] = "Justification was missing from the LLM output."
-
-            # Validate using Pydantic
-            parsed_result = DocumentationEvaluationResult(**parsed_json)
-            return parsed_result
-
-        except Exception as e:
-            logger.warning(f"Could not parse structured documentation result: {e}")
-            return {"error": "Failed to parse documentation result", "raw_output": raw_output}
-
-    def get_sections(self) -> List[ReadmeSection]:
-        return self.sections
-
-    def _get_kg_evidence(self) -> Dict:
-        if not self.kg_agent:
-            return {}
-        evidence = {}
-        # Example: Which files are described by the README?
-        described_files = self.kg_agent.run_cypher(
-            "MATCH (doc:File {name: 'README.md'})-[:DESCRIBES]->(code:File) RETURN code.name"
-        )
-        evidence['described_files'] = [r['code.name'] for r in described_files]
-        # Example: Does README have a 'setup' section?
-        evidence['has_setup_section'] = self.kg_agent.readme_has_section('setup')
-        # Add more as needed...
-        return evidence
+        
+        # Check for dedicated setup files
+        setup_files = []
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["setup", "install", "requirements", "dockerfile"]):
+                setup_files.append(entry)
+        
+        if setup_files:
+            evidence.append(f"Found {len(setup_files)} setup-related file(s)")
+            score += 0.3
+        
+        # Check for Docker support
+        if self._has_docker_support():
+            evidence.append("Docker support found")
+            score += 0.2
+        
+        # Check for requirements/dependencies
+        if self._has_dependencies_listed():
+            evidence.append("Dependencies/requirements listed")
+            score += 0.1
+        
+        if not setup_found and not setup_files:
+            evidence.append("No setup instructions found")
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_usage_instructions(self) -> tuple[float, List[str]]:
+        """Evaluate usage instructions for replicating results."""
+        evidence = []
+        score = 0.0
+        
+        # Check for usage instructions in README
+        for doc_file in self.artifact.get("documentation_files", []):
+            if "readme" in doc_file.get("path", "").lower():
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                
+                if self._has_usage_instructions(content):
+                    evidence.append("Usage instructions found in README")
+                    score += 0.3
+                    break
+        
+        # Check for example scripts or notebooks
+        example_files = []
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["example", "demo", "tutorial", "notebook"]):
+                example_files.append(entry)
+        
+        if example_files:
+            evidence.append(f"Found {len(example_files)} example/demo file(s)")
+            score += 0.3
+        
+        # Check for command-line interface or main scripts
+        if self._has_executable_interface():
+            evidence.append("Executable interface found")
+            score += 0.2
+        
+        # Check for result replication instructions
+        if self._has_result_replication_instructions():
+            evidence.append("Result replication instructions found")
+            score += 0.2
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_comprehensive_documentation(self) -> tuple[float, List[str]]:
+        """Evaluate overall documentation comprehensiveness."""
+        evidence = []
+        score = 0.0
+        
+        # Count documentation files
+        doc_files = self.artifact.get("documentation_files", [])
+        if doc_files:
+            evidence.append(f"Found {len(doc_files)} documentation file(s)")
+            score += 0.2
+        
+        # Check for API documentation
+        if self._has_api_documentation():
+            evidence.append("API documentation found")
+            score += 0.2
+        
+        # Check for architecture/design documentation
+        if self._has_architecture_documentation():
+            evidence.append("Architecture/design documentation found")
+            score += 0.2
+        
+        # Check for troubleshooting/FAQ
+        if self._has_troubleshooting_section():
+            evidence.append("Troubleshooting/FAQ section found")
+            score += 0.2
+        
+        # Check for contribution guidelines
+        if self._has_contribution_guidelines():
+            evidence.append("Contribution guidelines found")
+            score += 0.2
+        
+        return min(score, 1.0), evidence
+    
+    def _has_section(self, content: str, keywords: List[str]) -> bool:
+        """Check if content has a section with given keywords."""
+        content_lower = content.lower()
+        return any(keyword in content_lower for keyword in keywords)
+    
+    def _has_code_blocks(self, content: str) -> bool:
+        """Check if content contains code blocks."""
+        # Look for markdown code blocks or indented code
+        return "```" in content or re.search(r'^\s+[a-zA-Z]', content, re.MULTILINE)
+    
+    def _has_proper_formatting(self, content: str) -> bool:
+        """Check if content has proper markdown formatting."""
+        # Check for headers, lists, links
+        has_headers = re.search(r'^#{1,6}\s+', content, re.MULTILINE)
+        has_lists = re.search(r'^[\s]*[-*+]\s+', content, re.MULTILINE)
+        has_links = re.search(r'\[.*\]\(.*\)', content)
+        
+        return bool(has_headers or has_lists or has_links)
+    
+    def _has_setup_instructions(self, content: str) -> bool:
+        """Check if content contains setup instructions."""
+        setup_keywords = [
+            "setup", "install", "installation", "requirements", "dependencies",
+            "prerequisites", "environment", "configuration"
+        ]
+        return self._has_section(content, setup_keywords)
+    
+    def _has_usage_instructions(self, content: str) -> bool:
+        """Check if content contains usage instructions."""
+        usage_keywords = [
+            "usage", "how to use", "examples", "commands", "run", "execute",
+            "quick start", "getting started"
+        ]
+        return self._has_section(content, usage_keywords)
+    
+    def _has_docker_support(self) -> bool:
+        """Check if artifact has Docker support."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if filename in ["dockerfile", "docker-compose.yml", "docker-compose.yaml"]:
+                return True
+        return False
+    
+    def _has_dependencies_listed(self) -> bool:
+        """Check if dependencies are listed."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if filename in ["requirements.txt", "package.json", "pom.xml", "build.gradle", "cargo.toml"]:
+                return True
+        return False
+    
+    def _has_executable_interface(self) -> bool:
+        """Check if artifact has executable interface."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if filename in ["main.py", "app.py", "run.py", "cli.py"] or filename.endswith(".sh"):
+                return True
+        return False
+    
+    def _has_result_replication_instructions(self) -> bool:
+        """Check if there are instructions for replicating results."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            replication_keywords = [
+                "reproduce", "replicate", "results", "experiments", "evaluation",
+                "benchmark", "performance", "metrics"
+            ]
+            if self._has_section(content, replication_keywords):
+                return True
+        return False
+    
+    def _has_api_documentation(self) -> bool:
+        """Check if API documentation exists."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if "api" in filename or "docs" in filename:
+                return True
+        return False
+    
+    def _has_architecture_documentation(self) -> bool:
+        """Check if architecture/design documentation exists."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            arch_keywords = ["architecture", "design", "structure", "overview", "system"]
+            if self._has_section(content, arch_keywords):
+                return True
+        return False
+    
+    def _has_troubleshooting_section(self) -> bool:
+        """Check if troubleshooting/FAQ section exists."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            trouble_keywords = ["troubleshooting", "faq", "issues", "problems", "debug"]
+            if self._has_section(content, trouble_keywords):
+                return True
+        return False
+    
+    def _has_contribution_guidelines(self) -> bool:
+        """Check if contribution guidelines exist."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if "contributing" in filename or "contribute" in filename:
+                return True
+        return False
+    
+    def _generate_justification(self, readme_score: float, setup_score: float, 
+                              usage_score: float, comprehensive_score: float) -> str:
+        """Generate justification based on component scores."""
+        if readme_score >= 0.8 and setup_score >= 0.8 and usage_score >= 0.8:
+            return "Excellent documentation: comprehensive README with clear setup and usage instructions."
+        elif readme_score >= 0.6 and setup_score >= 0.6 and usage_score >= 0.6:
+            return "Good documentation: adequate README and instructions but room for improvement."
+        elif readme_score >= 0.4 and setup_score >= 0.4 and usage_score >= 0.4:
+            return "Fair documentation: basic documentation present but significant gaps remain."
+        else:
+            return "Poor documentation: missing essential documentation elements."

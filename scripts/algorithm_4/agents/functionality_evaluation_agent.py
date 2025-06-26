@@ -1,405 +1,414 @@
 import json
 import logging
-import os
-from typing import List, Optional, Dict
+import re
+from typing import Dict, List, Any, Optional
 
-from dotenv import load_dotenv
-from langchain.chains import RetrievalQA
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_openai import OpenAIEmbeddings, OpenAI
-from pydantic import BaseModel, Field
-from langchain.memory import ConversationBufferMemory
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    handlers=[
-        logging.FileHandler("../functionality_evaluation_agent.log"),
-        logging.StreamHandler()
-    ]
-)
 logger = logging.getLogger(__name__)
-load_dotenv()
-
-
-# ---------- Utility Summarizers ----------
-def summarize_list(lst, label, max_items=7):
-    if not lst:
-        return f"- {label}: None\n"
-    uniq = list(dict.fromkeys(lst))
-    s = f"- {label}: {', '.join(uniq[:max_items])}"
-    if len(uniq) > max_items:
-        s += f", ...and {len(uniq) - max_items} more"
-    return s + "\n"
-
-
-def summarize_output_sections(sections, max_sections=3, max_len=120):
-    if not sections:
-        return "- Output/example/result sections: None\n"
-    lines = []
-    for s in sections[:max_sections]:
-        summary = s['content'][:max_len].replace("\n", " ")
-        lines.append(f"  * {s['file']}::{s['section']}: {summary}")
-    if len(sections) > max_sections:
-        lines.append(f"  ...and {len(sections) - max_sections} more.")
-    return "- Output/example/result sections (sample):\n" + "\n".join(lines) + "\n"
-
-
-def safe_str(obj):
-    # Defend against None and truncate
-    return str(obj)[:300] if obj is not None else ""
-
-class FunctionalityCriterionScore(BaseModel):
-    criterion: str
-    score: int
-    justification: str
-
-class FunctionalityEvaluationResult(BaseModel):
-    overall_score: float
-    criterion_scores: List[FunctionalityCriterionScore]
-    suggestions: Optional[str] = None
-
-
-
-# --------- Core Agent Classes ----------
-class FunctionalityCriterion(BaseModel):
-    name: str = Field(description="Functionality aspect to check")
-    description: str = Field(description="Description of what this aspect means or how to check it")
-
-
-class FunctionalityCriteriaList(BaseModel):
-    criteria: List[FunctionalityCriterion] = Field(
-        description="List of required functionality criteria for the conference")
-
 
 class FunctionalityEvaluationAgent:
-    def __init__(
-            self,
-            guideline_path: str,
-            artifact_json_path: str,
-            conference_name: str = "ICSE 2025",
-            persist_directory: str = "algo_outputs/indexes/functionality_chroma_index",
-            chunk_size: int = 1024,
-            chunk_overlap: int = 100,
-            model_name: Optional[str] = None,
-            keyword_agent: Optional[object] = None,
-            kg_agent: Optional[object] = None,
-    ):
-        self.guideline_path = guideline_path
-        self.artifact_json_path = artifact_json_path
-        self.conference_name = conference_name
-        self.persist_directory = persist_directory
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.model_name = model_name
-        self.keyword_agent = keyword_agent
+    """
+    Evaluates artifact functionality based on ICSE 2025 criteria:
+    - Functionality: Documented, consistent, complete, and exercisable
+    - Executability: Can be executed successfully
+    - Verification Evidence: Evidence of verification and validation
+    - Executable Artifacts: Installation packages and Docker/VM images
+    """
+    
+    def __init__(self, kg_agent):
         self.kg_agent = kg_agent
-
-        # Ensure indexes directory exists
-        os.makedirs(os.path.dirname(self.persist_directory), exist_ok=True)
-
-        logger.info(f"Initializing FunctionalityEvaluationAgent for {conference_name}")
-        self.guidelines = self._load_guidelines()
         self.artifact = self._load_artifact()
-        self.criteria = self._extract_functionality_criteria()
-        self.db = self._build_vector_db()
-
-    def _load_guidelines(self):
-        logger.info(f"Loading conference guidelines from: {self.guideline_path}")
-        with open(self.guideline_path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    def _load_artifact(self):
-        logger.info(f"Loading artifact JSON from: {self.artifact_json_path}")
-        with open(self.artifact_json_path, "r", encoding="utf-8") as f:
+        
+    def _load_artifact(self) -> Dict:
+        """Load artifact data from JSON file."""
+        with open(self.kg_agent.artifact_json_path, "r", encoding="utf-8") as f:
             return json.load(f)
-
-    def _extract_functionality_criteria(self):
-        logger.info("Extracting functionality criteria using LLM.")
-        parser = PydanticOutputParser(pydantic_object=FunctionalityCriteriaList)
-        guideline_prompt = PromptTemplate(
-            template="""
-                You are an expert at extracting *only* the criteria required to evaluate the **functionality** of a research software artifact, based strictly on the provided conference guidelines.
-
-                **Functionality criteria** are those that directly relate to:
-                - Whether the artifact works as claimed (performs its intended tasks or computations)
-                - Whether it can be executed successfully (is runnable, produces results as expected)
-                - Whether it includes test cases, test results, or evidence of validation and verification
-                - Whether scripts or instructions are provided to exercise the artifact (e.g., main scripts, demo scripts, test scripts)
-                - Whether input/output examples are provided and produce the expected outputs
-
-                **You MUST exclude** all criteria relating to:
-                - Documentation quality or completeness (unless documentation is required *for* functionality verification)
-                - Availability, accessibility, or archival status of the artifact
-                - Reusability, extensibility, or future use by others
-                - Licensing, provenance, setup, or general usability
-
-                **Your task:**
-                1. Read the conference guidelines below.
-                2. Extract ONLY those criteria that directly relate to the artifact's functionality as defined above.
-                3. For each, provide:
-                   - `name`: concise description of the functionality aspect to evaluate (e.g., "Successful Execution", "Test Coverage", "Output Verification")
-                   - `description`: a brief, specific explanation of what to check or how to check it, based strictly on the guideline text.
-
-                **Output format:**
-                Return a JSON object with a `criteria` field, where each item has `name` and `description` fields as described above. Exclude anything not directly related to functionality.
-
-                {format_instructions}
-
-                Conference Guidelines:
-                {guidelines}
-            """,
-            input_variables=["guidelines"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
-        llm_gpt = OpenAI(temperature=0.0)
-        prompt_and_model = guideline_prompt | llm_gpt | parser
-        result = prompt_and_model.invoke({"guidelines": self.guidelines})
-        logger.info(f"Prompt used for functionality extraction:\n{guideline_prompt.format(guidelines=self.guidelines)}")
-        logger.info(f"Criteria extracted: {[c.name for c in result.criteria]}")
-        return result.criteria
-
-    def _build_vector_db(self):
-        logger.info("Building vector DB for documentation and code files.")
-        doc_files = self.artifact.get('documentation_files', [])
-        code_files = self.artifact.get('code_files', [])
-        relevant_files = doc_files + code_files
-        texts = []
-        for file in relevant_files:
-            if isinstance(file['content'], list):
-                texts.append("\n".join(file['content']))
-            else:
-                texts.append(str(file['content']))
-        splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        all_chunks = []
-        for text in texts:
-            all_chunks.extend(splitter.split_text(text))
-        embeddings = OpenAIEmbeddings()
-        db = Chroma.from_texts(all_chunks, embeddings, persist_directory=self.persist_directory)
-        db.persist()
-        logger.info("Vector DB built and persisted.")
-        return db
-
-    def _file_exists(self, filename: str) -> bool:
-        all_files = self.artifact.get('repository_structure', [])
-        for f in all_files:
-            if f['name'].lower() == filename.lower():
+    
+    def evaluate(self) -> Dict[str, Any]:
+        """
+        Evaluate functionality of the artifact.
+        
+        Returns:
+            Dict with score, justification, and evidence
+        """
+        logger.info("Evaluating artifact functionality...")
+        
+        evidence = []
+        score_components = []
+        
+        # 1. Check for executability and main entry points
+        executability_score, executability_evidence = self._evaluate_executability()
+        score_components.append(executability_score)
+        evidence.extend(executability_evidence)
+        
+        # 2. Check for consistency and completeness
+        consistency_score, consistency_evidence = self._evaluate_consistency_completeness()
+        score_components.append(consistency_score)
+        evidence.extend(consistency_evidence)
+        
+        # 3. Check for verification and validation evidence
+        verification_score, verification_evidence = self._evaluate_verification_evidence()
+        score_components.append(verification_score)
+        evidence.extend(verification_evidence)
+        
+        # 4. Check for executable artifact preparation
+        preparation_score, preparation_evidence = self._evaluate_executable_preparation()
+        score_components.append(preparation_score)
+        evidence.extend(preparation_evidence)
+        
+        # Calculate overall score (weighted average)
+        overall_score = sum(score_components) / len(score_components)
+        
+        # Generate justification
+        justification = self._generate_justification(executability_score, consistency_score, 
+                                                   verification_score, preparation_score)
+        
+        return {
+            "score": overall_score,
+            "justification": justification,
+            "evidence": evidence,
+            "components": {
+                "executability": executability_score,
+                "consistency_completeness": consistency_score,
+                "verification_evidence": verification_score,
+                "executable_preparation": preparation_score
+            }
+        }
+    
+    def _evaluate_executability(self) -> tuple[float, List[str]]:
+        """Evaluate if artifact can be executed successfully."""
+        evidence = []
+        score = 0.0
+        
+        # Check for main entry points
+        main_files = []
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if filename in ["main.py", "app.py", "run.py", "start.py", "index.py"]:
+                main_files.append(entry)
+        
+        if main_files:
+            evidence.append(f"Found {len(main_files)} main entry point(s)")
+            score += 0.3
+        else:
+            evidence.append("No clear main entry point found")
+        
+        # Check for executable scripts
+        executable_files = []
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if (filename.endswith(".sh") or filename.endswith(".bat") or 
+                filename.endswith(".py") or filename.endswith(".js")):
+                executable_files.append(entry)
+        
+        if executable_files:
+            evidence.append(f"Found {len(executable_files)} executable file(s)")
+            score += 0.2
+        
+        # Check for proper imports and dependencies
+        if self._has_proper_imports():
+            evidence.append("Proper imports and dependencies found")
+            score += 0.2
+        
+        # Check for configuration files
+        if self._has_configuration_files():
+            evidence.append("Configuration files found")
+            score += 0.1
+        
+        # Check for error handling
+        if self._has_error_handling():
+            evidence.append("Error handling found in code")
+            score += 0.2
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_consistency_completeness(self) -> tuple[float, List[str]]:
+        """Evaluate consistency and completeness of the artifact."""
+        evidence = []
+        score = 0.0
+        
+        # Check for complete file structure
+        structure = self.artifact.get("repository_structure", [])
+        if len(structure) >= 10:  # Reasonable number of files
+            evidence.append("Complete file structure found")
+            score += 0.2
+        else:
+            evidence.append("File structure may be incomplete")
+        
+        # Check for consistent naming conventions
+        if self._has_consistent_naming():
+            evidence.append("Consistent naming conventions found")
+            score += 0.2
+        else:
+            evidence.append("Inconsistent naming conventions")
+        
+        # Check for complete documentation
+        doc_files = self.artifact.get("documentation_files", [])
+        if len(doc_files) >= 2:
+            evidence.append("Complete documentation found")
+            score += 0.2
+        else:
+            evidence.append("Documentation may be incomplete")
+        
+        # Check for code completeness
+        code_files = self.artifact.get("code_files", [])
+        if len(code_files) >= 3:
+            evidence.append("Sufficient code files found")
+            score += 0.2
+        else:
+            evidence.append("Code files may be insufficient")
+        
+        # Check for logical organization
+        if self._has_logical_organization():
+            evidence.append("Logical file organization found")
+            score += 0.2
+        else:
+            evidence.append("File organization could be improved")
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_verification_evidence(self) -> tuple[float, List[str]]:
+        """Evaluate verification and validation evidence."""
+        evidence = []
+        score = 0.0
+        
+        # Check for test files
+        test_files = []
+        for entry in self.artifact.get("repository_structure", []):
+            if self._is_test_file(entry):
+                test_files.append(entry)
+        
+        if test_files:
+            evidence.append(f"Found {len(test_files)} test file(s)")
+            score += 0.3
+        else:
+            evidence.append("No test files found")
+        
+        # Check for validation scripts
+        validation_files = []
+        for entry in self.artifact.get("repository_structure", []):
+            if self._is_validation_file(entry):
+                validation_files.append(entry)
+        
+        if validation_files:
+            evidence.append(f"Found {len(validation_files)} validation file(s)")
+            score += 0.2
+        
+        # Check for verification documentation
+        if self._has_verification_documentation():
+            evidence.append("Verification documentation found")
+            score += 0.2
+        
+        # Check for quality assurance measures
+        if self._has_quality_assurance():
+            evidence.append("Quality assurance measures found")
+            score += 0.2
+        
+        # Check for performance benchmarks
+        if self._has_performance_benchmarks():
+            evidence.append("Performance benchmarks found")
+            score += 0.1
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_executable_preparation(self) -> tuple[float, List[str]]:
+        """Evaluate executable artifact preparation."""
+        evidence = []
+        score = 0.0
+        
+        # Check for Docker support
+        if self._has_docker_support():
+            evidence.append("Docker support found")
+            score += 0.3
+        else:
+            evidence.append("No Docker support found")
+        
+        # Check for installation packages
+        if self._has_installation_packages():
+            evidence.append("Installation packages found")
+            score += 0.2
+        
+        # Check for virtual environment setup
+        if self._has_virtual_environment():
+            evidence.append("Virtual environment setup found")
+            score += 0.2
+        
+        # Check for build scripts
+        if self._has_build_scripts():
+            evidence.append("Build scripts found")
+            score += 0.2
+        
+        # Check for deployment instructions
+        if self._has_deployment_instructions():
+            evidence.append("Deployment instructions found")
+            score += 0.1
+        
+        return min(score, 1.0), evidence
+    
+    def _has_proper_imports(self) -> bool:
+        """Check if code has proper imports."""
+        for code_file in self.artifact.get("code_files", []):
+            content = code_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            # Look for import statements
+            if re.search(r'^import\s+', content, re.MULTILINE) or re.search(r'^from\s+.*\s+import', content, re.MULTILINE):
                 return True
         return False
-
-    def _get_file_content(self, filename: str) -> Optional[str]:
-        for file_list in ['documentation_files', 'code_files']:
-            for file in self.artifact.get(file_list, []):
-                if file['name'].lower() == filename.lower():
-                    if isinstance(file['content'], list):
-                        return "\n".join(file['content'])
-                    return str(file['content'])
-        return None
-
-    def _get_keyword_evidence(self) -> Dict:
-        if not self.keyword_agent:
-            return {}
-        try:
-            keyword_results = self.keyword_agent.evaluate(verbose=False)
-            for dim in keyword_results.get('dimensions', []):
-                if dim['dimension'].lower() == 'functionality':
-                    return {
-                        'raw_score': dim['raw_score'],
-                        'weighted_score': dim['weighted_score'],
-                        'keywords_found': dim['keywords_found'],
-                        'overall_score': keyword_results.get('overall_score', 0)
-                    }
-        except Exception as e:
-            logger.warning(f"Could not get keyword evidence: {e}")
-        return {}
-
-    def _get_kg_evidence(self) -> Dict:
-        if not self.kg_agent:
-            return {}
-        evidence = {}
-        # 1. Has tests/scripts
-        evidence['has_tests'] = self.kg_agent.test_files_exist()
-        evidence['has_main_py'] = self.kg_agent.file_exists('main.py')
-        evidence['has_run_sh'] = self.kg_agent.file_exists('run.sh')
-        # 2. Deduplicate/shorten lists
-        test_files = self.kg_agent.run_cypher("MATCH (t:Test) RETURN t.name AS name")
-        evidence['test_file_list'] = list(dict.fromkeys([t['name'] for t in test_files]))
-        described_files = self.kg_agent.run_cypher(
-            "MATCH (doc:File {name: 'README.md'})-[:DESCRIBES]->(code:File) RETURN code.name")
-        evidence['described_files'] = list(dict.fromkeys([r['code.name'] for r in described_files]))
-        output_sections = self.kg_agent.run_cypher(
-            "MATCH (f:File)-[:CONTAINS]->(s:Section) WHERE toLower(s.content) CONTAINS 'output' OR toLower(s.content) CONTAINS 'result' RETURN f.name AS file, s.name AS section, s.content AS content")
-        # Only first N and truncated to K chars
-        evidence['output_sections'] = [
-            {"file": s["file"], "section": s["section"], "content": s["content"][:120]}
-            for s in output_sections[:5]
-        ]
-        code_files = self.kg_agent.run_cypher("MATCH (f:File {type: 'code'}) RETURN f.name AS name")
-        evidence['code_files'] = list(dict.fromkeys([c['name'] for c in code_files]))
-        return evidence
-
-    def _build_eval_prompt(self):
-        keyword_evidence = self._get_keyword_evidence()
-        kg_evidence = self._get_kg_evidence()
-
-        # ----- Summarize KG Evidence -----
-        kg_context = "KNOWLEDGE GRAPH EVIDENCE:\n"
-        kg_context += f"- Has tests: {safe_str(kg_evidence.get('has_tests'))}\n"
-        kg_context += f"- Has main.py: {safe_str(kg_evidence.get('has_main_py'))}\n"
-        kg_context += f"- Has run.sh: {safe_str(kg_evidence.get('has_run_sh'))}\n"
-        kg_context += summarize_list(kg_evidence.get('test_file_list'), "Test files")
-        kg_context += summarize_list(kg_evidence.get('described_files'), "Code files described by README")
-        kg_context += summarize_list(kg_evidence.get('code_files'), "Code files")
-        kg_context += summarize_output_sections(kg_evidence.get('output_sections'))
-
-        # Keyword evidence
-        keyword_context = ""
-        if keyword_evidence:
-            keyword_context = (
-                "KEYWORD-BASED EVIDENCE (summarized):\n"
-                f"- Raw functionality score: {keyword_evidence.get('raw_score', 'N/A')}\n"
-                f"- Weighted functionality score: {keyword_evidence.get('weighted_score', 'N/A')}\n"
-                f"- Keywords found: {', '.join(keyword_evidence.get('keywords_found', []))}\n"
-                f"- Overall artifact score: {keyword_evidence.get('overall_score', 'N/A')}\n"
-            )
-
-        # ----- Assemble Prompt -----
-        evidence_chunks = []
-        for criterion in self.criteria:
-            retrieval_query = f"Evidence for {criterion.name}: {criterion.description}"
-            docs = self.db.as_retriever(search_kwargs={'k': 3}).get_relevant_documents(retrieval_query)
-            content = "\n".join([doc.page_content[:300] for doc in docs])
-            evidence_chunks.append(
-                f"Criterion: {criterion.name}\nDescription: {criterion.description}\nEvidence:\n{content}\n"
-                "Step-by-step: ..."
-            )
-        prompt = (
-                f"You are an expert artifact evaluator for {self.conference_name}.\n"
-                "Evaluate ONLY the **Functionality** of the artifact according to the following criteria.\n"
-                + "\n".join(evidence_chunks)
-                + "At the end, provide a functionality score and suggestions."
-        )
-
-        # Warn if too long
-        if len(prompt) > 12000:
-            logger.warning("Prompt is over 12,000 characters. Evidence has been truncated.")
-        return prompt
-
-    def evaluate(self, verbose=True):
-        from langchain.memory import ConversationBufferMemory
-
-        results = []
-        criterion_scores = []
-        memory = ConversationBufferMemory(return_messages=True)
-        llm = OpenAI(temperature=0.2)
-
-        for criterion in self.criteria:
-            retrieval_query = f"Show all evidence the artifact supports: {criterion.name}. {criterion.description}"
-            docs = self.db.as_retriever(search_kwargs={'k': 3}).get_relevant_documents(retrieval_query)
-            content = "\n".join([doc.page_content[:250] for doc in docs]) or "No evidence found."
-
-            kg_ev = self._get_kg_evidence()
-            keyword_ev = self._get_keyword_evidence()
-            kg_str = summarize_list(kg_ev.get('test_file_list'), "Test files") + summarize_output_sections(
-                kg_ev.get('output_sections')) if "test" in criterion.name.lower() else ""
-            keyword_str = (
-                f"- Raw functionality score: {keyword_ev.get('raw_score', 'N/A')}\n"
-                f"- Weighted functionality score: {keyword_ev.get('weighted_score', 'N/A')}\n"
-                f"- Keywords found: {', '.join(keyword_ev.get('keywords_found', []))}\n"
-            ) if keyword_ev else ""
-
-            prompt = (
-                f"You are evaluating the **Functionality** of a research artifact for the criterion:\n"
-                f"Criterion: {criterion.name}\nDescription: {criterion.description}\n\n"
-                f"Evidence from artifact (retrieved):\n{content}\n"
-                f"Knowledge Graph evidence:\n{kg_str or 'None'}\n"
-                f"Keyword evidence:\n{keyword_str or 'None'}\n"
-                f"Step-by-step, does the artifact satisfy this criterion? Give a 1-5 score and justification. "
-                f"Respond with a valid JSON like: {{\"criterion\": \"...\", \"score\": <int>, \"justification\": \"...\"}}"
-            )
-
-            response = llm.invoke(prompt)
-            memory.save_context({"input": prompt}, {"output": response})
-
-            try:
-                parsed = FunctionalityCriterionScore.parse_raw(response)
-                criterion_scores.append(parsed)
-                results.append(parsed.json())
-            except Exception as e:
-                logger.warning(f"Failed to parse response for {criterion.name}: {e}")
-                results.append(response)
-
-            if verbose:
-                print(f"\n== {criterion.name} ==\n{response}\n")
-
-        # Final score summary prompt
-        # Final score summary prompt
-        full_justifications = "\n\n".join(
-            [msg.content for msg in memory.chat_memory.messages if hasattr(msg, "content")])
-        final_prompt = (
-            f"You are an expert evaluator. Based on these evaluations, assign one final score for functionality.\n"
-            f"Use this JSON format: {{\"overall_score\": <1-5>, \"justification\": \"...\", \"suggestions\": \"...\"}}\n"
-            f"{full_justifications}"
-        )
-
-        final_response = llm.invoke(final_prompt)
-        if verbose:
-            print(f"\n== FINAL FUNCTIONALITY SCORE ==\n{final_response}\n")
-
-        try:
-            # Primary attempt: strict JSON parsing
-            final_data = json.loads(final_response)
-            return FunctionalityEvaluationResult(
-                overall_score=final_data["overall_score"],
-                criterion_scores=criterion_scores,
-                suggestions=final_data.get("suggestions", "")
-            )
-        except Exception as json_err:
-            logger.warning(f"Failed to parse final summary: {json_err}")
-
-            # Fallback 1: regex-based parsing
-            import re
-            try:
-                score_match = re.search(r"(?i)final\s+functionality\s+score\s*[:\-]?\s*(\d)", final_response)
-                justification_match = re.search(r"(?i)justification\s*[:\-]?\s*(.+?)(?:\n|$)", final_response)
-                suggestions_match = re.search(r"(?i)suggestions\s*[:\-]?\s*(.+?)(?:\n|$)", final_response)
-
-                overall_score = int(score_match.group(1)) if score_match else None
-                justification = justification_match.group(
-                    1).strip() if justification_match else "No justification found."
-                suggestions = suggestions_match.group(1).strip() if suggestions_match else "No suggestions found."
-
-                return FunctionalityEvaluationResult(
-                    overall_score=overall_score or 0,
-                    criterion_scores=criterion_scores,
-                    suggestions=suggestions
-                )
-            except Exception as regex_err:
-                logger.warning(f"Fallback regex parse also failed: {regex_err}")
-
-                return {
-                    "error": "Parsing final functionality summary failed.",
-                    "raw_output": final_response
-                }
-
-    def get_criteria(self) -> List[FunctionalityCriterion]:
-        return self.criteria
-
-    def file_exists(self, filename: str) -> bool:
-        return self._file_exists(filename)
-
-    def get_file_content(self, filename: str) -> Optional[str]:
-        return self._get_file_content(filename)
-
-# Example usage (commented out)
-# from functionality_evaluation_agent import FunctionalityEvaluationAgent
-#
-# agent = FunctionalityEvaluationAgent(
-#     guideline_path="../../data/conference_guideline_texts/processed/13_icse_2025.md",
-#     artifact_json_path="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json",
-#     conference_name="ICSE 2025"
-# )
-# functionality_report = agent.evaluate(verbose=True)
+    
+    def _has_configuration_files(self) -> bool:
+        """Check if artifact has configuration files."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["config", "settings", "env", "ini", "yaml", "yml", "json"]):
+                return True
+        return False
+    
+    def _has_error_handling(self) -> bool:
+        """Check if code has error handling."""
+        for code_file in self.artifact.get("code_files", []):
+            content = code_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            # Look for error handling patterns
+            error_patterns = [
+                r'try\s*:', r'except\s*:', r'catch\s*\(', r'finally\s*:',
+                r'raise\s+', r'throw\s+', r'error', r'exception'
+            ]
+            if any(re.search(pattern, content, re.IGNORECASE) for pattern in error_patterns):
+                return True
+        return False
+    
+    def _has_consistent_naming(self) -> bool:
+        """Check if artifact has consistent naming conventions."""
+        filenames = [entry.get("name", "") for entry in self.artifact.get("repository_structure", [])]
+        
+        # Check for consistent case usage
+        has_snake_case = any('_' in name for name in filenames)
+        has_kebab_case = any('-' in name for name in filenames)
+        has_camel_case = any(re.search(r'[a-z][A-Z]', name) for name in filenames)
+        
+        # If multiple naming conventions are used, it's inconsistent
+        conventions = sum([has_snake_case, has_kebab_case, has_camel_case])
+        return conventions <= 2  # Allow up to 2 conventions
+    
+    def _has_logical_organization(self) -> bool:
+        """Check if artifact has logical file organization."""
+        structure = self.artifact.get("repository_structure", [])
+        
+        # Check for common organizational patterns
+        has_src = any("src" in entry.get("path", "").lower() for entry in structure)
+        has_docs = any("doc" in entry.get("path", "").lower() for entry in structure)
+        has_tests = any("test" in entry.get("path", "").lower() for entry in structure)
+        
+        # At least 2 organizational patterns should be present
+        patterns = sum([has_src, has_docs, has_tests])
+        return patterns >= 2
+    
+    def _is_test_file(self, entry: Dict) -> bool:
+        """Check if file is a test file."""
+        filename = entry.get("name", "").lower()
+        path = entry.get("path", "").lower()
+        
+        return (filename.startswith("test") or 
+                filename.endswith("_test.py") or 
+                "test" in filename or
+                "test" in path)
+    
+    def _is_validation_file(self, entry: Dict) -> bool:
+        """Check if file is a validation file."""
+        filename = entry.get("name", "").lower()
+        return any(keyword in filename for keyword in ["validate", "validation", "verify", "verification"])
+    
+    def _has_verification_documentation(self) -> bool:
+        """Check if artifact has verification documentation."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            verification_keywords = [
+                "verify", "verification", "validate", "validation", "test", "testing",
+                "quality", "assurance", "correctness", "reliability"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in verification_keywords):
+                return True
+        return False
+    
+    def _has_quality_assurance(self) -> bool:
+        """Check if artifact has quality assurance measures."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["lint", "flake8", "pylint", "eslint", "checkstyle"]):
+                return True
+        return False
+    
+    def _has_performance_benchmarks(self) -> bool:
+        """Check if artifact has performance benchmarks."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["benchmark", "performance", "speed", "timing"]):
+                return True
+        return False
+    
+    def _has_docker_support(self) -> bool:
+        """Check if artifact has Docker support."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if filename in ["dockerfile", "docker-compose.yml", "docker-compose.yaml"]:
+                return True
+        return False
+    
+    def _has_installation_packages(self) -> bool:
+        """Check if artifact has installation packages."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["setup.py", "install", "package", "dist", "build"]):
+                return True
+        return False
+    
+    def _has_virtual_environment(self) -> bool:
+        """Check if artifact has virtual environment setup."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["venv", "env", "virtualenv", "conda", "environment.yml"]):
+                return True
+        return False
+    
+    def _has_build_scripts(self) -> bool:
+        """Check if artifact has build scripts."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["build", "make", "compile", "install.sh", "setup.sh"]):
+                return True
+        return False
+    
+    def _has_deployment_instructions(self) -> bool:
+        """Check if artifact has deployment instructions."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            deployment_keywords = [
+                "deploy", "deployment", "production", "server", "hosting",
+                "install", "setup", "configuration"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in deployment_keywords):
+                return True
+        return False
+    
+    def _generate_justification(self, executability_score: float, consistency_score: float,
+                              verification_score: float, preparation_score: float) -> str:
+        """Generate justification based on component scores."""
+        if executability_score >= 0.8 and consistency_score >= 0.8 and verification_score >= 0.8:
+            return "Excellent functionality: artifact is executable, consistent, complete, and well-verified."
+        elif executability_score >= 0.6 and consistency_score >= 0.6 and verification_score >= 0.6:
+            return "Good functionality: artifact is mostly executable and consistent but verification could be improved."
+        elif executability_score >= 0.4 and consistency_score >= 0.4 and verification_score >= 0.4:
+            return "Fair functionality: basic functionality present but significant improvements needed in consistency and verification."
+        else:
+            return "Poor functionality: artifact lacks essential functional elements and verification evidence."
