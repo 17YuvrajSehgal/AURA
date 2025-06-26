@@ -13,8 +13,9 @@ class AccessibilityEvaluationAgent:
     - License: LICENSE file with distribution rights and open-source/open data license
     """
     
-    def __init__(self, kg_agent):
+    def __init__(self, kg_agent, llm_evaluator=None):
         self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
         
     def _load_artifact(self) -> Dict:
@@ -24,38 +25,30 @@ class AccessibilityEvaluationAgent:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate accessibility of the artifact.
-        
+        Evaluate accessibility of the artifact (rule-based + LLM augmentation).
         Returns:
             Dict with score, justification, and evidence
         """
         logger.info("Evaluating artifact accessibility...")
-        
         evidence = []
         score_components = []
-        
         # 1. Check for public accessibility and repository link
         availability_score, availability_evidence = self._evaluate_availability()
         score_components.append(availability_score)
         evidence.extend(availability_evidence)
-        
         # 2. Check for archival repository (Zenodo, FigShare, etc.)
         archival_score, archival_evidence = self._evaluate_archival_repository()
         score_components.append(archival_score)
         evidence.extend(archival_evidence)
-        
         # 3. Check for LICENSE file and open licensing
         license_score, license_evidence = self._evaluate_licensing()
         score_components.append(license_score)
         evidence.extend(license_evidence)
-        
         # Calculate overall score (weighted average)
         overall_score = sum(score_components) / len(score_components)
-        
         # Generate justification
         justification = self._generate_justification(availability_score, archival_score, license_score)
-        
-        return {
+        result = {
             "score": overall_score,
             "justification": justification,
             "evidence": evidence,
@@ -65,6 +58,22 @@ class AccessibilityEvaluationAgent:
                 "licensing": license_score
             }
         }
+        # LLM augmentation
+        if self.llm_evaluator:
+            readme_content = self._get_readme_content()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "accessibility",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                readme_content
+            )
+            # Use the higher of rule-based and LLM score, or blend as needed
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+        return result
     
     def _evaluate_availability(self) -> tuple[float, List[str]]:
         """Evaluate if artifact is publicly accessible with proper repository link."""
@@ -215,3 +224,12 @@ class AccessibilityEvaluationAgent:
             return "Fair accessibility: artifact has basic accessibility but significant improvements needed."
         else:
             return "Poor accessibility: artifact lacks proper public access, archival status, or licensing."
+
+    def _get_readme_content(self):
+        for doc_file in self.artifact.get("documentation_files", []):
+            if "readme" in doc_file.get("path", "").lower():
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                return content
+        return ""

@@ -14,8 +14,9 @@ class ExperimentalEvaluationAgent:
     - Non-executable Artifacts: Proper packaging of data and documents
     """
     
-    def __init__(self, kg_agent):
+    def __init__(self, kg_agent, llm_evaluator=None):
         self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
         
     def _load_artifact(self) -> Dict:
@@ -25,43 +26,34 @@ class ExperimentalEvaluationAgent:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate experimental aspects of the artifact.
-        
+        Evaluate experimental aspects of the artifact (rule-based + LLM augmentation).
         Returns:
             Dict with score, justification, and evidence
         """
         logger.info("Evaluating artifact experimental aspects...")
-        
         evidence = []
         score_components = []
-        
         # 1. Check for experimental setup and requirements
         setup_score, setup_evidence = self._evaluate_experimental_setup()
         score_components.append(setup_score)
         evidence.extend(setup_evidence)
-        
         # 2. Check for data availability and datasets
         data_score, data_evidence = self._evaluate_data_availability()
         score_components.append(data_score)
         evidence.extend(data_evidence)
-        
         # 3. Check for validation and verification evidence
         validation_score, validation_evidence = self._evaluate_validation_evidence()
         score_components.append(validation_score)
         evidence.extend(validation_evidence)
-        
         # 4. Check for non-executable artifacts packaging
         packaging_score, packaging_evidence = self._evaluate_artifact_packaging()
         score_components.append(packaging_score)
         evidence.extend(packaging_evidence)
-        
         # Calculate overall score (weighted average)
         overall_score = sum(score_components) / len(score_components)
-        
         # Generate justification
         justification = self._generate_justification(setup_score, data_score, validation_score, packaging_score)
-        
-        return {
+        result = {
             "score": overall_score,
             "justification": justification,
             "evidence": evidence,
@@ -72,6 +64,33 @@ class ExperimentalEvaluationAgent:
                 "artifact_packaging": packaging_score
             }
         }
+        # LLM augmentation
+        if self.llm_evaluator:
+            context = self._get_experimental_context()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "experimental",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                context
+            )
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+        return result
+    
+    def _get_experimental_context(self):
+        # Use README and any setup/experiment docs as context
+        context = []
+        for doc_file in self.artifact.get("documentation_files", []):
+            path = doc_file.get("path", "").lower()
+            if any(k in path for k in ["readme", "experiment", "setup", "requirements"]):
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                context.append(content)
+        return "\n\n".join(context)
     
     def _evaluate_experimental_setup(self) -> tuple[float, List[str]]:
         """Evaluate experimental setup and hardware/software requirements."""

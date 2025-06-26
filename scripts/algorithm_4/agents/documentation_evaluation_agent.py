@@ -14,8 +14,9 @@ class DocumentationEvaluationAgent:
     - Usage Instructions: Clarity for replicating main results
     """
     
-    def __init__(self, kg_agent):
+    def __init__(self, kg_agent, llm_evaluator=None):
         self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
         
     def _load_artifact(self) -> Dict:
@@ -25,43 +26,34 @@ class DocumentationEvaluationAgent:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate documentation quality of the artifact.
-        
+        Evaluate documentation quality of the artifact (rule-based + LLM augmentation).
         Returns:
             Dict with score, justification, and evidence
         """
         logger.info("Evaluating artifact documentation...")
-        
         evidence = []
         score_components = []
-        
         # 1. Check for README file and its quality
         readme_score, readme_evidence = self._evaluate_readme()
         score_components.append(readme_score)
         evidence.extend(readme_evidence)
-        
         # 2. Check for setup instructions
         setup_score, setup_evidence = self._evaluate_setup_instructions()
         score_components.append(setup_score)
         evidence.extend(setup_evidence)
-        
         # 3. Check for usage instructions
         usage_score, usage_evidence = self._evaluate_usage_instructions()
         score_components.append(usage_score)
         evidence.extend(usage_evidence)
-        
         # 4. Check for comprehensive documentation
         comprehensive_score, comprehensive_evidence = self._evaluate_comprehensive_documentation()
         score_components.append(comprehensive_score)
         evidence.extend(comprehensive_evidence)
-        
         # Calculate overall score (weighted average)
         overall_score = sum(score_components) / len(score_components)
-        
         # Generate justification
         justification = self._generate_justification(readme_score, setup_score, usage_score, comprehensive_score)
-        
-        return {
+        result = {
             "score": overall_score,
             "justification": justification,
             "evidence": evidence,
@@ -72,6 +64,30 @@ class DocumentationEvaluationAgent:
                 "comprehensive_documentation": comprehensive_score
             }
         }
+        # LLM augmentation
+        if self.llm_evaluator:
+            readme_content = self._get_readme_content()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "documentation",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                readme_content
+            )
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+        return result
+    
+    def _get_readme_content(self):
+        for doc_file in self.artifact.get("documentation_files", []):
+            if "readme" in doc_file.get("path", "").lower():
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                return content
+        return ""
     
     def _evaluate_readme(self) -> tuple[float, List[str]]:
         """Evaluate README file quality and completeness."""

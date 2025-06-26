@@ -14,8 +14,9 @@ class UsabilityEvaluationAgent:
     - Error Handling: Graceful error handling and user feedback
     """
     
-    def __init__(self, kg_agent):
+    def __init__(self, kg_agent, llm_evaluator=None):
         self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
         
     def _load_artifact(self) -> Dict:
@@ -25,43 +26,34 @@ class UsabilityEvaluationAgent:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate usability of the artifact.
-        
+        Evaluate usability of the artifact (rule-based + LLM augmentation).
         Returns:
             Dict with score, justification, and evidence
         """
         logger.info("Evaluating artifact usability...")
-        
         evidence = []
         score_components = []
-        
         # 1. Check for user experience and ease of use
         ux_score, ux_evidence = self._evaluate_user_experience()
         score_components.append(ux_score)
         evidence.extend(ux_evidence)
-        
         # 2. Check for user interface quality
         ui_score, ui_evidence = self._evaluate_user_interface()
         score_components.append(ui_score)
         evidence.extend(ui_evidence)
-        
         # 3. Check for error handling and feedback
         error_score, error_evidence = self._evaluate_error_handling()
         score_components.append(error_score)
         evidence.extend(error_evidence)
-        
         # 4. Check for iterative review process support
         review_score, review_evidence = self._evaluate_review_process()
         score_components.append(review_score)
         evidence.extend(review_evidence)
-        
         # Calculate overall score (weighted average)
         overall_score = sum(score_components) / len(score_components)
-        
         # Generate justification
         justification = self._generate_justification(ux_score, ui_score, error_score, review_score)
-        
-        return {
+        result = {
             "score": overall_score,
             "justification": justification,
             "evidence": evidence,
@@ -72,6 +64,33 @@ class UsabilityEvaluationAgent:
                 "review_process": review_score
             }
         }
+        # LLM augmentation
+        if self.llm_evaluator:
+            context = self._get_usability_context()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "usability",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                context
+            )
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+        return result
+    
+    def _get_usability_context(self):
+        # Use README and any UI/UX docs as context
+        context = []
+        for doc_file in self.artifact.get("documentation_files", []):
+            path = doc_file.get("path", "").lower()
+            if any(k in path for k in ["readme", "ui", "ux", "usage", "interface"]):
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                context.append(content)
+        return "\n\n".join(context)
     
     def _evaluate_user_experience(self) -> tuple[float, List[str]]:
         """Evaluate user experience and ease of use."""

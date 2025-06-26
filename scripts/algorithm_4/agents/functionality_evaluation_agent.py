@@ -14,8 +14,9 @@ class FunctionalityEvaluationAgent:
     - Executable Artifacts: Installation packages and Docker/VM images
     """
     
-    def __init__(self, kg_agent):
+    def __init__(self, kg_agent, llm_evaluator=None):
         self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
         
     def _load_artifact(self) -> Dict:
@@ -25,13 +26,11 @@ class FunctionalityEvaluationAgent:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate functionality of the artifact.
-        
+        Evaluate functionality of the artifact (rule-based + LLM augmentation).
         Returns:
             Dict with score, justification, and evidence
         """
         logger.info("Evaluating artifact functionality...")
-        
         evidence = []
         score_components = []
         
@@ -62,7 +61,7 @@ class FunctionalityEvaluationAgent:
         justification = self._generate_justification(executability_score, consistency_score, 
                                                    verification_score, preparation_score)
         
-        return {
+        result = {
             "score": overall_score,
             "justification": justification,
             "evidence": evidence,
@@ -73,6 +72,23 @@ class FunctionalityEvaluationAgent:
                 "executable_preparation": preparation_score
             }
         }
+        
+        # LLM augmentation
+        if self.llm_evaluator:
+            context = self._get_functionality_context()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "functionality",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                context
+            )
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+        
+        return result
     
     def _evaluate_executability(self) -> tuple[float, List[str]]:
         """Evaluate if artifact can be executed successfully."""
@@ -412,3 +428,20 @@ class FunctionalityEvaluationAgent:
             return "Fair functionality: basic functionality present but significant improvements needed in consistency and verification."
         else:
             return "Poor functionality: artifact lacks essential functional elements and verification evidence."
+    
+    def _get_functionality_context(self):
+        # Use README and main code files as context
+        context = []
+        for doc_file in self.artifact.get("documentation_files", []):
+            if "readme" in doc_file.get("path", "").lower():
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                context.append(content)
+        for code_file in self.artifact.get("code_files", []):
+            if code_file.get("path", "").lower().endswith(("main.py", "app.py")):
+                content = code_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                context.append(content)
+        return "\n\n".join(context)

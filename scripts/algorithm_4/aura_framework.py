@@ -12,6 +12,7 @@ from agents.functionality_evaluation_agent import FunctionalityEvaluationAgent
 from agents.reproducibility_evaluation_agent import ReproducibilityEvaluationAgent
 from agents.usability_evaluation_agent import UsabilityEvaluationAgent
 from agents.repository_knowledge_graph_agent import RepositoryKnowledgeGraphAgent
+from agents.llm_evaluator import LLMEvaluator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,13 +36,14 @@ class ArtifactEvaluationResult(BaseModel):
     recommendations: List[str] = Field(default_factory=list)
 
 class AURAFramework:
-    def __init__(self, artifact_json_path: str, neo4j_uri: str = "bolt://localhost:7687"):
+    def __init__(self, artifact_json_path: str, neo4j_uri: str = "bolt://localhost:7687", openai_api_key: str = None):
         """
         Initialize the AURA evaluation framework.
         
         Args:
             artifact_json_path: Path to the artifact JSON file
             neo4j_uri: Neo4j database URI for knowledge graph
+            openai_api_key: OpenAI API key for LLM augmentation
         """
         self.artifact_json_path = artifact_json_path
         self.neo4j_uri = neo4j_uri
@@ -52,14 +54,17 @@ class AURAFramework:
             neo4j_uri=neo4j_uri
         )
         
-        # Initialize evaluation agents
+        # Initialize LLM evaluator
+        self.llm_evaluator = LLMEvaluator(openai_api_key=openai_api_key)
+        
+        # Initialize evaluation agents with LLM augmentation
         self.agents = {
-            "accessibility": AccessibilityEvaluationAgent(self.kg_agent),
-            "documentation": DocumentationEvaluationAgent(self.kg_agent),
-            "experimental": ExperimentalEvaluationAgent(self.kg_agent),
-            "functionality": FunctionalityEvaluationAgent(self.kg_agent),
-            "reproducibility": ReproducibilityEvaluationAgent(self.kg_agent),
-            "usability": UsabilityEvaluationAgent(self.kg_agent),
+            "accessibility": AccessibilityEvaluationAgent(self.kg_agent, self.llm_evaluator),
+            "documentation": DocumentationEvaluationAgent(self.kg_agent, self.llm_evaluator),
+            "experimental": ExperimentalEvaluationAgent(self.kg_agent, self.llm_evaluator),
+            "functionality": FunctionalityEvaluationAgent(self.kg_agent, self.llm_evaluator),
+            "reproducibility": ReproducibilityEvaluationAgent(self.kg_agent, self.llm_evaluator),
+            "usability": UsabilityEvaluationAgent(self.kg_agent, self.llm_evaluator),
         }
         
         # Load scoring criteria

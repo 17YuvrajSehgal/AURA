@@ -14,8 +14,9 @@ class ReproducibilityEvaluationAgent:
     - Result Replication: Ability to reproduce the main results of the paper
     """
     
-    def __init__(self, kg_agent):
+    def __init__(self, kg_agent, llm_evaluator=None):
         self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
         
     def _load_artifact(self) -> Dict:
@@ -25,44 +26,34 @@ class ReproducibilityEvaluationAgent:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate reproducibility of the artifact.
-        
+        Evaluate reproducibility of the artifact (rule-based + LLM augmentation).
         Returns:
             Dict with score, justification, and evidence
         """
         logger.info("Evaluating artifact reproducibility...")
-        
         evidence = []
         score_components = []
-        
         # 1. Check for reusability and structure
         reusability_score, reusability_evidence = self._evaluate_reusability()
         score_components.append(reusability_score)
         evidence.extend(reusability_evidence)
-        
         # 2. Check for setup instructions clarity
         setup_score, setup_evidence = self._evaluate_setup_clarity()
         score_components.append(setup_score)
         evidence.extend(setup_evidence)
-        
         # 3. Check for usage instructions clarity
         usage_score, usage_evidence = self._evaluate_usage_clarity()
         score_components.append(usage_score)
         evidence.extend(usage_evidence)
-        
         # 4. Check for result replication capability
         replication_score, replication_evidence = self._evaluate_result_replication()
         score_components.append(replication_score)
         evidence.extend(replication_evidence)
-        
         # Calculate overall score (weighted average)
         overall_score = sum(score_components) / len(score_components)
-        
         # Generate justification
-        justification = self._generate_justification(reusability_score, setup_score, 
-                                                   usage_score, replication_score)
-        
-        return {
+        justification = self._generate_justification(reusability_score, setup_score, usage_score, replication_score)
+        result = {
             "score": overall_score,
             "justification": justification,
             "evidence": evidence,
@@ -73,6 +64,33 @@ class ReproducibilityEvaluationAgent:
                 "result_replication": replication_score
             }
         }
+        # LLM augmentation
+        if self.llm_evaluator:
+            context = self._get_reproducibility_context()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "reproducibility",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                context
+            )
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+        return result
+    
+    def _get_reproducibility_context(self):
+        # Use README, setup, and usage docs as context
+        context = []
+        for doc_file in self.artifact.get("documentation_files", []):
+            path = doc_file.get("path", "").lower()
+            if any(k in path for k in ["readme", "setup", "usage", "reproduce", "replicate"]):
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                context.append(content)
+        return "\n\n".join(context)
     
     def _evaluate_reusability(self) -> tuple[float, List[str]]:
         """Evaluate reusability and structure of the artifact."""
