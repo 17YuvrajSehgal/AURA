@@ -4,15 +4,15 @@ Demonstrates how the ConferenceProfileGenerator analyzes actual conference guide
 to create conference-specific evaluation profiles.
 """
 
-import json
 import os
 import sys
+
+from scripts.algorithm_0 import setup_logging
+from scripts.algorithm_0.conference_profiles import ConferenceProfileGenerator, ConferenceProfileManager
 
 # Add the current directory to Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from conference_profiles import ConferenceProfileGenerator, ConferenceProfileManager
-from utils import setup_logging
 
 def test_profile_generation():
     """Test the automated profile generation from conference guidelines."""

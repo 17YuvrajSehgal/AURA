@@ -7,13 +7,10 @@ import os
 import sys
 import tempfile
 
+from scripts.algorithm_0 import ConferenceProfileManager, ConferenceSpecificAlgorithm1, Config, setup_logging
+
 # Add the current directory to Python path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from conference_specific_algorithm import ConferenceSpecificAlgorithm1
-from conference_profiles import ConferenceProfileManager
-from config import Config
-from utils import setup_logging
 
 
 def test_conference_profiles():
