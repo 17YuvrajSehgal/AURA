@@ -504,21 +504,7 @@ class EnhancedAlgorithm1:
 
         saved_files = {}
 
-        # 1. Enhanced CSV with hierarchical information
-        csv_filename = f"enhanced_algorithm_1_criteria_{timestamp}.csv"
-        csv_path = output_path / csv_filename
-        df_result.to_csv(csv_path, index=False)
-        saved_files['enhanced_csv'] = str(csv_path)
-        logger.info(f"Saved enhanced CSV to: {csv_path}")
-
-        # 2. Compatibility CSV (for existing AURA integration)
-        compatibility_csv_path = output_path / "algorithm_1_artifact_evaluation_criteria.csv"
-        compatibility_df = df_result[['dimension', 'keywords', 'raw_score', 'normalized_weight']].copy()
-        compatibility_df.to_csv(compatibility_csv_path, index=False)
-        saved_files['compatibility_csv'] = str(compatibility_csv_path)
-        logger.info(f"Saved compatibility CSV to: {compatibility_csv_path}")
-
-        # 3. AURA Integration Format
+        # AURA Integration Format
         aura_integration = self._create_aura_integration_format(df_result, confidence_metrics)
         aura_filename = f"aura_integration_data_{timestamp}.json"
         aura_path = output_path / aura_filename
@@ -527,36 +513,7 @@ class EnhancedAlgorithm1:
         saved_files['aura_integration'] = str(aura_path)
         logger.info(f"Saved AURA integration data to: {aura_path}")
 
-        # 4. Research Analysis Format
-        research_analysis = self._create_research_analysis_format(
-            extraction_results, processing_stats, semantic_relationships
-        )
-        research_filename = f"research_analysis_{timestamp}.json"
-        research_path = output_path / research_filename
-        with open(research_path, 'w', encoding='utf-8') as f:
-            json.dump(research_analysis, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
-        saved_files['research_analysis'] = str(research_path)
-        logger.info(f"Saved research analysis to: {research_path}")
-
-        # 5. Human Review Format
-        human_review = self._create_human_review_format(df_result, confidence_metrics)
-        review_filename = f"human_review_data_{timestamp}.json"
-        review_path = output_path / review_filename
-        with open(review_path, 'w', encoding='utf-8') as f:
-            json.dump(human_review, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
-        saved_files['human_review'] = str(review_path)
-        logger.info(f"Saved human review data to: {review_path}")
-
-        # 6. ML Features Format
-        ml_features = self._create_ml_features_format(df_result, semantic_relationships)
-        ml_filename = f"ml_features_{timestamp}.json"
-        ml_path = output_path / ml_filename
-        with open(ml_path, 'w', encoding='utf-8') as f:
-            json.dump(ml_features, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
-        saved_files['ml_features'] = str(ml_path)
-        logger.info(f"Saved ML features to: {ml_path}")
-
-        # 7. Comprehensive Report
+        # Comprehensive Report
         report_filename = f"enhanced_algorithm_1_report_{timestamp}.txt"
         report_path = output_path / report_filename
         self._generate_comprehensive_report(
@@ -565,40 +522,6 @@ class EnhancedAlgorithm1:
         )
         saved_files['comprehensive_report'] = str(report_path)
         logger.info(f"Saved comprehensive report to: {report_path}")
-
-        # 8. Detailed JSON with all data
-        detailed_results = {
-            "metadata": {
-                "timestamp": datetime.now().isoformat(),
-                "script_version": "enhanced_algorithm_1.py",
-                "processing_stats": processing_stats,
-                "model_info": {
-                    "sentence_model": "all-MiniLM-L6-v2",
-                    "keybert_model": "all-MiniLM-L6-v2"
-                }
-            },
-            "evaluation_criteria": df_result.to_dict('records'),
-            "extraction_details": extraction_results,
-            "confidence_metrics": confidence_metrics,
-            "semantic_relationships": semantic_relationships,
-            "summary": {
-                "total_dimensions": len(df_result),
-                "total_keywords": sum(len(row['keywords'].split(', ')) for _, row in df_result.iterrows()),
-                "highest_weight_dimension": df_result.loc[df_result['normalized_weight'].idxmax(), 'dimension'],
-                "lowest_weight_dimension": df_result.loc[df_result['normalized_weight'].idxmin(), 'dimension'],
-                "average_confidence": np.mean(
-                    [metrics['overall_confidence'] for metrics in confidence_metrics.values()])
-            }
-        }
-
-        detailed_filename = f"enhanced_algorithm_1_detailed_{timestamp}.json"
-        detailed_path = output_path / detailed_filename
-        with open(detailed_path, 'w', encoding='utf-8') as f:
-            json.dump(detailed_results, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
-        saved_files['detailed_json'] = str(detailed_path)
-        logger.info(f"Saved detailed JSON to: {detailed_path}")
-
-        return saved_files
 
     def _create_aura_integration_format(self, df_result: pd.DataFrame,
                                         confidence_metrics: Dict) -> Dict:
@@ -658,78 +581,6 @@ class EnhancedAlgorithm1:
 
         return aura_data
 
-    def _create_research_analysis_format(self, extraction_results: Dict,
-                                         processing_stats: Dict,
-                                         semantic_relationships: Dict) -> Dict:
-        """Create format for research analysis and insights."""
-        return {
-            "conference_comparison": {
-                "total_conferences": processing_stats.get('total_documents', 0),
-                "conference_metadata": processing_stats.get('conference_metadata', {}),
-                "dimension_distribution": self._analyze_dimension_distribution(extraction_results)
-            },
-            "trend_analysis": {
-                "keyword_clusters": semantic_relationships.get('keyword_clusters', []),
-                "cross_dimension_relationships": semantic_relationships.get('cross_dimension_relationships', []),
-                "semantic_hierarchy": semantic_relationships.get('semantic_hierarchy', {})
-            },
-            "methodology_report": {
-                "processing_stats": processing_stats,
-                "extraction_methods": {
-                    "hierarchical_approach": "Multi-category keyword extraction",
-                    "semantic_analysis": "Embedding-based similarity",
-                    "confidence_scoring": "Multi-metric validation"
-                }
-            }
-        }
-
-    def _create_human_review_format(self, df_result: pd.DataFrame,
-                                    confidence_metrics: Dict) -> Dict:
-        """Create format for human review and validation."""
-        review_data = {
-            "keyword_validation_sheet": [],
-            "quality_assessment": {},
-            "recommendation_report": {}
-        }
-
-        for _, row in df_result.iterrows():
-            dimension = row['dimension']
-
-            # Keyword validation sheet
-            keywords = row['keywords'].split(', ')
-            validation_entry = {
-                "dimension": dimension,
-                "keywords": keywords,
-                "validation_status": "pending",
-                "confidence_score": confidence_metrics.get(dimension, {}).get('overall_confidence', 0),
-                "reliability_flag": confidence_metrics.get(dimension, {}).get('reliability_flag', 'unknown')
-            }
-            review_data["keyword_validation_sheet"].append(validation_entry)
-
-            # Quality assessment
-            if dimension in confidence_metrics:
-                review_data["quality_assessment"][dimension] = {
-                    "overall_quality": confidence_metrics[dimension]['overall_confidence'],
-                    "detailed_metrics": confidence_metrics[dimension]['detailed_metrics'],
-                    "recommendations": self._generate_quality_recommendations(
-                        confidence_metrics[dimension]
-                    )
-                }
-
-        return review_data
-
-    def _create_ml_features_format(self, df_result: pd.DataFrame,
-                                   semantic_relationships: Dict) -> Dict:
-        """Create format for machine learning applications."""
-        return {
-            "feature_vectors": self._create_feature_vectors(df_result),
-            "training_data": self._prepare_training_data(df_result),
-            "embeddings": {
-                "keyword_embeddings": semantic_relationships.get('similarity_matrix', []),
-                "dimension_embeddings": self._create_dimension_embeddings(df_result)
-            }
-        }
-
     def _get_severity_level(self, category: str) -> str:
         """Get severity level for keyword category."""
         severity_map = {
@@ -739,104 +590,6 @@ class EnhancedAlgorithm1:
             'domain_keywords': 'medium'
         }
         return severity_map.get(category, 'medium')
-
-    def _analyze_dimension_distribution(self, extraction_results: Dict) -> Dict:
-        """Analyze distribution of dimensions across conferences."""
-        dimension_counts = defaultdict(int)
-        dimension_scores = defaultdict(list)
-
-        for dimension, results in extraction_results.items():
-            dimension_counts[dimension] += 1
-            dimension_scores[dimension].append(results['score'])
-
-        return {
-            "dimension_frequency": dict(dimension_counts),
-            "dimension_score_stats": {
-                dim: {
-                    "mean": np.mean(scores),
-                    "std": np.std(scores),
-                    "min": np.min(scores),
-                    "max": np.max(scores)
-                }
-                for dim, scores in dimension_scores.items()
-            }
-        }
-
-    def _generate_quality_recommendations(self, confidence_metrics: Dict) -> List[str]:
-        """Generate recommendations for improving quality."""
-        recommendations = []
-        metrics = confidence_metrics['detailed_metrics']
-
-        if metrics['source_coverage'] < 0.5:
-            recommendations.append("Increase source document coverage for better representation")
-
-        if metrics['keyword_consensus'] < 0.6:
-            recommendations.append("Improve keyword consensus across extraction methods")
-
-        if metrics['semantic_coherence'] < 0.7:
-            recommendations.append("Enhance semantic coherence of extracted keywords")
-
-        if metrics['frequency_stability'] < 0.8:
-            recommendations.append("Address frequency stability issues in keyword extraction")
-
-        return recommendations
-
-    def _create_feature_vectors(self, df_result: pd.DataFrame) -> Dict:
-        """Create feature vectors for ML applications."""
-        feature_vectors = {}
-
-        for _, row in df_result.iterrows():
-            dimension = row['dimension']
-
-            # Create feature vector
-            features = {
-                "raw_score": row['raw_score'],
-                "normalized_weight": row['normalized_weight'],
-                "keyword_count": len(row['keywords'].split(', ')),
-                "source_documents": row['source_documents']
-            }
-
-            # Add category-specific features
-            category_scores = json.loads(row['category_scores'])
-            for category, score_info in category_scores.items():
-                features[f"{category}_score"] = score_info['score']
-                features[f"{category}_count"] = score_info['count']
-
-            feature_vectors[dimension] = features
-
-        return feature_vectors
-
-    def _prepare_training_data(self, df_result: pd.DataFrame) -> List[Dict]:
-        """Prepare training data for ML models."""
-        training_data = []
-
-        for _, row in df_result.iterrows():
-            training_example = {
-                "dimension": row['dimension'],
-                "keywords": row['keywords'].split(', '),
-                "raw_score": row['raw_score'],
-                "normalized_weight": row['normalized_weight'],
-                "features": self._create_feature_vectors(pd.DataFrame([row]))[row['dimension']]
-            }
-            training_data.append(training_example)
-
-        return training_data
-
-    def _create_dimension_embeddings(self, df_result: pd.DataFrame) -> Dict:
-        """Create embeddings for dimensions."""
-        dimension_embeddings = {}
-
-        for _, row in df_result.iterrows():
-            dimension = row['dimension']
-            keywords = row['keywords'].split(', ')
-
-            # Create dimension embedding from keywords
-            if keywords:
-                dimension_text = f"{dimension}: {', '.join(keywords)}"
-                embedding = self.sentence_model.encode(dimension_text)
-                dimension_embeddings[dimension] = embedding.tolist()
-
-        return dimension_embeddings
 
     def _generate_comprehensive_report(self, report_path: Path, df_result: pd.DataFrame,
                                        extraction_results: Dict, processing_stats: Dict,
@@ -1098,10 +851,6 @@ class EnhancedAlgorithm1:
         logger.info(
             f"Average confidence: {np.mean([m['overall_confidence'] for m in confidence_metrics.values()]):.3f}")
         logger.info(f"Output files saved to: {output_dir}")
-        logger.info("Files generated:")
-        for file_type, path in saved_files.items():
-            logger.info(f"  - {file_type}: {os.path.basename(path)}")
-        logger.info("=" * 70)
 
         return saved_files
 
