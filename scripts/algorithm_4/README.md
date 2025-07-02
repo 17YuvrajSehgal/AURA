@@ -1,157 +1,272 @@
-# AURA: Unified Artifact Research Assessment Framework
+# AURA Framework - ICSE 2025 Artifact Evaluation
 
-AURA is a modular, extensible framework for automated evaluation of research software artifacts according to conference-specific guidelines. It leverages state-of-the-art LLMs and vector search to provide detailed, multi-dimensional assessments of artifact quality, supporting artifact evaluation committees, authors, and reproducibility initiatives.
-
----
-
-## Table of Contents
-- [Overview](#overview)
-- [Evaluation Dimensions](#evaluation-dimensions)
-  - [Documentation](#documentation)
-  - [Usability](#usability)
-  - [Accessibility](#accessibility)
-  - [Functionality](#functionality)
-- [How AURA Works](#how-aura-works)
-  - [Architecture](#architecture)
-  - [Agent Details](#agent-details)
-- [How Results Are Merged and Utilized](#how-results-are-merged-and-utilized)
-- [How to Use](#how-to-use)
-- [Customization & Extensibility](#customization--extensibility)
-- [File Structure](#file-structure)
-- [References](#references)
-
----
+The AURA (Automated Unified Repository Artifact) Framework is a comprehensive evaluation system designed to assess software artifacts based on ICSE 2025 guidelines. It provides automated evaluation across multiple dimensions using specialized agents and a knowledge graph approach.
 
 ## Overview
-AURA automates the evaluation of research artifacts (code, data, documentation, etc.) by:
-- Parsing conference guidelines to extract evaluation criteria.
-- Analyzing the submitted artifact (in JSON format) for compliance.
-- Providing detailed, evidence-based scores and suggestions for improvement across multiple dimensions.
 
-AURA is designed to be:
-- **Conference-agnostic**: Works with any set of guidelines.
-- **Modular**: Each evaluation dimension is handled by a dedicated agent.
-- **Transparent**: Chain-of-thought reasoning and evidence are provided for each score.
+The framework evaluates artifacts based on the following ICSE 2025 criteria:
 
----
+1. **Availability** - Public accessibility and archival repository status
+2. **Functionality** - Executability, consistency, and verification evidence
+3. **Reusability** - Documentation quality and structural reusability
+4. **Documentation** - README quality, setup, and usage instructions
+5. **Archival Repository** - Suitable repository (Zenodo, FigShare) vs non-archival
+6. **Executable Artifacts** - Installation packages and Docker/VM images
+7. **Non-executable Artifacts** - Proper packaging and accessibility
+8. **License** - Open-source licensing and distribution rights
+9. **Setup Instructions** - Clarity and completeness for executable artifacts
+10. **Usage Instructions** - Clarity for replicating main results
+11. **Iterative Review Process** - Authors' responsiveness to reviewer requests
+
+## Architecture
+
+The framework consists of several specialized evaluation agents:
+
+### Core Components
+
+- **AURAFramework** - Main orchestrator that coordinates all evaluations
+- **RepositoryKnowledgeGraphAgent** - Builds and queries Neo4j knowledge graph
+- **Evaluation Agents** - Specialized agents for each evaluation dimension
+
+### Evaluation Agents
+
+1. **AccessibilityEvaluationAgent** - Evaluates public access, archival status, and licensing
+2. **DocumentationEvaluationAgent** - Assesses README quality, setup, and usage instructions
+3. **ExperimentalEvaluationAgent** - Evaluates experimental setup, data availability, and validation
+4. **FunctionalityEvaluationAgent** - Assesses executability, consistency, and verification
+5. **ReproducibilityEvaluationAgent** - Evaluates reusability, setup clarity, and result replication
+6. **UsabilityEvaluationAgent** - Assesses user experience, interfaces, and error handling
+
+## Installation
+
+1. Install Python dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Set up Neo4j database (optional, for advanced features):
+```bash
+# Install Neo4j Desktop or use Docker
+docker run -p 7474:7474 -p 7687:7687 neo4j:latest
+```
+
+## Usage
+
+### Basic Usage
+
+```python
+from aura_framework import AURAFramework
+
+# Initialize framework
+framework = AURAFramework("path/to/artifact.json")
+
+# Evaluate artifact
+result = framework.evaluate_artifact()
+
+# Print results
+framework.print_results(result)
+
+# Save results
+framework.save_results(result, "evaluation_results.json")
+
+# Clean up
+framework.close()
+```
+
+### Command Line Usage
+
+```bash
+python aura_framework.py path/to/artifact.json --output results.json
+```
+
+### Advanced Usage with Neo4j
+
+```python
+framework = AURAFramework(
+    artifact_json_path="path/to/artifact.json",
+    neo4j_uri="bolt://localhost:7687"
+)
+```
+
+## Input Format
+
+The framework expects a JSON file containing artifact information:
+
+```json
+{
+  "repository_name": "example-repo",
+  "repository_url": "https://github.com/example/repo",
+  "repository_structure": [
+    {
+      "name": "README.md",
+      "path": "README.md",
+      "mime_type": "text/markdown"
+    }
+  ],
+  "documentation_files": [
+    {
+      "path": "README.md",
+      "content": ["# Example", "This is a README"]
+    }
+  ],
+  "code_files": [
+    {
+      "path": "main.py",
+      "content": ["import sys", "print('Hello World')"]
+    }
+  ],
+  "license_files": [
+    {
+      "path": "LICENSE",
+      "content": ["MIT License", "..."]
+    }
+  ]
+}
+```
+
+## Output Format
+
+The framework produces comprehensive evaluation results:
+
+```json
+{
+  "criteria_scores": [
+            {
+                "dimension": "reproducibility",
+      "raw_score": 6.78,
+      "normalized_weight": 0.207,
+      "llm_evaluated_score": 0.85,
+      "justification": "Excellent reproducibility...",
+      "evidence": ["Modular code structure found", "Setup instructions found"]
+    }
+  ],
+  "total_weighted_score": 0.78,
+  "acceptance_prediction": true,
+  "overall_justification": "Total weighted score: 0.780...",
+  "recommendations": [
+    "Improve README documentation with clear setup and usage instructions"
+  ]
+}
+```
 
 ## Evaluation Dimensions
-AURA evaluates artifacts along four primary dimensions, each mapped to a dedicated agent:
 
-### Documentation
-- **Goal**: Assess the completeness, clarity, and structure of the artifact's documentation (especially the README).
-- **Checks**: Presence of required sections (purpose, setup, usage, provenance, etc.) as dictated by the conference guidelines.
-- **Agent**: [`documentation_evaluation_agent.py`](agents/documentation_evaluation_agent.py)
+### Reproducibility (Weight: 20.7%)
+- Reusability and modular structure
+- Setup instructions clarity
+- Usage instructions clarity
+- Result replication capability
 
-### Usability
-- **Goal**: Evaluate how easy it is for a user to install, configure, and use the artifact.
-- **Checks**: Clarity of installation instructions, presence and completeness of setup scripts, requirements files, Dockerfiles, etc.
-- **Agent**: [`usability_evaluation_agent.py`](agents/usability_evaluation_agent.py)
+### Documentation (Weight: 15.4%)
+- README quality and completeness
+- Setup instructions
+- Usage instructions
+- Comprehensive documentation
 
-### Accessibility
-- **Goal**: Determine whether the artifact is accessible to the community.
-- **Checks**: Public availability (e.g., DOI, Zenodo, GitHub), clarity of dependency listings, installability, and repository structure.
-- **Agent**: [`accessibility_evaluation_agent.py`](agents/accessibility_evaluation_agent.py)
+### Accessibility (Weight: 13.9%)
+- Public accessibility
+- Archival repository status
+- Licensing compliance
 
-### Functionality
-- **Goal**: Assess whether the artifact does what it claims, can be executed as described, and produces expected results.
-- **Checks**: Presence of main scripts, test results, output examples, and evidence supporting claimed functionality.
-- **Agent**: [`functionality_evaluation_agent.py`](agents/functionality_evaluation_agent.py)
+### Usability (Weight: 19.8%)
+- User experience and ease of use
+- User interface quality
+- Error handling and feedback
+- Iterative review process support
 
----
+### Experimental (Weight: 14.8%)
+- Experimental setup and requirements
+- Data availability and datasets
+- Validation and verification evidence
+- Non-executable artifact packaging
 
-## How AURA Works
+### Functionality (Weight: 15.5%)
+- Executability and main entry points
+- Consistency and completeness
+- Verification and validation evidence
+- Executable artifact preparation
 
-### Architecture
-- **User Interface**: [`app.py`](app.py) provides a Streamlit-based web UI for inputting paths to guidelines and artifact JSON, selecting evaluation dimensions, and viewing results.
-- **Framework Core**: [`aura_framework.py`](aura_framework.py) orchestrates the evaluation by initializing agents and merging their results.
-- **Agents**: Each agent (see above) is responsible for one evaluation dimension, using LLMs and vector search to analyze the artifact.
+## Acceptance Criteria
 
-#### Data Flow
-1. **Input**: User provides paths to the conference guidelines (Markdown) and artifact analysis (JSON).
-2. **Agent Initialization**: Each agent loads the guidelines and artifact, builds a vector database of relevant files, and extracts evaluation criteria using LLMs.
-3. **Evaluation**: Each agent constructs a chain-of-thought prompt and queries the LLM, retrieving evidence from the artifact's files.
-4. **Scoring & Justification**: Agents output detailed scores, justifications, and suggestions for improvement.
-5. **Merging Results**: The `AURA` class collects results from all selected agents and presents them in the UI.
+The framework uses a weighted scoring system with an acceptance threshold of **0.75**:
 
-### Agent Details
-- **Criteria Extraction**: Agents use LLMs to parse guidelines and extract a structured list of evaluation criteria.
-- **Vector Search**: Artifact files are chunked and indexed for semantic retrieval, allowing the LLM to ground its answers in the actual content.
-- **Chain-of-Thought Reasoning**: Prompts guide the LLM to reason step-by-step, referencing evidence from the artifact.
-- **Logging**: Each agent logs its process and results for transparency and debugging.
+- **Score ≥ 0.75**: Artifact is predicted to be ACCEPTED
+- **Score < 0.75**: Artifact is predicted to be REJECTED
 
----
+## Customization
 
-## How Results Are Merged and Utilized
-- The `AURA` class (see [`aura_framework.py`](aura_framework.py)) exposes an `evaluate()` method that:
-  - Accepts a list of dimensions (e.g., `["documentation", "usability"]`).
-  - Calls the corresponding agent's `evaluate()` method for each dimension.
-  - Collects and merges the results into a dictionary, mapping each dimension to its detailed evaluation report.
-- The UI displays each dimension's results in a separate section, with scores, justifications, and suggestions.
-- Results can be used by:
-  - **Artifact authors**: To improve their submissions.
-  - **Evaluation committees**: For transparent, reproducible, and evidence-based artifact assessment.
-  - **Meta-researchers**: For large-scale studies of artifact quality and reproducibility.
+### Modifying Weights
 
----
+Edit the criteria scores in `aura_integration_data_20250626_013157.json` or modify the `_get_default_criteria()` method.
 
-## How to Use
+### Adding New Agents
 
-### Prerequisites
-- Python 3.8+
-- Install dependencies:
-  ```bash
-  pip install -r requirements.txt
-  ```
-- Set up your OpenAI API key (for LLM access) in a `.env` file:
-  ```env
-  OPENAI_API_KEY=your-key-here
-  ```
+1. Create a new agent class inheriting from the base pattern
+2. Implement the `evaluate()` method
+3. Add the agent to the `agents` dictionary in `AURAFramework`
 
-### Running the App
-1. Place your conference guidelines (Markdown) and artifact analysis (JSON) in accessible paths.
-2. Launch the Streamlit app:
-   ```bash
-   streamlit run scripts/algorithm_4/app.py
-   ```
-3. In the sidebar, specify:
-   - Path to guidelines (e.g., `../../data/conference_guideline_texts/processed/13_icse_2025.md`)
-   - Path to artifact JSON (e.g., `C:\workplace\AURA\algo_outputs\algorithm_2_output\ml-image-classifier_analysis.json`)
-   - Conference name
-   - Evaluation dimensions
-4. Click **Evaluate** to run the assessment. Results will appear in the main panel.
+### Custom Acceptance Threshold
 
----
+Modify the `ACCEPTANCE_THRESHOLD` constant in `aura_framework.py`.
 
-## Customization & Extensibility
-- **Add new dimensions**: Implement a new agent following the pattern in the `agents/` directory and update `aura_framework.py`.
-- **Change LLM or embeddings**: Modify the agent code to use a different model or vector store.
-- **Adapt prompts**: Edit the chain-of-thought prompts in each agent for different evaluation philosophies.
-- **Integrate with other UIs**: The `AURA` class can be imported and used in other Python applications or APIs.
+## Knowledge Graph Features
 
----
+The framework uses Neo4j to build a knowledge graph of the artifact:
 
-## File Structure
-```
-scripts/algorithm_4/
-  app.py                # Streamlit UI
-  aura_framework.py     # Core framework logic
-  agents/
-    accessibility_evaluation_agent.py
-    documentation_evaluation_agent.py
-    functionality_evaluation_agent.py
-    usability_evaluation_agent.py
-  ...
+- **Repository Structure** - Files, directories, and relationships
+- **Code Analysis** - Functions, classes, imports, and dependencies
+- **Documentation Links** - README sections and their relationships
+- **Badge Support** - ICSE 2025 badge requirements and compliance
+
+### Graph Queries
+
+```python
+# Query for specific files
+evidence = kg_agent.file_exists("README.md")
+
+# Get file content
+content = kg_agent.get_file_content("main.py")
+
+# Check for specific sections
+has_setup = kg_agent.readme_has_section("setup")
 ```
 
----
+## Contributing
 
-## References
-- [AURA Paper/Docs (if available)](https://github.com/your-org/aura)
-- [Artifact Evaluation at ACM/IEEE Conferences](https://artifact-eval.org/)
-- [LangChain Documentation](https://python.langchain.com/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
+1. Fork the repository
+2. Create a feature branch
+3. Implement your changes
+4. Add tests
+5. Submit a pull request
 
----
+## License
 
-For questions or contributions, please open an issue or pull request!
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Citation
+
+If you use this framework in your research, please cite:
+
+```bibtex
+@software{aura_framework,
+  title={AURA Framework: Automated Unified Repository Artifact Evaluation},
+  author={Your Name},
+  year={2025},
+  url={https://github.com/your-repo/aura-framework}
+}
+```
+
+## Support
+
+For questions and support:
+- Create an issue on GitHub
+- Contact the development team
+- Check the documentation
+
+## Roadmap
+
+- [ ] Integration with LLM-based evaluation
+- [ ] Support for more artifact types
+- [ ] Web-based evaluation interface
+- [ ] Batch processing capabilities
+- [ ] Integration with conference submission systems 

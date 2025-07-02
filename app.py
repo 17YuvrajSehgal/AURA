@@ -1,0 +1,319 @@
+import os
+import sys
+import time
+import glob
+import re
+import subprocess
+import json
+
+import streamlit as st
+import streamlit.components.v1 as components
+
+from scripts.algorithm_4.aura_framework import AURAFramework, ACCEPTANCE_THRESHOLD
+
+st.set_page_config(
+    page_title="AURA Artifact Evaluator",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main-header {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .status-box {
+        background-color: #f0f2f6;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        margin: 1rem 0;
+    }
+    .success-box {
+        background-color: #d4edda;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #28a745;
+        margin: 1rem 0;
+    }
+    .error-box {
+        background-color: #f8d7da;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #dc3545;
+        margin: 1rem 0;
+    }
+    .metric-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0.5rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Main header
+st.markdown("""
+<div class="main-header">
+    <h1>🚀 AURA: Unified Artifact Research Assessment</h1>
+    <p>Automated Repository Analysis & Evaluation Pipeline</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Initialize session state
+if 'current_step' not in st.session_state:
+    st.session_state.current_step = 1
+if 'repo_analysis_complete' not in st.session_state:
+    st.session_state.repo_analysis_complete = False
+if 'artifact_json_path' not in st.session_state:
+    st.session_state.artifact_json_path = None
+if 'repo_name' not in st.session_state:
+    st.session_state.repo_name = None
+
+# Sidebar configuration
+with st.sidebar:
+    st.header("🎯 Workflow Steps")
+    st.markdown("**1. Configuration** ✅")
+    st.markdown("**2. Evaluation** ⏳")
+    st.markdown("---")
+    st.header("⚙️ Configuration")
+
+    # --- Conference dropdown and auto-path logic ---
+    processed_dir = os.path.join("data", "conference_guideline_texts", "processed")
+    md_files = glob.glob(os.path.join(processed_dir, "*.md"))
+    conference_options = []
+    conference_map = {}
+    for f in md_files:
+        fname = os.path.basename(f)
+        # Try to extract a readable name, e.g., '13_icse_2025.md' -> 'ICSE 2025'
+        match = re.match(r"\d+_([a-zA-Z]+)_?(\d{4})?\.md", fname)
+        if match:
+            conf = match.group(1).upper()
+            year = match.group(2) if match.group(2) else ''
+            label = f"{conf} {year}".strip()
+        else:
+            # fallback: use filename without extension
+            label = fname.replace(".md", "").replace("_", " ").title()
+        conference_options.append(label)
+        conference_map[label] = f
+    conference_options = sorted(conference_options)
+
+    # Select conference
+    selected_conference = st.selectbox("Select Conference", conference_options, index=conference_options.index("ICSE 2025") if "ICSE 2025" in conference_options else 0)
+    guideline_path = os.path.abspath(conference_map[selected_conference])
+
+    st.text_input("Conference Name", value=selected_conference, disabled=True)
+    st.text_input("Conference Guidelines Path", value=guideline_path, disabled=True)
+
+    # --- End conference dropdown logic ---
+
+    # Evaluation options
+    st.subheader("Evaluation Dimensions")
+    dims = st.multiselect(
+        "Select Dimensions",
+        ['documentation', 'usability', 'accessibility', 'functionality', 'experimental', 'reproducibility'],
+        default=['documentation', 'usability', 'accessibility', 'functionality', 'experimental', 'reproducibility']
+    )
+
+    # Keyword evaluation
+    include_keyword_eval = st.checkbox("Include Keyword-Based Evaluation", value=True)
+    criteria_csv_path = None
+    if include_keyword_eval:
+        criteria_csv_path = st.text_input(
+            "Criteria CSV Path",
+            value="C:\\workplace\\AURA\\algo_outputs\\algorithm_1_output\\algorithm_1_artifact_evaluation_criteria.csv"
+        )
+
+    evaluation_mode = st.selectbox(
+        "Evaluation Mode",
+        ["Full Evaluation", "LLM Only", "Keyword Only", "Comparison Mode", "Grounded Evaluation"]
+    )
+
+    # LLM evaluation toggle
+    use_llm = st.checkbox("Enable LLM-based Evaluation", value=True, help="If unchecked, only rule-based (keyword) evaluation will be used.")
+
+# Main content area: Only evaluation
+st.header("🎯 AURA Artifact Evaluation")
+
+# --- GitHub URL to JSON Analysis Integration ---
+st.subheader("Analyze GitHub Repository")
+repo_url = st.text_input(
+    "GitHub Repository URL",
+    value="",
+    help="Enter the full GitHub URL of the repository you want to analyze."
+)
+if st.button("Analyze Repository and Generate JSON", type="primary", disabled=not repo_url):
+    if repo_url:
+        with st.spinner("Running repository analysis (algorithm_2)..."):
+            try:
+                # Run algorithm_2.py as a subprocess with the repo_url as argument
+                script_path = os.path.join("scripts", "algorithm_2", "algorithm_2.py")
+                temp_base_dir = os.path.join(".", "temp_dir_for_git")
+                output_dir = os.path.join(".", "algo_outputs", "algorithm_2_output")
+                result = subprocess.run([
+                    sys.executable, script_path, repo_url, temp_base_dir, output_dir
+                ], capture_output=True, text=True)
+                if result.returncode != 0:
+                    st.error(f"Analysis failed: {result.stderr}")
+                else:
+                    # Determine repo name and output path
+                    repo_name = repo_url.rstrip("/").split("/")[-1]
+                    output_json = os.path.join(output_dir, f"{repo_name}_analysis.json")
+                    if os.path.exists(output_json):
+                        st.success(f"Analysis complete! JSON saved at: {output_json}")
+                        st.session_state.artifact_json_path = output_json
+                    else:
+                        st.error(f"Expected output JSON not found: {output_json}")
+            except Exception as e:
+                st.error(f"Error running analysis: {str(e)}")
+
+# Let user select or input artifact JSON path
+artifact_json_path = st.text_input(
+    "Artifact JSON Path",
+    value=st.session_state.artifact_json_path if 'artifact_json_path' in st.session_state and st.session_state.artifact_json_path else "",
+    help="Provide the path to the artifact analysis JSON file."
+)
+if artifact_json_path:
+    st.session_state.artifact_json_path = artifact_json_path
+
+def load_json(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"Failed to load JSON: {e}")
+        return {}
+
+if artifact_json_path and os.path.exists(artifact_json_path):
+    # Load analysis JSON
+    analysis_data = load_json(artifact_json_path)
+    tree_structure = analysis_data.get("tree_structure", [])
+    repo_size_mb = analysis_data.get("repo_size_mb", None)
+    repo_name = os.path.basename(artifact_json_path).replace("_analysis.json", "")
+
+    # Try to find the corresponding evaluation JSON
+    eval_json_path = artifact_json_path.replace("algorithm_2_output", "algorithm_4_output").replace("_analysis.json", "_aura_evaluation.json")
+    eval_data = load_json(eval_json_path) if os.path.exists(eval_json_path) else {}
+
+    timing = eval_data.get("timing", {})
+
+    # Show metadata in the UI
+    with st.expander("📦 Artifact Metadata", expanded=True):
+        st.write(f"**Repository Name:** `{repo_name}`")
+        if repo_size_mb is not None:
+            st.write(f"**Repository Size:** {repo_size_mb} MB")
+        if tree_structure:
+            st.write("**Repository Structure:**")
+            st.code("\n".join(tree_structure), language="text")
+
+    st.markdown('<div class="status-box">', unsafe_allow_html=True)
+    st.info(f"Using analysis file: {artifact_json_path}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if st.button("🚀 Start Evaluation", type="primary"):
+        progress_box = st.empty()
+        progress_bar = st.progress(0)
+        progress_msgs = []
+        def streamlit_logger(msg):
+            progress_msgs.append(msg)
+            # Show last 5 messages for brevity
+            progress_box.markdown("\n".join([f"- {m}" for m in progress_msgs[-5:]]))
+            # Update progress bar based on known dimensions
+            total_dims = 6  # reproducibility, documentation, accessibility, usability, experimental, functionality
+            for d in ["reproducibility", "documentation", "accessibility", "usability", "experimental", "functionality"]:
+                if d in msg.lower():
+                    idx = ["reproducibility", "documentation", "accessibility", "usability", "experimental", "functionality"].index(d)
+                    progress_bar.progress((idx+1)/total_dims)
+        with st.spinner("Running AURA evaluation..."):
+            try:
+                framework = AURAFramework(artifact_json_path, use_llm=use_llm)
+                result = framework.evaluate_artifact(progress_callback=streamlit_logger)
+                progress_bar.progress(1.0)
+                progress_box.markdown("**Evaluation complete!**")
+                st.success("🎉 Evaluation complete!")
+
+                # Show timing info after evaluation
+                if hasattr(result, 'timing') and result.timing:
+                    st.subheader("⏱️ Timing Information")
+                    for k, v in result.timing.items():
+                        st.write(f"- **{k.replace('_', ' ').title()}**: {v}")
+
+                # Show overall results
+                st.subheader("Overall Results")
+                st.metric("Total Weighted Score", f"{result.total_weighted_score:.3f}")
+                st.metric("Acceptance Threshold", f"{ACCEPTANCE_THRESHOLD:.3f}")
+                if result.acceptance_prediction:
+                    st.success("✅ Prediction: ACCEPTED")
+                else:
+                    st.error("❌ Prediction: REJECTED")
+                st.info(result.overall_justification)
+                if result.recommendations:
+                    st.subheader("Recommendations")
+                    for i, rec in enumerate(result.recommendations, 1):
+                        st.write(f"{i}. {rec}")
+                # Show per-dimension results
+                st.subheader("Dimension Evaluations")
+                for criterion in result.criteria_scores:
+                    with st.expander(f"{criterion.dimension.capitalize()} Evaluation", expanded=False):
+                        st.metric("Score", f"{criterion.llm_evaluated_score:.3f}")
+                        st.metric("Weight", f"{criterion.normalized_weight:.3f}")
+                        st.write(f"**Justification:** {criterion.justification}")
+                        if criterion.evidence:
+                            st.write("**Evidence:**")
+                            for ev in criterion.evidence[:5]:
+                                st.write(f"- {ev}")
+                            if len(criterion.evidence) > 5:
+                                st.write(f"... and {len(criterion.evidence) - 5} more")
+                        st.write(f"**LLM Justification:** {criterion.llm_justification}")
+                        if criterion.llm_evidence:
+                            st.write("**LLM Additional Evidence:**")
+                            for ev in criterion.llm_evidence[:5]:
+                                st.write(f"- {ev}")
+                            if len(criterion.llm_evidence) > 5:
+                                st.write(f"... and {len(criterion.llm_evidence) - 5} more")
+                # Reset button
+                st.markdown("---")
+                # Show KG visualization if available
+                kg_html_path = os.path.abspath(os.path.join("algo_outputs", "kg_viz.html"))
+                if os.path.exists(kg_html_path):
+                    st.subheader("📊 Knowledge Graph Visualization (Interactive)")
+                    with open(kg_html_path, "r", encoding="utf-8") as html_file:
+                        graph_html = html_file.read()
+                        components.html(graph_html, height=700, scrolling=True)
+                else:
+                    st.warning(
+                        "🚧 Knowledge graph HTML visualization not found. Please ensure the evaluation process was completed successfully.")
+
+                if st.button("🔄 Start New Evaluation"):
+                    st.session_state.artifact_json_path = ""
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Evaluation failed: {str(e)}")
+                st.exception(e)
+else:
+    st.warning("Please provide a valid artifact JSON path to start evaluation.")
+
+# Footer with information
+st.markdown("---")
+st.markdown("""
+<div style="text-align: center; color: #666; padding: 2rem;">
+    <h4>🚀 AURA Framework Features</h4>
+    <p>
+        <strong>🤖 LLM-based Evaluation:</strong> Qualitative assessment with detailed reasoning and suggestions<br>
+        <strong>🔍 Keyword-based Evaluation:</strong> Quantitative scoring based on guideline-derived criteria<br>
+        <strong>🔗 Grounded Evaluation:</strong> LLM assessments grounded with keyword evidence to prevent hallucination<br>
+        <strong>📊 Comparison Mode:</strong> Compare both evaluation approaches<br>
+        <strong>🧩 Modular Design:</strong> Select specific dimensions to evaluate<br>
+        <strong>📄 Artifact-Specific CSV:</strong> Results saved with repository name for easy identification<br>
+        <strong>⏱️ Performance Tracking:</strong> Detailed timing data for analysis and evaluation phases<br>
+        <strong>📈 Performance Analytics:</strong> Timing data stored in CSV for performance analysis
+    </p>
+</div>
+""", unsafe_allow_html=True)

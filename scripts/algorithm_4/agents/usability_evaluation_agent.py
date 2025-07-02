@@ -1,188 +1,498 @@
 import json
 import logging
-from typing import List, Optional
+import re
+from typing import Dict, List, Any, Optional
 
-from dotenv import load_dotenv
-from langchain.chains import RetrievalQA
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.llms import OpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
-from pydantic import BaseModel, Field
-
-# === Logging Setup ===
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    handlers=[
-        logging.FileHandler("usability_evaluation_agent.log"),
-        logging.StreamHandler()
-    ]
-)
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-
-class UsabilityCriterion(BaseModel):
-    name: str = Field(description="Usability-related aspect or criterion to check")
-    description: str = Field(description="Description of what this aspect means or how to check it")
-
-class UsabilityCriteriaList(BaseModel):
-    criteria: List[UsabilityCriterion] = Field(description="List of required usability criteria for the conference")
-
 class UsabilityEvaluationAgent:
-    def __init__(
-            self,
-            guideline_path: str,
-            artifact_json_path: str,
-            conference_name: str = "ICSE 2025",
-            persist_directory: str = "usability_chroma_index",
-            chunk_size: int = 1024,
-            chunk_overlap: int = 100,
-            model_name: Optional[str] = None,
-    ):
-        self.guideline_path = guideline_path
-        self.artifact_json_path = artifact_json_path
-        self.conference_name = conference_name
-        self.persist_directory = persist_directory
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.model_name = model_name
-
-        logger.info(f"Initializing UsabilityEvaluationAgent for {conference_name}")
-        self.guidelines = self._load_guidelines()
+    """
+    Evaluates artifact usability based on ICSE 2025 criteria:
+    - User Experience: Ease of use and user-friendly design
+    - Iterative Review Process: Authors' responsiveness to reviewer requests
+    - User Interface: Quality of user interfaces and interactions
+    - Error Handling: Graceful error handling and user feedback
+    """
+    
+    def __init__(self, kg_agent, llm_evaluator=None):
+        self.kg_agent = kg_agent
+        self.llm_evaluator = llm_evaluator
         self.artifact = self._load_artifact()
-        self.criteria = self._extract_usability_criteria()
-        self.db = self._build_vector_db()
-
-    def _load_guidelines(self):
-        logger.info(f"Loading conference guidelines from: {self.guideline_path}")
-        with open(self.guideline_path, "r", encoding="utf-8") as f:
-            return f.read()
-
-    def _load_artifact(self):
-        logger.info(f"Loading artifact JSON from: {self.artifact_json_path}")
-        with open(self.artifact_json_path, "r", encoding="utf-8") as f:
+        
+    def _load_artifact(self) -> Dict:
+        """Load artifact data from JSON file."""
+        with open(self.kg_agent.artifact_json_path, "r", encoding="utf-8") as f:
             return json.load(f)
-
-    def _extract_usability_criteria(self):
-        logger.info("Extracting usability criteria using LLM.")
-        parser = PydanticOutputParser(pydantic_object=UsabilityCriteriaList)
-        guideline_prompt = PromptTemplate(
-            template=(
-                "Based on the following conference guidelines, "
-                "return a JSON object with a `criteria` field (a list of usability aspects that should be evaluated for the artifact). "
-                "These should include things like clarity of installation instructions, existence of setup scripts, clarity of usage instructions, presence of requirements.txt or environment.yml, Dockerfile, or similar, etc. "
-                "{format_instructions}\n"
-                "Conference Guidelines:\n{guidelines}"
-            ),
-            input_variables=["guidelines"],
-            partial_variables={"format_instructions": parser.get_format_instructions()},
-        )
-        llm_gpt = OpenAI(temperature=0.0)
-        prompt_and_model = guideline_prompt | llm_gpt | parser
-        result = prompt_and_model.invoke({"guidelines": self.guidelines})
-        logger.info(f"Prompt used for usability extraction:\n{guideline_prompt.format(guidelines=self.guidelines)}")
-        logger.info(f"Criteria extracted: {[c.name for c in result.criteria]}")
-        return result.criteria
-
-    def _build_vector_db(self):
-        logger.info("Building vector DB for documentation and script files.")
-        doc_files = self.artifact.get('documentation_files', [])
-        code_files = self.artifact.get('code_files', [])
-        # Optionally include scripts, requirements, Dockerfile, etc.
-        relevant_files = doc_files + code_files
-        texts = []
-        for file in relevant_files:
-            # file['content'] could be a list of lines or a string
-            if isinstance(file['content'], list):
-                texts.append("\n".join(file['content']))
-            else:
-                texts.append(str(file['content']))
-        splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap)
-        all_chunks = []
-        for text in texts:
-            all_chunks.extend(splitter.split_text(text))
-        embeddings = OpenAIEmbeddings()
-        db = Chroma.from_texts(all_chunks, embeddings, persist_directory=self.persist_directory)
-        db.persist()
-        logger.info("Vector DB built and persisted.")
-        return db
-
-    def _file_exists(self, filename: str) -> bool:
-        all_files = self.artifact.get('repository_structure', [])
-        for f in all_files:
-            if f['name'].lower() == filename.lower():
+    
+    def evaluate(self) -> Dict[str, Any]:
+        """
+        Evaluate usability of the artifact (rule-based + LLM augmentation).
+        Returns:
+            Dict with score, justification, and evidence
+        """
+        logger.info("Evaluating artifact usability...")
+        evidence = []
+        score_components = []
+        # 1. Check for user experience and ease of use
+        ux_score, ux_evidence = self._evaluate_user_experience()
+        score_components.append(ux_score)
+        evidence.extend(ux_evidence)
+        # 2. Check for user interface quality
+        ui_score, ui_evidence = self._evaluate_user_interface()
+        score_components.append(ui_score)
+        evidence.extend(ui_evidence)
+        # 3. Check for error handling and feedback
+        error_score, error_evidence = self._evaluate_error_handling()
+        score_components.append(error_score)
+        evidence.extend(error_evidence)
+        # 4. Check for iterative review process support
+        review_score, review_evidence = self._evaluate_review_process()
+        score_components.append(review_score)
+        evidence.extend(review_evidence)
+        # Calculate overall score (weighted average)
+        overall_score = sum(score_components) / len(score_components)
+        # Generate justification
+        justification = self._generate_justification(ux_score, ui_score, error_score, review_score)
+        result = {
+            "score": overall_score,
+            "justification": justification,
+            "evidence": evidence,
+            "components": {
+                "user_experience": ux_score,
+                "user_interface": ui_score,
+                "error_handling": error_score,
+                "review_process": review_score
+            }
+        }
+        # LLM augmentation
+        if self.llm_evaluator:
+            context = self._get_usability_context()
+            llm_data = self.llm_evaluator.evaluate_dimension(
+                "usability",
+                result["score"],
+                result["justification"],
+                result["evidence"],
+                context
+            )
+            result["score"] = max(result["score"], llm_data.get("revised_score", result["score"]))
+            result["justification"] = llm_data.get("revised_justification", result["justification"])
+            if llm_data.get("additional_evidence"):
+                result["evidence"].extend(llm_data["additional_evidence"])
+            result["llm_justification"] = llm_data.get("revised_justification", "")
+            result["llm_evidence"] = llm_data.get("additional_evidence", [])
+        return result
+    
+    def _get_usability_context(self):
+        # Use README and any UI/UX docs as context
+        context = []
+        for doc_file in self.artifact.get("documentation_files", []):
+            path = doc_file.get("path", "").lower()
+            if any(k in path for k in ["readme", "ui", "ux", "usage", "interface"]):
+                content = doc_file.get("content", "")
+                if isinstance(content, list):
+                    content = "\n".join(content)
+                context.append(content)
+        return "\n\n".join(context)
+    
+    def _evaluate_user_experience(self) -> tuple[float, List[str]]:
+        """Evaluate user experience and ease of use."""
+        evidence = []
+        score = 0.0
+        
+        # Check for intuitive design
+        if self._has_intuitive_design():
+            evidence.append("Intuitive design elements found")
+            score += 0.3
+        else:
+            evidence.append("Design may not be intuitive")
+        
+        # Check for progressive disclosure
+        if self._has_progressive_disclosure():
+            evidence.append("Progressive disclosure implemented")
+            score += 0.2
+        else:
+            evidence.append("Progressive disclosure not implemented")
+        
+        # Check for user guidance
+        if self._has_user_guidance():
+            evidence.append("User guidance provided")
+            score += 0.2
+        else:
+            evidence.append("User guidance could be improved")
+        
+        # Check for consistency
+        if self._has_consistency():
+            evidence.append("Consistent design patterns found")
+            score += 0.2
+        else:
+            evidence.append("Design consistency could be improved")
+        
+        # Check for accessibility features
+        if self._has_accessibility_features():
+            evidence.append("Accessibility features found")
+            score += 0.1
+        else:
+            evidence.append("Accessibility features could be added")
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_user_interface(self) -> tuple[float, List[str]]:
+        """Evaluate user interface quality."""
+        evidence = []
+        score = 0.0
+        
+        # Check for web interface
+        if self._has_web_interface():
+            evidence.append("Web interface found")
+            score += 0.3
+        else:
+            evidence.append("No web interface found")
+        
+        # Check for command-line interface
+        if self._has_cli_interface():
+            evidence.append("Command-line interface found")
+            score += 0.2
+        else:
+            evidence.append("Command-line interface could be improved")
+        
+        # Check for GUI components
+        if self._has_gui_components():
+            evidence.append("GUI components found")
+            score += 0.2
+        else:
+            evidence.append("No GUI components found")
+        
+        # Check for interactive elements
+        if self._has_interactive_elements():
+            evidence.append("Interactive elements found")
+            score += 0.2
+        else:
+            evidence.append("Interactive elements could be added")
+        
+        # Check for responsive design
+        if self._has_responsive_design():
+            evidence.append("Responsive design implemented")
+            score += 0.1
+        else:
+            evidence.append("Responsive design could be improved")
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_error_handling(self) -> tuple[float, List[str]]:
+        """Evaluate error handling and user feedback."""
+        evidence = []
+        score = 0.0
+        
+        # Check for graceful error handling
+        if self._has_graceful_error_handling():
+            evidence.append("Graceful error handling found")
+            score += 0.3
+        else:
+            evidence.append("Error handling could be improved")
+        
+        # Check for user-friendly error messages
+        if self._has_user_friendly_errors():
+            evidence.append("User-friendly error messages found")
+            score += 0.3
+        else:
+            evidence.append("Error messages could be more user-friendly")
+        
+        # Check for validation feedback
+        if self._has_validation_feedback():
+            evidence.append("Validation feedback provided")
+            score += 0.2
+        else:
+            evidence.append("Validation feedback could be improved")
+        
+        # Check for recovery mechanisms
+        if self._has_recovery_mechanisms():
+            evidence.append("Recovery mechanisms found")
+            score += 0.2
+        else:
+            evidence.append("Recovery mechanisms could be added")
+        
+        return min(score, 1.0), evidence
+    
+    def _evaluate_review_process(self) -> tuple[float, List[str]]:
+        """Evaluate iterative review process support."""
+        evidence = []
+        score = 0.0
+        
+        # Check for version control
+        if self._has_version_control():
+            evidence.append("Version control found")
+            score += 0.3
+        else:
+            evidence.append("Version control could be improved")
+        
+        # Check for change tracking
+        if self._has_change_tracking():
+            evidence.append("Change tracking implemented")
+            score += 0.2
+        else:
+            evidence.append("Change tracking could be improved")
+        
+        # Check for feedback mechanisms
+        if self._has_feedback_mechanisms():
+            evidence.append("Feedback mechanisms found")
+            score += 0.2
+        else:
+            evidence.append("Feedback mechanisms could be added")
+        
+        # Check for documentation updates
+        if self._has_documentation_updates():
+            evidence.append("Documentation update process found")
+            score += 0.2
+        else:
+            evidence.append("Documentation update process could be improved")
+        
+        # Check for issue tracking
+        if self._has_issue_tracking():
+            evidence.append("Issue tracking found")
+            score += 0.1
+        else:
+            evidence.append("Issue tracking could be added")
+        
+        return min(score, 1.0), evidence
+    
+    def _has_intuitive_design(self) -> bool:
+        """Check if artifact has intuitive design."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            intuitive_keywords = [
+                "intuitive", "easy to use", "user-friendly", "simple", "straightforward",
+                "clear", "obvious", "self-explanatory", "logical"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in intuitive_keywords):
                 return True
         return False
-
-    def _get_file_content(self, filename: str) -> Optional[str]:
-        # Search both doc_files and code_files
-        for file_list in ['documentation_files', 'code_files']:
-            for file in self.artifact.get(file_list, []):
-                if file['name'].lower() == filename.lower():
-                    if isinstance(file['content'], list):
-                        return "\n".join(file['content'])
-                    return str(file['content'])
-        return None
-
-    def _build_eval_prompt(self):
-        # Chain-of-thought: For each criterion, check for related file references and read/verify file if mentioned
-        chain_of_thought_steps = ""
-        for criterion in self.criteria:
-            chain_of_thought_steps += (
-                f"Criterion: {criterion.name}\n"
-                f"Description: {criterion.description}\n"
-                "Step 1: Check if documentation or instructions reference any files/scripts (e.g., requirements.txt, Dockerfile, setup.py).\n"
-                "Step 2: If referenced, check if the file is present in the artifact. If present, inspect its contents for completeness.\n"
-                "Step 3: Based on all information, rate this aspect from 1-5 and justify your score with evidence from the artifact.\n\n"
-            )
-
-        prompt = (
-            f"You are an expert artifact evaluator for {self.conference_name}.\n"
-            f"Evaluate ONLY the **Usability** of the artifact according to the following criteria.\n"
-            "For each, follow the chain-of-thought process:\n\n"
-            f"{chain_of_thought_steps}\n"
-            "Do NOT evaluate dimensions such as Documentation, Availability, Functionality, or Reusability.\n"
-            "At the end, provide a detailed usability score and suggestions for improvement."
-        )
-        logger.info(f"Usability evaluation prompt:\n{prompt}")
-        return prompt
-
-    def evaluate(self, verbose: bool = True) -> str:
-        prompt = self._build_eval_prompt()
-        llm = OpenAI(temperature=0.2)
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=llm,
-            retriever=self.db.as_retriever(search_kwargs={'k': 5}),
-            chain_type="stuff"
-        )
-        logger.info("Running artifact usability evaluation chain...")
-        result = qa_chain({"query": prompt})
-        logger.info(f"LLM output:\n{result['result']}")
-        if verbose:
-            print(result['result'])
-        return result['result']
-
-    def get_criteria(self) -> List[UsabilityCriterion]:
-        return self.criteria
-
-    # Optionally expose file existence/content utilities for downstream use
-    def file_exists(self, filename: str) -> bool:
-        return self._file_exists(filename)
-
-    def get_file_content(self, filename: str) -> Optional[str]:
-        return self._get_file_content(filename)
-
-
-#from usability_evaluation_agent import UsabilityEvaluationAgent
-
-# agent = UsabilityEvaluationAgent(
-#     guideline_path="../../data/conference_guideline_texts/processed/13_icse_2025.md",
-#     artifact_json_path="C:\\workplace\\AURA\\algo_outputs\\algorithm_2_output\\ml-image-classifier_analysis.json",
-#     conference_name="ICSE 2025"
-# )
-# usability_report = agent.evaluate(verbose=True)
+    
+    def _has_progressive_disclosure(self) -> bool:
+        """Check if artifact implements progressive disclosure."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            progressive_keywords = [
+                "basic", "advanced", "beginner", "expert", "simple", "complex",
+                "step by step", "progressive", "tutorial", "guide"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in progressive_keywords):
+                return True
+        return False
+    
+    def _has_user_guidance(self) -> bool:
+        """Check if artifact provides user guidance."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            guidance_keywords = [
+                "guide", "tutorial", "help", "assistance", "support", "walkthrough",
+                "how to", "instructions", "manual", "guidebook"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in guidance_keywords):
+                return True
+        return False
+    
+    def _has_consistency(self) -> bool:
+        """Check if artifact has consistent design patterns."""
+        # Check for consistent naming conventions
+        filenames = [entry.get("name", "") for entry in self.artifact.get("repository_structure", [])]
+        
+        # Check for consistent case usage
+        has_snake_case = any('_' in name for name in filenames)
+        has_kebab_case = any('-' in name for name in filenames)
+        has_camel_case = any(re.search(r'[a-z][A-Z]', name) for name in filenames)
+        
+        # If multiple naming conventions are used, it's inconsistent
+        conventions = sum([has_snake_case, has_kebab_case, has_camel_case])
+        return conventions <= 2  # Allow up to 2 conventions
+    
+    def _has_accessibility_features(self) -> bool:
+        """Check if artifact has accessibility features."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            accessibility_keywords = [
+                "accessibility", "accessible", "screen reader", "keyboard navigation",
+                "high contrast", "font size", "color blind", "disability"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in accessibility_keywords):
+                return True
+        return False
+    
+    def _has_web_interface(self) -> bool:
+        """Check if artifact has web interface."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["html", "css", "js", "web", "app", "server"]):
+                return True
+        return False
+    
+    def _has_cli_interface(self) -> bool:
+        """Check if artifact has command-line interface."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["cli", "command", "shell", "script", "main.py"]):
+                return True
+        return False
+    
+    def _has_gui_components(self) -> bool:
+        """Check if artifact has GUI components."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["gui", "tkinter", "pyqt", "wx", "gtk", "ui"]):
+                return True
+        return False
+    
+    def _has_interactive_elements(self) -> bool:
+        """Check if artifact has interactive elements."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["interactive", "notebook", "jupyter", "demo", "playground"]):
+                return True
+        return False
+    
+    def _has_responsive_design(self) -> bool:
+        """Check if artifact has responsive design."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["responsive", "mobile", "adaptive", "flexible"]):
+                return True
+        return False
+    
+    def _has_graceful_error_handling(self) -> bool:
+        """Check if artifact has graceful error handling."""
+        for code_file in self.artifact.get("code_files", []):
+            content = code_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            # Look for error handling patterns
+            error_patterns = [
+                r'try\s*:', r'except\s*:', r'catch\s*\(', r'finally\s*:',
+                r'raise\s+', r'throw\s+', r'error', r'exception'
+            ]
+            if any(re.search(pattern, content, re.IGNORECASE) for pattern in error_patterns):
+                return True
+        return False
+    
+    def _has_user_friendly_errors(self) -> bool:
+        """Check if artifact has user-friendly error messages."""
+        for code_file in self.artifact.get("code_files", []):
+            content = code_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            # Look for user-friendly error patterns
+            friendly_patterns = [
+                r'print\s*\([^)]*error[^)]*\)', r'logging\.[^)]*error[^)]*\)',
+                r'raise\s+[^)]*Error[^)]*\)', r'return\s+[^)]*error[^)]*\)'
+            ]
+            if any(re.search(pattern, content, re.IGNORECASE) for pattern in friendly_patterns):
+                return True
+        return False
+    
+    def _has_validation_feedback(self) -> bool:
+        """Check if artifact provides validation feedback."""
+        for code_file in self.artifact.get("code_files", []):
+            content = code_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            validation_keywords = [
+                "validate", "validation", "check", "verify", "confirm",
+                "feedback", "message", "notification", "alert"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in validation_keywords):
+                return True
+        return False
+    
+    def _has_recovery_mechanisms(self) -> bool:
+        """Check if artifact has recovery mechanisms."""
+        for code_file in self.artifact.get("code_files", []):
+            content = code_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            recovery_keywords = [
+                "recover", "restore", "backup", "retry", "fallback",
+                "alternative", "default", "safe", "secure"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in recovery_keywords):
+                return True
+        return False
+    
+    def _has_version_control(self) -> bool:
+        """Check if artifact has version control."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if filename in [".git", ".gitignore", ".gitattributes"]:
+                return True
+        return False
+    
+    def _has_change_tracking(self) -> bool:
+        """Check if artifact has change tracking."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["changelog", "version", "history", "log"]):
+                return True
+        return False
+    
+    def _has_feedback_mechanisms(self) -> bool:
+        """Check if artifact has feedback mechanisms."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["feedback", "issue", "bug", "report", "contact"]):
+                return True
+        return False
+    
+    def _has_documentation_updates(self) -> bool:
+        """Check if artifact has documentation update process."""
+        for doc_file in self.artifact.get("documentation_files", []):
+            content = doc_file.get("content", "")
+            if isinstance(content, list):
+                content = "\n".join(content)
+            
+            update_keywords = [
+                "update", "version", "changelog", "history", "revision",
+                "latest", "current", "new", "improved"
+            ]
+            content_lower = content.lower()
+            if any(keyword in content_lower for keyword in update_keywords):
+                return True
+        return False
+    
+    def _has_issue_tracking(self) -> bool:
+        """Check if artifact has issue tracking."""
+        for entry in self.artifact.get("repository_structure", []):
+            filename = entry.get("name", "").lower()
+            if any(keyword in filename for keyword in ["issue", "bug", "tracker", "todo", "fixme"]):
+                return True
+        return False
+    
+    def _generate_justification(self, ux_score: float, ui_score: float, 
+                              error_score: float, review_score: float) -> str:
+        """Generate justification based on component scores."""
+        if ux_score >= 0.8 and ui_score >= 0.8 and error_score >= 0.8:
+            return "Excellent usability: artifact provides great user experience with quality interfaces and error handling."
+        elif ux_score >= 0.6 and ui_score >= 0.6 and error_score >= 0.6:
+            return "Good usability: artifact has adequate user experience but could be improved in some areas."
+        elif ux_score >= 0.4 and ui_score >= 0.4 and error_score >= 0.4:
+            return "Fair usability: basic usability elements present but significant improvements needed."
+        else:
+            return "Poor usability: artifact lacks essential usability elements and user-friendly design."
