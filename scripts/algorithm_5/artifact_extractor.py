@@ -1,41 +1,46 @@
 #!/usr/bin/env python3
 """
-Artifact Extractor - Multi-format artifact extraction and processing
+Robust Artifact Extractor - Multi-format artifact extraction with error handling
 
-This module handles extraction of various artifact formats including
-- ZIP files
-- TAR/TAR.GZ/TGZ files  
+This module handles extraction of various artifact formats including:
+- ZIP files (with filename sanitization)
+- TAR/TAR.GZ/TGZ files (with robust error handling)
 - Regular directories (git clones)
 - Nested archives
+- Files with invalid characters, encoding issues, and long paths
 """
 
 import logging
 import os
+import re
 import shutil
 import tarfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
+
+import unicodedata
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ArtifactExtractor:
+class RobustArtifactExtractor:
     """
-    Handles extraction and processing of software artifacts in various formats.
+    Handles extraction and processing of software artifacts with robust error handling.
     
-    Supported formats:
-    - ZIP files (.zip)
-    - TAR files (.tar, .tar.gz, .tgz, .tar.bz2, .tar.xz)
-    - Regular directories (git repositories)
-    - Nested archives
+    Features:
+    - Sanitizes filenames for Windows compatibility
+    - Handles encoding issues gracefully
+    - Skips problematic files but continues processing
+    - Manages duplicate filenames after sanitization
+    - Provides detailed logging of issues
     """
 
     def __init__(self, temp_dir: str = "./temp_extractions", max_file_size: int = 500 * 1024 * 1024):
         """
-        Initialize the ArtifactExtractor.
+        Initialize the RobustArtifactExtractor.
         
         Args:
             temp_dir: Temporary directory for extractions
@@ -45,14 +50,22 @@ class ArtifactExtractor:
         self.max_file_size = max_file_size
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
+        # Windows invalid characters
+        self.invalid_chars = r'[<>:"/\\|?*]'
+        self.invalid_names = {
+            'CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5',
+            'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4',
+            'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'
+        }
+
         # Supported archive extensions
         self.archive_extensions = {
-            '.zip': self._extract_zip,
-            '.tar': self._extract_tar,
-            '.tar.gz': self._extract_tar,
-            '.tgz': self._extract_tar,
-            '.tar.bz2': self._extract_tar,
-            '.tar.xz': self._extract_tar,
+            '.zip': self._extract_zip_robust,
+            '.tar': self._extract_tar_robust,
+            '.tar.gz': self._extract_tar_robust,
+            '.tgz': self._extract_tar_robust,
+            '.tar.bz2': self._extract_tar_robust,
+            '.tar.xz': self._extract_tar_robust,
         }
 
         # File type mappings for analysis
@@ -67,6 +80,113 @@ class ArtifactExtractor:
             'license': ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'COPYING'],
         }
 
+        # Extraction statistics
+        self.extraction_stats = {
+            'files_processed': 0,
+            'files_skipped': 0,
+            'files_renamed': 0,
+            'encoding_issues': 0,
+            'path_issues': 0,
+            'skipped_files': [],
+            'renamed_files': []
+        }
+
+    def sanitize_filename(self, filename: str, used_names: Set[str] = None) -> str:
+        """
+        Sanitize filename for Windows compatibility.
+        
+        Args:
+            filename: Original filename
+            used_names: Set of already used names to avoid duplicates
+            
+        Returns:
+            Sanitized filename safe for Windows
+        """
+        if used_names is None:
+            used_names = set()
+
+        # Handle encoding issues
+        try:
+            # Normalize unicode characters
+            filename = unicodedata.normalize('NFKD', filename)
+            # Convert to ASCII, ignoring problematic characters
+            filename = filename.encode('ascii', 'ignore').decode('ascii')
+        except (UnicodeError, UnicodeDecodeError):
+            # Fallback for severe encoding issues
+            filename = re.sub(r'[^\x00-\x7F]+', '_', filename)
+
+        # Replace invalid characters
+        sanitized = re.sub(self.invalid_chars, '_', filename)
+
+        # Handle reserved names
+        name_part = sanitized.split('.')[0].upper()
+        if name_part in self.invalid_names:
+            sanitized = f"_{sanitized}"
+
+        # Handle empty or dot-only names
+        if not sanitized or sanitized.replace('.', '').strip() == '':
+            sanitized = 'unnamed_file'
+
+        # Handle leading/trailing spaces and dots
+        sanitized = sanitized.strip('. ')
+
+        # Ensure not empty after stripping
+        if not sanitized:
+            sanitized = 'unnamed_file'
+
+        # Handle duplicates
+        original_sanitized = sanitized
+        counter = 1
+        while sanitized in used_names:
+            name, ext = os.path.splitext(original_sanitized)
+            sanitized = f"{name}_{counter}{ext}"
+            counter += 1
+
+        # Limit length for Windows (260 char total path limit)
+        if len(sanitized) > 200:  # Leave room for directory path
+            name, ext = os.path.splitext(sanitized)
+            sanitized = f"{name[:200 - len(ext)]}{ext}"
+
+        used_names.add(sanitized)
+        return sanitized
+
+    def sanitize_path(self, path: str, used_paths: Set[str] = None) -> str:
+        """
+        Sanitize full file path.
+        
+        Args:
+            path: Original file path
+            used_paths: Set of already used paths
+            
+        Returns:
+            Sanitized path
+        """
+        if used_paths is None:
+            used_paths = set()
+
+        # Split path and sanitize each component
+        parts = Path(path).parts
+        sanitized_parts = []
+
+        for part in parts:
+            if part in ('/', '\\'):
+                continue
+            sanitized_part = self.sanitize_filename(part)
+            sanitized_parts.append(sanitized_part)
+
+        sanitized_path = '/'.join(sanitized_parts)
+
+        # Handle duplicate paths
+        original_path = sanitized_path
+        counter = 1
+        while sanitized_path in used_paths:
+            path_obj = Path(original_path)
+            sanitized_path = str(path_obj.parent / f"{path_obj.stem}_{counter}{path_obj.suffix}")
+            counter += 1
+
+        used_paths.add(sanitized_path)
+        return sanitized_path
+
     def extract_artifact(
             self,
             artifact_path: str,
@@ -74,7 +194,7 @@ class ArtifactExtractor:
             force_reextract: bool = False
     ) -> Dict[str, Any]:
         """
-        Extract an artifact and return extraction information.
+        Extract an artifact with robust error handling.
         
         Args:
             artifact_path: Path to the artifact (file or directory)
@@ -96,7 +216,20 @@ class ArtifactExtractor:
         if artifact_name is None:
             artifact_name = artifact_path.stem
 
+        # Sanitize artifact name
+        artifact_name = self.sanitize_filename(artifact_name)
         logger.info(f"Extracting artifact: {artifact_name}")
+
+        # Reset extraction statistics
+        self.extraction_stats = {
+            'files_processed': 0,
+            'files_skipped': 0,
+            'files_renamed': 0,
+            'encoding_issues': 0,
+            'path_issues': 0,
+            'skipped_files': [],
+            'renamed_files': []
+        }
 
         # Create extraction directory
         extract_dir = self.temp_dir / f"extracted_{artifact_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -109,6 +242,7 @@ class ArtifactExtractor:
             "extraction_method": None,
             "metadata": {},
             "error": None,
+            "extraction_stats": {},
             "stats": {
                 "total_files": 0,
                 "total_size": 0,
@@ -120,10 +254,10 @@ class ArtifactExtractor:
         try:
             # Check if it's a directory or file
             if artifact_path.is_dir():
-                # Copy directory
+                # Copy directory with robust handling
                 logger.info(f"Copying directory: {artifact_path}")
-                shutil.copytree(artifact_path, extract_dir)
-                result["extraction_method"] = "directory_copy"
+                self._copy_directory_robust(artifact_path, extract_dir)
+                result["extraction_method"] = "directory_copy_robust"
 
             elif artifact_path.is_file():
                 # Check file size
@@ -154,6 +288,13 @@ class ArtifactExtractor:
                     "error": f"Invalid artifact type: {artifact_path}"
                 }
 
+            # Log extraction statistics
+            result["extraction_stats"] = self.extraction_stats.copy()
+            if self.extraction_stats['files_skipped'] > 0:
+                logger.warning(f"Skipped {self.extraction_stats['files_skipped']} problematic files")
+            if self.extraction_stats['files_renamed'] > 0:
+                logger.info(f"Renamed {self.extraction_stats['files_renamed']} files for compatibility")
+
             # Analyze extracted content
             analysis = self._analyze_extracted_content(extract_dir)
             result["metadata"] = analysis["metadata"]
@@ -166,12 +307,59 @@ class ArtifactExtractor:
             error_msg = f"Extraction failed for {artifact_name}: {str(e)}"
             logger.error(error_msg)
             result["error"] = error_msg
+            result["extraction_stats"] = self.extraction_stats.copy()
 
             # Clean up on failure
             if extract_dir.exists():
                 shutil.rmtree(extract_dir, ignore_errors=True)
 
         return result
+
+    def _copy_directory_robust(self, src_dir: Path, dst_dir: Path):
+        """Copy directory with robust error handling."""
+        dst_dir.mkdir(parents=True, exist_ok=True)
+        used_paths = set()
+
+        for root, dirs, files in os.walk(src_dir):
+            try:
+                # Calculate relative path
+                rel_path = Path(root).relative_to(src_dir)
+
+                # Sanitize directory path
+                if str(rel_path) != '.':
+                    sanitized_rel_path = self.sanitize_path(str(rel_path), used_paths)
+                    dst_subdir = dst_dir / sanitized_rel_path
+                    dst_subdir.mkdir(parents=True, exist_ok=True)
+                else:
+                    dst_subdir = dst_dir
+
+                # Copy files
+                for file in files:
+                    try:
+                        src_file = Path(root) / file
+                        sanitized_filename = self.sanitize_filename(file)
+                        dst_file = dst_subdir / sanitized_filename
+
+                        if sanitized_filename != file:
+                            self.extraction_stats['files_renamed'] += 1
+                            self.extraction_stats['renamed_files'].append({
+                                'original': str(src_file.relative_to(src_dir)),
+                                'sanitized': str(dst_file.relative_to(dst_dir))
+                            })
+
+                        shutil.copy2(src_file, dst_file)
+                        self.extraction_stats['files_processed'] += 1
+
+                    except (OSError, PermissionError, UnicodeError) as e:
+                        self.extraction_stats['files_skipped'] += 1
+                        self.extraction_stats['skipped_files'].append({
+                            'file': str(Path(root) / file),
+                            'error': str(e)
+                        })
+                        logger.warning(f"Skipped file {file}: {e}")
+
+            except Exception as e:
+                logger.warning(f"Error processing directory {root}: {e}")
 
     def _get_extraction_method(self, file_path: Path):
         """Determine the appropriate extraction method for a file."""
@@ -186,20 +374,173 @@ class ArtifactExtractor:
         suffix = file_path.suffix.lower()
         return self.archive_extensions.get(suffix)
 
-    def _extract_zip(self, archive_path: Path, extract_dir: Path):
-        """Extract ZIP archive."""
-        with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-            zip_ref.extractall(extract_dir)
+    def _extract_zip_robust(self, archive_path: Path, extract_dir: Path):
+        """Extract ZIP archive with robust error handling."""
+        used_paths = set()
 
-    def _extract_tar(self, archive_path: Path, extract_dir: Path):
-        """Extract TAR archive (including compressed variants)."""
-        with tarfile.open(archive_path, 'r:*') as tar_ref:
-            # Security check for path traversal
-            for member in tar_ref.getmembers():
-                if os.path.isabs(member.name) or ".." in member.name:
-                    logger.warning(f"Skipping unsafe path: {member.name}")
-                    continue
-            tar_ref.extractall(extract_dir)
+        try:
+            with zipfile.ZipFile(archive_path, 'r') as zip_ref:
+                for member in zip_ref.infolist():
+                    try:
+                        # Skip directories
+                        if member.is_dir():
+                            continue
+
+                        # Handle filename encoding
+                        try:
+                            filename = member.filename
+                            # Try to decode with CP437 if it looks like it might be encoded
+                            if member.flag_bits & 0x800 == 0:  # No UTF-8 flag
+                                try:
+                                    filename = member.filename.encode('cp437').decode('utf-8')
+                                except (UnicodeDecodeError, UnicodeEncodeError):
+                                    pass
+                        except Exception:
+                            filename = f"file_{self.extraction_stats['files_processed']}"
+                            self.extraction_stats['encoding_issues'] += 1
+
+                        # Security check for path traversal
+                        if os.path.isabs(filename) or ".." in filename:
+                            logger.warning(f"Skipping unsafe path: {filename}")
+                            self.extraction_stats['files_skipped'] += 1
+                            continue
+
+                        # Sanitize path
+                        sanitized_path = self.sanitize_path(filename, used_paths)
+                        target_path = extract_dir / sanitized_path
+
+                        if sanitized_path != filename:
+                            self.extraction_stats['files_renamed'] += 1
+                            self.extraction_stats['renamed_files'].append({
+                                'original': filename,
+                                'sanitized': sanitized_path
+                            })
+
+                        # Create parent directories
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                        # Extract file
+                        with zip_ref.open(member) as source, open(target_path, 'wb') as target:
+                            shutil.copyfileobj(source, target)
+
+                        self.extraction_stats['files_processed'] += 1
+
+                    except Exception as e:
+                        self.extraction_stats['files_skipped'] += 1
+                        self.extraction_stats['skipped_files'].append({
+                            'file': getattr(member, 'filename', 'unknown'),
+                            'error': str(e)
+                        })
+                        logger.warning(f"Skipped ZIP member: {e}")
+
+        except Exception as e:
+            logger.error(f"Error opening ZIP file: {e}")
+            raise
+
+    def _extract_tar_robust(self, archive_path: Path, extract_dir: Path):
+        """Extract TAR archive with robust error handling."""
+        used_paths = set()
+        created_dirs = set()
+
+        try:
+            with tarfile.open(archive_path, 'r:*') as tar_ref:
+                # Process all members (files and directories)
+                for member in tar_ref.getmembers():
+                    try:
+                        # Handle filename encoding
+                        try:
+                            filename = member.name
+                            # Try to decode if it's not valid UTF-8
+                            if isinstance(filename, bytes):
+                                filename = filename.decode('utf-8', errors='ignore')
+                        except Exception:
+                            filename = f"item_{self.extraction_stats['files_processed']}"
+                            self.extraction_stats['encoding_issues'] += 1
+
+                        # Security check for path traversal
+                        if os.path.isabs(filename) or ".." in filename:
+                            logger.warning(f"Skipping unsafe path: {filename}")
+                            self.extraction_stats['files_skipped'] += 1
+                            continue
+
+                        # Sanitize path
+                        sanitized_path = self.sanitize_path(filename, used_paths)
+                        target_path = extract_dir / sanitized_path
+
+                        if sanitized_path != filename:
+                            self.extraction_stats['files_renamed'] += 1
+                            self.extraction_stats['renamed_files'].append({
+                                'original': filename,
+                                'sanitized': sanitized_path
+                            })
+
+                        # Handle directories
+                        if member.isdir():
+                            try:
+                                target_path.mkdir(parents=True, exist_ok=True)
+                                created_dirs.add(str(target_path))
+                            except Exception as e:
+                                logger.warning(f"Could not create directory {target_path}: {e}")
+                                self.extraction_stats['files_skipped'] += 1
+                                self.extraction_stats['skipped_files'].append({
+                                    'file': filename,
+                                    'error': f"Directory creation failed: {str(e)}"
+                                })
+                            continue
+
+                        # Handle files
+                        if member.isfile():
+                            try:
+                                # Create parent directories
+                                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                                # Extract file
+                                with tar_ref.extractfile(member) as source:
+                                    if source:
+                                        with open(target_path, 'wb') as target:
+                                            shutil.copyfileobj(source, target)
+
+                                self.extraction_stats['files_processed'] += 1
+
+                            except Exception as e:
+                                self.extraction_stats['files_skipped'] += 1
+                                self.extraction_stats['skipped_files'].append({
+                                    'file': filename,
+                                    'error': str(e)
+                                })
+                                logger.warning(f"Skipped file {filename}: {e}")
+
+                        # Handle symbolic links (create as regular files with target content if possible)
+                        elif member.issym() or member.islnk():
+                            try:
+                                # Create parent directories
+                                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                                # Create a text file with link information
+                                with open(target_path, 'w', encoding='utf-8') as f:
+                                    f.write(f"# Symbolic link to: {member.linkname}\n")
+
+                                self.extraction_stats['files_processed'] += 1
+
+                            except Exception as e:
+                                self.extraction_stats['files_skipped'] += 1
+                                self.extraction_stats['skipped_files'].append({
+                                    'file': filename,
+                                    'error': f"Symlink handling failed: {str(e)}"
+                                })
+                                logger.warning(f"Skipped symlink {filename}: {e}")
+
+                    except Exception as e:
+                        self.extraction_stats['files_skipped'] += 1
+                        self.extraction_stats['skipped_files'].append({
+                            'file': getattr(member, 'name', 'unknown'),
+                            'error': str(e)
+                        })
+                        logger.warning(f"Skipped TAR member: {e}")
+
+        except Exception as e:
+            logger.error(f"Error opening TAR file: {e}")
+            raise
 
     def _analyze_extracted_content(self, extract_dir: Path) -> Dict[str, Any]:
         """
@@ -378,83 +719,51 @@ class ArtifactExtractor:
 
         for item in self.temp_dir.iterdir():
             if item.is_dir() and item.name.startswith('extracted_'):
-                try:
-                    # Parse artifact name from directory name
-                    parts = item.name.split('_')
-                    if len(parts) >= 3:
-                        artifact_name = '_'.join(parts[1:-2])  # Remove 'extracted_' prefix and timestamp
-                        timestamp = '_'.join(parts[-2:])
-
-                        extracted.append({
-                            "artifact_name": artifact_name,
-                            "extracted_path": str(item),
-                            "extraction_time": timestamp,
-                            "file_count": len(list(item.rglob('*')))
-                        })
-                except Exception as e:
-                    logger.warning(f"Could not parse extracted directory {item}: {e}")
+                artifact_info = {
+                    "name": item.name,
+                    "path": str(item),
+                    "created": datetime.fromtimestamp(item.stat().st_ctime).isoformat(),
+                    "size": sum(f.stat().st_size for f in item.rglob('*') if f.is_file())
+                }
+                extracted.append(artifact_info)
 
         return extracted
 
     def cleanup_extracted_artifact(self, artifact_name: str):
-        """Clean up extracted files for a specific artifact."""
+        """Clean up extracted artifact directory."""
         pattern = f"extracted_{artifact_name}_*"
-        removed_count = 0
-
         for item in self.temp_dir.glob(pattern):
             if item.is_dir():
-                try:
-                    shutil.rmtree(item)
-                    removed_count += 1
-                    logger.info(f"Cleaned up extracted artifact: {item}")
-                except Exception as e:
-                    logger.warning(f"Could not remove {item}: {e}")
-
-        return removed_count
+                shutil.rmtree(item, ignore_errors=True)
+                logger.info(f"Cleaned up: {item}")
 
     def cleanup_all(self):
         """Clean up all extracted artifacts."""
         if self.temp_dir.exists():
-            try:
-                shutil.rmtree(self.temp_dir)
-                logger.info(f"Cleaned up all extracted artifacts in {self.temp_dir}")
-            except Exception as e:
-                logger.warning(f"Could not clean up temp directory: {e}")
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+            self.temp_dir.mkdir(parents=True, exist_ok=True)
+            logger.info("Cleaned up all extracted artifacts")
+
+
+# For backward compatibility
+ArtifactExtractor = RobustArtifactExtractor
 
 
 def main():
-    """Example usage of the ArtifactExtractor."""
-    import argparse
+    """Example usage of the RobustArtifactExtractor."""
+    extractor = RobustArtifactExtractor()
 
-    parser = argparse.ArgumentParser(description="Artifact Extractor")
-    parser.add_argument("artifact_path", help="Path to artifact file or directory")
-    parser.add_argument("--temp-dir", default="./temp_extractions", help="Temporary extraction directory")
-    parser.add_argument("--cleanup", action="store_true", help="Clean up after extraction")
-
-    args = parser.parse_args()
-
-    # Create extractor
-    extractor = ArtifactExtractor(temp_dir=args.temp_dir)
-
-    # Extract artifact
-    result = extractor.extract_artifact(args.artifact_path)
-
-    if result["success"]:
-        print(f"Extraction successful!")
-        print(f"Extracted to: {result['extracted_path']}")
-        print(f"Total files: {result['stats']['total_files']}")
-        print(f"Total size: {result['stats']['total_size']} bytes")
-        print(f"File types: {result['stats']['file_types']}")
-
-        if result['metadata']['programming_languages']:
-            print(f"Programming languages: {result['metadata']['programming_languages']}")
-
-        # Clean up if requested
-        if args.cleanup:
-            extractor.cleanup_all()
-            print("Cleaned up extracted files")
-    else:
-        print(f"Extraction failed: {result['error']}")
+    # Example extraction
+    test_archive = "example.zip"
+    if Path(test_archive).exists():
+        result = extractor.extract_artifact(test_archive)
+        if result["success"]:
+            print(f"Extraction successful: {result['extracted_path']}")
+            print(f"Files processed: {result['extraction_stats']['files_processed']}")
+            print(f"Files skipped: {result['extraction_stats']['files_skipped']}")
+            print(f"Files renamed: {result['extraction_stats']['files_renamed']}")
+        else:
+            print(f"Extraction failed: {result['error']}")
 
 
 if __name__ == "__main__":

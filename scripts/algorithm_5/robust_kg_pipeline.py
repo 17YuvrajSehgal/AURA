@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 
-from .artifact_extractor import ArtifactExtractor
+from .artifact_extractor import RobustArtifactExtractor
 from .batch_processor import BatchProcessor
 from .enhanced_kg_builder import EnhancedKGBuilder
 
@@ -67,7 +67,7 @@ class RobustKGPipeline:
         self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize components
-        self.extractor = ArtifactExtractor(temp_dir=str(self.temp_dir))
+        self.extractor = RobustArtifactExtractor(temp_dir=str(self.temp_dir))
         self.kg_builder = EnhancedKGBuilder(
             neo4j_uri=neo4j_uri,
             neo4j_user=neo4j_user,

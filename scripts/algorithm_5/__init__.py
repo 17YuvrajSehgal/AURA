@@ -41,20 +41,25 @@ __author__ = "AURA Framework Team"
 # Import main classes
 try:
     from .robust_kg_pipeline import RobustKGPipeline
-    from .artifact_extractor import ArtifactExtractor
+    from .artifact_extractor import RobustArtifactExtractor
     from .enhanced_kg_builder import EnhancedKGBuilder
     from .batch_processor import BatchProcessor
-    
+
+    # Alias for backward compatibility
+    ArtifactExtractor = RobustArtifactExtractor
+
     __all__ = [
         "RobustKGPipeline",
-        "ArtifactExtractor", 
+        "ArtifactExtractor",
+        "RobustArtifactExtractor",
         "EnhancedKGBuilder",
         "BatchProcessor"
     ]
-    
+
 except ImportError as e:
     # Handle missing dependencies gracefully
     import warnings
+
     warnings.warn(f"Some dependencies are missing for algorithm_5: {e}")
-    
-    __all__ = [] 
+
+    __all__ = []
