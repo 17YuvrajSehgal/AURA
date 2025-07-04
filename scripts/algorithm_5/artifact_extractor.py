@@ -28,14 +28,12 @@ logger = logging.getLogger(__name__)
 
 class RobustArtifactExtractor:
     """
-    Handles extraction and processing of software artifacts with robust error handling.
-    
-    Features:
-    - Sanitizes filenames for Windows compatibility
-    - Handles encoding issues gracefully
-    - Skips problematic files but continues processing
-    - Manages duplicate filenames after sanitization
-    - Provides detailed logging of issues
+    Robust artifact extractor for multi-format research artifacts.
+
+    - Extracted directories are preserved by default and not deleted after extraction.
+    - If extraction fails, the partially extracted directory is deleted to avoid clutter.
+    - If an extracted directory already exists, extraction is skipped (unless force_reextract=True).
+    - Use cleanup_extracted_artifact or cleanup_all manually if you want to remove extracted directories.
     """
 
     def __init__(self, temp_dir: str = "./temp_extractions", max_file_size: int = 500 * 1024 * 1024):
@@ -203,6 +201,11 @@ class RobustArtifactExtractor:
             
         Returns:
             Dictionary containing extraction results and metadata
+        
+        Behavior:
+            - If extraction succeeds, the extracted directory is kept for reuse/debugging.
+            - If extraction fails, the extracted directory is deleted.
+            - If the extracted directory already exists, extraction is skipped (unless force_reextract=True).
         """
         artifact_path = Path(artifact_path)
 
@@ -218,6 +221,37 @@ class RobustArtifactExtractor:
 
         # Sanitize artifact name
         artifact_name = self.sanitize_filename(artifact_name)
+        
+        # Create extraction directory (without timestamp for reuse)
+        extract_dir = self.temp_dir / f"extracted_{artifact_name}"
+        
+        # Check if already extracted and skip if not forcing re-extraction
+        if extract_dir.exists() and not force_reextract:
+            logger.info(f"Artifact already extracted, reusing: {artifact_name}")
+            
+            # Still analyze the existing content for metadata
+            analysis = self._analyze_extracted_content(extract_dir)
+            
+            return {
+                "success": True,
+                "artifact_name": artifact_name,
+                "artifact_path": str(artifact_path),
+                "extracted_path": str(extract_dir),
+                "extraction_method": "reused_existing",
+                "metadata": analysis["metadata"],
+                "stats": analysis["stats"],
+                "extraction_stats": {
+                    'files_processed': 0,
+                    'files_skipped': 0,
+                    'files_renamed': 0,
+                    'encoding_issues': 0,
+                    'path_issues': 0,
+                    'skipped_files': [],
+                    'renamed_files': [],
+                    'reused_existing': True
+                }
+            }
+        
         logger.info(f"Extracting artifact: {artifact_name}")
 
         # Reset extraction statistics
@@ -230,9 +264,6 @@ class RobustArtifactExtractor:
             'skipped_files': [],
             'renamed_files': []
         }
-
-        # Create extraction directory
-        extract_dir = self.temp_dir / f"extracted_{artifact_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         result = {
             "success": False,
