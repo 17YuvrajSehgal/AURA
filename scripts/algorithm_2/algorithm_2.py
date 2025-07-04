@@ -1,3 +1,4 @@
+import fnmatch
 import json
 import logging
 import mimetypes
@@ -114,9 +115,22 @@ CONFIG_FILE_PATTERNS = [
     '.vscode', '.idea', '.project', '.classpath'
 ]
 
-EXCLUDE_DIRS = ['.git', 'node_modules', '__pycache__', '.pytest_cache',
-                '.coverage', '.tox', 'venv', 'env', '.env', 'build', 'dist',
-                '.DS_Store', 'Thumbs.db']
+EXCLUDE_DIRS = [
+    '.git', '.svn', '.hg', '.bzr', 'node_modules', 'bower_components', '.yarn', '.pnp', '.parcel-cache',
+    '__pycache__', '.pytest_cache', '.mypy_cache', '.tox', '.coverage', '.hypothesis',
+    '.venv', 'venv', 'env', '.env', '.virtualenv', '.conda', '.ipynb_checkpoints',
+    'build', 'dist', 'out', 'output', 'target', 'bin', 'obj', '.gradle', '.idea', '.vscode', '.settings',
+    '.cache', 'logs', 'log', '.next', '.nuxt', '.expo', '.android', '.ios', '.history', '.npm', '.jspm',
+    '.c9', '.cloud9', '.sublime-*', '.nyc_output', '.mocha', '.istanbul', '.jupyter',
+    '.Rproj.user', '.Rhistory', '.RData', '.Ruserdata', '.snapshots', '.metadata', '.factorypath',
+    '.tmp', '.bak', '.old', '.orig', '.save', '.crash', '.pid', '.seed', '.pid.lock',
+    '.yarn-cache', '.yarnrc', '.pnp.*', '.eslintcache', '.pyre', '.pytype'
+]
+
+EXCLUDE_FILES = [
+    '.DS_Store', 'Thumbs.db', 'desktop.ini', '.Trash-*', '.AppleDouble', '.LSOverride',
+    '*.log', '*.tmp', '*.swp', '*.swo'
+]
 
 BUILD_FILES = ['Makefile', 'CMakeLists.txt', 'build.gradle', 'pom.xml', 'package.json', 'requirements.txt']
 
@@ -160,8 +174,16 @@ def generate_file_list(
     """
     file_paths = []
     for dirpath, dirnames, filenames in os.walk(root):
-        # Filter out excluded directories
-        dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
+        # Exclude directories
+        dirnames[:] = [d for d in dirnames if
+                       d not in exclude_dirs and not any(fnmatch.fnmatch(d, pat) for pat in exclude_dirs if '*' in pat)]
+        # Exclude files
+        filtered_filenames = []
+        for filename in filenames:
+            if filename in EXCLUDE_FILES or any(fnmatch.fnmatch(filename, pat) for pat in EXCLUDE_FILES if '*' in pat):
+                continue
+            filtered_filenames.append(filename)
+        filenames = filtered_filenames
 
         # Prioritize important files
         important_files = []
@@ -341,17 +363,39 @@ def is_build_file(path: str) -> bool:
     name = os.path.basename(path)
     return name in BUILD_FILES
 
+
 def is_docker_file(path: str) -> bool:
-    name = os.path.basename(path)
-    return name in DOCKER_FILES
+    """
+    Robustly detect Docker-related files:
+    - dockerfile, Dockerfile, dockerfile.*, Dockerfile.*, docker.*, docker-*, docker_*, dockerfile-*, dockerfile_*
+    - docker-compose*, .dockerignore
+    - Case-insensitive
+    """
+    name = os.path.basename(path).lower()
+    # .dockerignore
+    if name == '.dockerignore':
+        return True
+    # docker-compose (with any extension or suffix)
+    if name.startswith('docker-compose'):
+        return True
+    # dockerfile (with any extension or suffix)
+    if name.startswith('dockerfile'):
+        return True
+    # docker (with any extension or suffix, but not just 'docker' as a directory)
+    if name.startswith('docker') and name != 'docker':
+        return True
+    return False
+
 
 def is_data_file(path: str) -> bool:
     ext = os.path.splitext(path)[1].lower()
     return ext in DATA_EXTENSIONS
 
+
 def is_config_file(path: str) -> bool:
     ext = os.path.splitext(path)[1].lower()
     return ext in CONFIG_EXTENSIONS
+
 
 def extract_archive(archive_path: str, extract_to: str) -> str:
     """Enhanced archive extraction with better error handling."""
@@ -438,17 +482,17 @@ def analyze_repository(repo_path_or_url: str, temp_base_dir="./temp_dir_for_git"
             # Read file content
             content_lines = read_file_content(path)
 
-            # Categorize files
+            # Categorize files - check Docker files first to avoid conflicts with code extensions
             if is_license_file(path):
                 L.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
             elif is_documentation_file(path):
                 M.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
-            elif is_code_file(path):
-                C.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
+            elif is_docker_file(path):
+                DOCKER.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
             elif is_build_file(path):
                 BUILD.append(file_info)
-            elif is_docker_file(path):
-                DOCKER.append(file_info)
+            elif is_code_file(path):
+                C.append({"path": os.path.relpath(path, repo_path), "content": content_lines})
             elif is_data_file(path):
                 DATA.append(file_info)
             elif is_config_file(path):
@@ -518,7 +562,8 @@ def save_analysis_result(result: dict, repo_name: str, output_dir="./algo_output
 # Example usage
 if __name__ == "__main__":
     # Usage: python algorithm_2.py <repo_url_or_path> [<temp_base_dir>] [<output_dir>]
-    repo_url_or_path = sys.argv[1] if len(sys.argv) > 1 else "C:\\workplace\\AURA\\temp_dir_for_git\\small_icse_artifacts\\10460752"
+    repo_url_or_path = sys.argv[1] if len(
+        sys.argv) > 1 else "C:\\workplace\\AURA\\temp_dir_for_git\\small_icse_artifacts\\10460752"
     temp_base_dir = sys.argv[2] if len(sys.argv) > 2 else "../../temp_dir_for_git"
     output_dir = sys.argv[3] if len(sys.argv) > 3 else "../../algo_outputs/algorithm_2_output"
 
@@ -540,4 +585,3 @@ if __name__ == "__main__":
 # repo_url = "https://github.com/JackyChok/AI_Code_Detection_Education"
 # repo_url = "https://github.com/huiAlex/TRIAD"
 # repo_url = "https://github.com/sola-st/PyTy"
-
