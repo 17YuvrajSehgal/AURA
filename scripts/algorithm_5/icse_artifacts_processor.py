@@ -632,3 +632,15 @@ Examples:
 
 if __name__ == "__main__":
     main()
+
+
+#python scripts/algorithm_5/icse_artifacts_processor.py temp_dir_for_git/icse_artifacts --neo4j-user neo4j --neo4j-password 12345678 --max-workers 2 --output-dir icse_analysis_results
+
+#For faster processing (if your system can handle it):
+#python scripts/algorithm_5/icse_artifacts_processor.py temp_dir_for_git/icse_artifacts --neo4j-user neo4j --neo4j-password 12345678 --max-workers 4 --output-dir icse_analysis_results
+
+#For dry run (to see what will be processed):
+#python scripts/algorithm_5/icse_artifacts_processor.py temp_dir_for_git/icse_artifacts --dry-run
+
+#With verbose logging:
+#python scripts/algorithm_5/icse_artifacts_processor.py temp_dir_for_git/icse_artifacts --neo4j-user neo4j --neo4j-password 12345678 --max-workers 2 --output-dir icse_analysis_results --verbose
