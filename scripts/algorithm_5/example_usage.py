@@ -11,11 +11,11 @@ Robust Knowledge Graph Pipeline including:
 - Visualization export
 """
 
+import logging
 import os
 import sys
-import logging
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 
 # Add the parent directory to path to import algorithm_5
 sys.path.append(str(Path(__file__).parent.parent))
@@ -48,13 +48,13 @@ def create_sample_artifacts(output_dir: str = "./sample_artifacts") -> List[str]
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     artifact_paths = []
-    
+
     # Create a sample Python project structure
     sample_project = output_path / "sample_python_project"
     sample_project.mkdir(exist_ok=True)
-    
+
     # Create README.md
     readme_content = """# Sample Python Project
 
@@ -78,7 +78,7 @@ result = processor.process_data("input.csv")
 ```
 """
     (sample_project / "README.md").write_text(readme_content)
-    
+
     # Create requirements.txt
     requirements = """numpy>=1.21.0
 pandas>=1.3.0
@@ -86,10 +86,10 @@ pytest>=6.2.0
 click>=8.0.0
 """
     (sample_project / "requirements.txt").write_text(requirements)
-    
+
     # Create Python source files
     (sample_project / "src").mkdir(exist_ok=True)
-    
+
     main_py = """#!/usr/bin/env python3
 \"\"\"
 Main module for the sample project.
@@ -132,7 +132,7 @@ if __name__ == "__main__":
 """
     (sample_project / "src" / "__init__.py").write_text("")
     (sample_project / "src" / "main.py").write_text(main_py)
-    
+
     data_processor_py = """\"\"\"
 Data processing utilities.
 \"\"\"
@@ -211,7 +211,7 @@ class DataProcessor:
         }
 """
     (sample_project / "src" / "data_processor.py").write_text(data_processor_py)
-    
+
     config_py = """\"\"\"
 Configuration management.
 \"\"\"
@@ -253,11 +253,11 @@ def load_config(config_file: Optional[str] = None) -> Dict[str, Any]:
     return default_config
 """
     (sample_project / "src" / "config.py").write_text(config_py)
-    
+
     # Create test files
     (sample_project / "tests").mkdir(exist_ok=True)
     (sample_project / "tests" / "__init__.py").write_text("")
-    
+
     test_data_processor = """\"\"\"
 Tests for data processor.
 \"\"\"
@@ -303,7 +303,7 @@ class TestDataProcessor:
         assert stats['processed_count'] == 0
 """
     (sample_project / "tests" / "test_data_processor.py").write_text(test_data_processor)
-    
+
     # Create LICENSE file
     license_content = """MIT License
 
@@ -328,101 +328,101 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
     (sample_project / "LICENSE").write_text(license_content)
-    
+
     artifact_paths.append(str(sample_project))
-    
+
     logger.info(f"Created sample artifacts in: {output_dir}")
     return artifact_paths
 
 
 def example_single_artifact_processing():
     """Demonstrate processing a single artifact."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EXAMPLE 1: Single Artifact Processing")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Create sample artifacts
     artifact_paths = create_sample_artifacts()
-    
+
     # Initialize pipeline with configuration
     config = load_config(profile="development")
-    
+
     try:
         with RobustKGPipeline(
-            neo4j_uri=config.get("neo4j", "uri"),
-            neo4j_user=config.get("neo4j", "user"),
-            neo4j_password=config.get("neo4j", "12345678"),
-            working_dir=config.get("pipeline", "working_dir"),
-            enable_advanced_analysis=True
+                neo4j_uri=config.get("neo4j", "uri"),
+                neo4j_user=config.get("neo4j", "user"),
+                neo4j_password=config.get("neo4j", "12345678"),
+                working_dir=config.get("pipeline", "working_dir"),
+                enable_advanced_analysis=True
         ) as pipeline:
-            
+
             # Process single artifact
             result = pipeline.process_single_artifact(
                 artifact_path=artifact_paths[0],
                 artifact_name="sample_python_project"
             )
-            
+
             if result["success"]:
                 print(f"✅ Successfully processed: {result['artifact_name']}")
                 print(f"   Processing time: {result.get('processing_time', 0):.2f} seconds")
-                
+
                 if result.get("kg_info"):
                     kg_info = result["kg_info"]
                     print(f"   Nodes created: {kg_info.get('nodes_created', 0)}")
                     print(f"   Relationships created: {kg_info.get('relationships_created', 0)}")
-                
+
                 # Get graph statistics
                 stats = pipeline.get_graph_statistics()
                 print(f"   Total graph nodes: {stats.get('total_nodes', 0)}")
                 print(f"   Total relationships: {stats.get('total_relationships', 0)}")
-                
+
                 # Export visualization
                 viz_path = pipeline.export_graph_visualization(
                     format="html"
                 )
                 if viz_path:
                     print(f"   Visualization saved to: {viz_path}")
-                
+
             else:
                 print(f"❌ Failed to process: {result['artifact_name']}")
                 print(f"   Error: {result.get('error', 'Unknown error')}")
-    
+
     except Exception as e:
         print(f"❌ Pipeline error: {e}")
 
 
 def example_batch_processing():
     """Demonstrate batch processing of multiple artifacts."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EXAMPLE 2: Batch Processing")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Create multiple sample artifacts
     sample_dir = "./sample_artifacts"
     create_sample_artifacts(sample_dir)
-    
+
     # Create a second sample project
     sample_project_2 = Path(sample_dir) / "sample_project_2"
     sample_project_2.mkdir(exist_ok=True)
-    
+
     (sample_project_2 / "README.md").write_text("# Sample Project 2\n\nAnother sample project.")
     (sample_project_2 / "main.js").write_text("console.log('Hello from JavaScript!');")
     (sample_project_2 / "package.json").write_text('{"name": "sample-project-2", "version": "1.0.0"}')
-    
+
     try:
         with RobustKGPipeline(
-            neo4j_uri="bolt://localhost:7687",
-            neo4j_user="neo4j",
-            neo4j_password="12345678",
-            clear_existing_graph=True  # Clear for clean batch processing
+                neo4j_uri="bolt://localhost:7687",
+                neo4j_user="neo4j",
+                neo4j_password="12345678",
+                clear_existing_graph=True  # Clear for clean batch processing
         ) as pipeline:
-            
+
             # Process directory of artifacts
             batch_result = pipeline.process_artifact_directory(
                 artifacts_dir=sample_dir,
                 file_patterns=["*"]  # Process all directories
             )
-            
+
             if batch_result["success"]:
                 summary = batch_result["summary"]
                 print(f"✅ Batch processing completed!")
@@ -431,32 +431,32 @@ def example_batch_processing():
                 print(f"   Failed: {summary['failed_artifacts']}")
                 print(f"   Success rate: {summary['success_rate']}")
                 print(f"   Total duration: {summary.get('total_duration_seconds', 0):.1f} seconds")
-                
+
                 # Show detailed results
                 for artifact in batch_result["artifacts_processed"]:
                     status = "✅" if artifact["success"] else "❌"
                     print(f"   {status} {artifact['artifact_name']}: {artifact.get('processing_time', 0):.2f}s")
-            
+
             else:
                 print(f"❌ Batch processing failed")
-    
+
     except Exception as e:
         print(f"❌ Batch processing error: {e}")
 
 
 def example_custom_queries():
     """Demonstrate custom Cypher queries."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EXAMPLE 3: Custom Queries")
-    print("="*60)
-    
+    print("=" * 60)
+
     try:
         with RobustKGPipeline(
-            neo4j_uri="bolt://localhost:7687",
-            neo4j_user="neo4j",
-            neo4j_password="12345678"
+                neo4j_uri="bolt://localhost:7687",
+                neo4j_user="neo4j",
+                neo4j_password="12345678"
         ) as pipeline:
-            
+
             # Query 1: Get all artifacts
             print("📊 All artifacts in the database:")
             artifacts = pipeline.query_graph("""
@@ -464,10 +464,10 @@ def example_custom_queries():
                 RETURN a.name as artifact_name, a.created_at as created_at
                 ORDER BY a.created_at DESC
             """)
-            
+
             for artifact in artifacts:
                 print(f"   - {artifact['artifact_name']} (created: {artifact['created_at'][:19]})")
-            
+
             # Query 2: Get code files by programming language
             print("\n📊 Code files by programming language:")
             code_files = pipeline.query_graph("""
@@ -475,10 +475,10 @@ def example_custom_queries():
                 RETURN f.extension as extension, count(f) as file_count
                 ORDER BY file_count DESC
             """)
-            
+
             for result in code_files:
                 print(f"   {result['extension']}: {result['file_count']} files")
-            
+
             # Query 3: Get functions and classes
             print("\n📊 Code structure:")
             code_structure = pipeline.query_graph("""
@@ -486,10 +486,10 @@ def example_custom_queries():
                 WHERE c:Function OR c:Class
                 RETURN labels(c)[0] as type, count(c) as count
             """)
-            
+
             for result in code_structure:
                 print(f"   {result['type']}: {result['count']}")
-            
+
             # Query 4: Get most connected files
             print("\n📊 Most connected files:")
             connected_files = pipeline.query_graph("""
@@ -498,24 +498,24 @@ def example_custom_queries():
                 ORDER BY connections DESC
                 LIMIT 5
             """)
-            
+
             for result in connected_files:
                 print(f"   {result['filename']}: {result['connections']} connections")
-    
+
     except Exception as e:
         print(f"❌ Query error: {e}")
 
 
 def example_configuration_management():
     """Demonstrate configuration management."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EXAMPLE 4: Configuration Management")
-    print("="*60)
-    
+    print("=" * 60)
+
     # Create sample configuration file
     print("📁 Creating sample configuration file...")
     create_sample_config("sample_config.json")
-    
+
     # Load configuration with different profiles
     configs = {}
     for profile in ["default", "development", "production"]:
@@ -528,12 +528,12 @@ def example_configuration_management():
             print(f"   Working dir: {config.get('pipeline', 'working_dir')}")
         except Exception as e:
             print(f"❌ Failed to load {profile} config: {e}")
-    
+
     # Demonstrate environment variable override
     print("\n🔧 Environment variable configuration:")
     original_uri = os.environ.get("NEO4J_URI")
     os.environ["NEO4J_URI"] = "bolt://custom-neo4j:7687"
-    
+
     try:
         config = load_config()
         print(f"   Neo4j URI from env: {config.get('neo4j', 'uri')}")
@@ -547,62 +547,62 @@ def example_configuration_management():
 
 def example_advanced_analytics():
     """Demonstrate advanced analytics features."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("EXAMPLE 5: Advanced Analytics")
-    print("="*60)
-    
+    print("=" * 60)
+
     try:
         with RobustKGPipeline(
-            neo4j_uri="bolt://localhost:7687",
-            neo4j_user="neo4j",
-            neo4j_password="12345678"
+                neo4j_uri="bolt://localhost:7687",
+                neo4j_user="neo4j",
+                neo4j_password="12345678"
         ) as pipeline:
-            
+
             # Get artifacts for analysis
             artifacts = pipeline.query_graph("MATCH (a:Artifact) RETURN a.name as name LIMIT 1")
-            
+
             if not artifacts:
                 print("❌ No artifacts found. Run single artifact processing first.")
                 return
-            
+
             artifact_name = artifacts[0]["name"]
             print(f"📊 Analyzing artifact: {artifact_name}")
-            
+
             # Perform advanced analysis
             analysis = pipeline.kg_builder.perform_advanced_analysis(artifact_name)
-            
+
             if analysis:
                 print("✅ Advanced analysis completed!")
-                
+
                 # Show network metrics
                 if "network_metrics" in analysis:
                     metrics = analysis["network_metrics"]
                     print(f"   Network density: {metrics.get('density', 'N/A')}")
                     print(f"   Network diameter: {metrics.get('diameter', 'N/A')}")
-                
+
                 # Show centrality analysis
                 if "centrality" in analysis:
                     centrality = analysis["centrality"]
                     most_central = centrality.get("most_central", [])
                     if most_central:
                         print(f"   Most central files: {', '.join(most_central[:3])}")
-                
+
                 # Show community detection
                 if "communities" in analysis:
                     communities = analysis["communities"]
                     print(f"   Communities detected: {communities.get('communities', 'N/A')}")
                     print(f"   Modularity score: {communities.get('modularity', 'N/A')}")
-            
+
             # Get recommendations
             recommendations = pipeline.get_artifact_recommendations(artifact_name)
             print(f"\n💡 Recommendations for {artifact_name}:")
-            
+
             for category, suggestions in recommendations.items():
                 if suggestions:
                     print(f"   {category.title()}:")
                     for suggestion in suggestions:
                         print(f"     - {suggestion}")
-    
+
     except Exception as e:
         print(f"❌ Advanced analytics error: {e}")
 
@@ -611,7 +611,7 @@ def main():
     """Run all examples."""
     print("🚀 Algorithm 5: Robust Knowledge Graph Pipeline - Examples")
     print("=" * 60)
-    
+
     # Check if Neo4j is available
     try:
         import py2neo
@@ -624,7 +624,7 @@ def main():
         print("You can start Neo4j with Docker:")
         print("  docker run -p 7474:7474 -p 7687:7687 --env NEO4J_AUTH=neo4j/password neo4j")
         return
-    
+
     # Run examples
     try:
         example_single_artifact_processing()
@@ -632,18 +632,18 @@ def main():
         example_custom_queries()
         example_configuration_management()
         example_advanced_analytics()
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
         print("✅ All examples completed successfully!")
-        print("="*60)
-        
+        print("=" * 60)
+
     except KeyboardInterrupt:
         print("\n⚠️  Examples interrupted by user")
     except Exception as e:
         print(f"\n❌ Examples failed: {e}")
         import traceback
         traceback.print_exc()
-    
+
     finally:
         # Cleanup
         import shutil
@@ -658,4 +658,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

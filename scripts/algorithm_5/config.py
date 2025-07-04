@@ -9,25 +9,25 @@ This module provides configuration management for the pipeline including:
 - Profile management
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Dict, Any, Optional
-import json
 
 
 class Config:
     """Configuration management for the Robust KG Pipeline."""
-    
+
     # Default configuration
     DEFAULT_CONFIG = {
         # Neo4j Database Settings
         "neo4j": {
             "uri": "bolt://localhost:7687",
-            "user": "neo4j", 
+            "user": "neo4j",
             "password": "password",
             "database": "neo4j"
         },
-        
+
         # Pipeline Settings
         "pipeline": {
             "working_dir": "./algo_outputs/algorithm_5_output",
@@ -37,7 +37,7 @@ class Config:
             "max_file_size": 500 * 1024 * 1024,  # 500MB
             "timeout_per_artifact": 300  # 5 minutes
         },
-        
+
         # Batch Processing Settings
         "batch": {
             "max_workers": 4,
@@ -45,7 +45,7 @@ class Config:
             "chunk_size": 10,
             "enable_progress_tracking": True
         },
-        
+
         # Extraction Settings
         "extraction": {
             "supported_formats": [".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tar.xz"],
@@ -53,7 +53,7 @@ class Config:
             "max_depth": 20,
             "follow_symlinks": False
         },
-        
+
         # Knowledge Graph Settings
         "knowledge_graph": {
             "enable_code_analysis": True,
@@ -62,7 +62,7 @@ class Config:
             "create_indexes": True,
             "batch_size": 1000
         },
-        
+
         # Visualization Settings
         "visualization": {
             "default_format": "html",
@@ -71,7 +71,7 @@ class Config:
             "node_size": 20,
             "edge_length": 100
         },
-        
+
         # Logging Settings
         "logging": {
             "level": "INFO",
@@ -80,7 +80,7 @@ class Config:
             "console_handler": True,
             "log_file": "./algo_outputs/algorithm_5.log"
         },
-        
+
         # Analysis Settings
         "analysis": {
             "enable_pattern_mining": True,
@@ -90,7 +90,7 @@ class Config:
             "community_detection_algorithm": "louvain"
         }
     }
-    
+
     def __init__(self, config_file: Optional[str] = None, profile: str = "default"):
         """
         Initialize configuration.
@@ -101,17 +101,17 @@ class Config:
         """
         self.profile = profile
         self.config = self.DEFAULT_CONFIG.copy()
-        
+
         # Load from file if provided
         if config_file:
             self.load_from_file(config_file)
-        
+
         # Override with environment variables
         self.load_from_environment()
-        
+
         # Validate configuration
         self.validate()
-    
+
     def load_from_file(self, config_file: str):
         """Load configuration from JSON file."""
         try:
@@ -119,12 +119,12 @@ class Config:
             if config_path.exists():
                 with open(config_path, 'r', encoding='utf-8') as f:
                     file_config = json.load(f)
-                
+
                 # Deep merge with default config
                 self.config = self._deep_merge(self.config, file_config)
         except Exception as e:
             print(f"Warning: Could not load config file {config_file}: {e}")
-    
+
     def load_from_environment(self):
         """Load configuration from environment variables."""
         env_mappings = {
@@ -137,7 +137,7 @@ class Config:
             "BATCH_MAX_WORKERS": ("batch", "max_workers"),
             "LOG_LEVEL": ("logging", "level"),
         }
-        
+
         for env_var, (section, key) in env_mappings.items():
             value = os.getenv(env_var)
             if value is not None:
@@ -149,9 +149,9 @@ class Config:
                         continue
                 elif key in ["enable_advanced_analysis", "clear_existing_graph", "use_processes"]:
                     value = value.lower() in ("true", "1", "yes", "on")
-                
+
                 self.config[section][key] = value
-    
+
     def get(self, *keys, default=None) -> Any:
         """
         Get configuration value using dot notation.
@@ -170,7 +170,7 @@ class Config:
             return current
         except (KeyError, TypeError):
             return default
-    
+
     def set(self, *keys, value: Any):
         """
         Set configuration value using dot notation.
@@ -185,7 +185,7 @@ class Config:
                 current[key] = {}
             current = current[key]
         current[keys[-1]] = value
-    
+
     def validate(self):
         """Validate configuration values."""
         # Check required settings
@@ -194,34 +194,34 @@ class Config:
             ("neo4j", "user"),
             ("pipeline", "working_dir"),
         ]
-        
+
         for section, key in required_settings:
             if not self.get(section, key):
                 raise ValueError(f"Required configuration missing: {section}.{key}")
-        
+
         # Validate numeric settings
         numeric_settings = [
             ("batch", "max_workers", 1, 32),
             ("pipeline", "timeout_per_artifact", 30, 3600),
             ("visualization", "max_nodes", 10, 10000),
         ]
-        
+
         for section, key, min_val, max_val in numeric_settings:
             value = self.get(section, key)
             if value is not None and not (min_val <= value <= max_val):
                 raise ValueError(f"Configuration {section}.{key} must be between {min_val} and {max_val}")
-    
+
     def save_to_file(self, config_file: str):
         """Save current configuration to file."""
         try:
             config_path = Path(config_file)
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            
+
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2)
         except Exception as e:
             print(f"Error saving config to {config_file}: {e}")
-    
+
     def get_neo4j_config(self) -> Dict[str, str]:
         """Get Neo4j connection configuration."""
         return {
@@ -230,31 +230,31 @@ class Config:
             "password": self.get("neo4j", "password"),
             "database": self.get("neo4j", "database")
         }
-    
+
     def get_pipeline_config(self) -> Dict[str, Any]:
         """Get pipeline configuration."""
         return self.config["pipeline"].copy()
-    
+
     def get_batch_config(self) -> Dict[str, Any]:
         """Get batch processing configuration."""
         return self.config["batch"].copy()
-    
+
     def get_logging_config(self) -> Dict[str, Any]:
         """Get logging configuration."""
         return self.config["logging"].copy()
-    
+
     def _deep_merge(self, base_dict: Dict, override_dict: Dict) -> Dict:
         """Deep merge two dictionaries."""
         result = base_dict.copy()
-        
+
         for key, value in override_dict.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
                 result[key] = self._deep_merge(result[key], value)
             else:
                 result[key] = value
-        
+
         return result
-    
+
     def create_directories(self):
         """Create necessary directories based on configuration."""
         directories = [
@@ -262,15 +262,15 @@ class Config:
             self.get("pipeline", "temp_dir"),
             Path(self.get("logging", "log_file")).parent if self.get("logging", "log_file") else None
         ]
-        
+
         for directory in directories:
             if directory:
                 Path(directory).mkdir(parents=True, exist_ok=True)
-    
+
     def __str__(self) -> str:
         """String representation of configuration."""
         return f"Config(profile={self.profile}, neo4j_uri={self.get('neo4j', 'uri')})"
-    
+
     def __repr__(self) -> str:
         """Detailed string representation."""
         return f"Config(profile={self.profile}, config={self.config})"
@@ -284,14 +284,14 @@ PROFILES = {
         "logging": {"level": "DEBUG"},
         "batch": {"max_workers": 2}
     },
-    
+
     "production": {
         "neo4j": {"uri": "bolt://neo4j-prod:7687"},
         "pipeline": {"clear_existing_graph": False},
         "logging": {"level": "INFO"},
         "batch": {"max_workers": 8}
     },
-    
+
     "testing": {
         "neo4j": {"uri": "bolt://localhost:7688"},
         "pipeline": {"clear_existing_graph": True},
@@ -313,12 +313,12 @@ def load_config(profile: str = "default", config_file: Optional[str] = None) -> 
         Configuration instance
     """
     config = Config(config_file=config_file, profile=profile)
-    
+
     # Apply profile-specific settings
     if profile in PROFILES:
         profile_config = PROFILES[profile]
         config.config = config._deep_merge(config.config, profile_config)
-    
+
     return config
 
 
@@ -332,9 +332,9 @@ def create_sample_config(output_file: str = "algorithm_5_config.json"):
 if __name__ == "__main__":
     # Create sample configuration file
     create_sample_config()
-    
+
     # Demonstrate configuration usage
     config = load_config("development")
     print(f"Neo4j URI: {config.get('neo4j', 'uri')}")
     print(f"Working directory: {config.get('pipeline', 'working_dir')}")
-    print(f"Max workers: {config.get('batch', 'max_workers')}") 
+    print(f"Max workers: {config.get('batch', 'max_workers')}")
