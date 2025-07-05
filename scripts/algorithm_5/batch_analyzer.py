@@ -27,13 +27,13 @@ class BatchArtifactAnalyzer:
     - Progress tracking
     """
 
-    def __init__(self, temp_dir: str = "./batch_temp", output_dir: str = "./batch_outputs"):
+    def __init__(self, temp_dir: str = "../../temp_dir_for_git", output_dir: str = "../../algorithm_2_output"):
         """
         Initialize the batch analyzer.
         
         Args:
-            temp_dir: Temporary directory for extractions
-            output_dir: Directory for saving results
+            temp_dir: Temporary directory for extractions (default: ../../temp_dir_for_git)
+            output_dir: Directory for saving results (default: ../../algorithm_2_output)
         """
         self.analyzer = IntegratedArtifactAnalyzer(
             temp_dir=temp_dir,
@@ -292,9 +292,9 @@ def main():
 
     parser = argparse.ArgumentParser(description='Batch Artifact Analyzer')
     parser.add_argument('input', help='Input directory or artifact list file')
-    parser.add_argument('--output-dir', default='./batch_outputs',
+    parser.add_argument('--output-dir', default='../../algo_outputs/algorithm_2_output',
                         help='Output directory for results')
-    parser.add_argument('--temp-dir', default='./batch_temp',
+    parser.add_argument('--temp-dir', default='../../temp_dir_for_git',
                         help='Temporary directory for extractions')
     parser.add_argument('--force', action='store_true',
                         help='Force re-extraction of all artifacts')

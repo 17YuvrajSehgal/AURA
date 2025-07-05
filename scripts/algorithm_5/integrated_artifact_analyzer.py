@@ -145,14 +145,14 @@ class IntegratedArtifactAnalyzer:
     similar to algorithm_2, then saves results to JSON.
     """
 
-    def __init__(self, temp_dir: str = "./temp_extractions", output_dir: str = "./analysis_outputs",
-                 max_file_size: int = 500 * 1024 * 1024):
+    def __init__(self, temp_dir: str = "../../temp_dir_for_git", output_dir: str = "../../algo_outputs/algorithm_2_output",
+                 max_file_size: int = 5000 * 1024 * 1024):
         """
         Initialize the IntegratedArtifactAnalyzer.
         
         Args:
-            temp_dir: Temporary directory for extractions
-            output_dir: Directory for saving analysis results
+            temp_dir: Temporary directory for extractions (default: ../../temp_dir_for_git)
+            output_dir: Directory for saving analysis results (default: ../../algorithm_2_output)
             max_file_size: Maximum file size to process (default: 500MB)
         """
         self.temp_dir = Path(temp_dir)
@@ -274,7 +274,7 @@ class IntegratedArtifactAnalyzer:
     def _clone_repository(self, repo_url: str) -> str:
         """Clone a git repository."""
         repo_name = repo_url.rstrip("/").split("/")[-1]
-        clone_path = self.temp_dir / f"cloned_{repo_name}"
+        clone_path = self.temp_dir / f"{repo_name}"
 
         if clone_path.exists():
             logger.info(f"Repository already cloned at: {clone_path}")
