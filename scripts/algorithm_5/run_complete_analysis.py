@@ -76,48 +76,70 @@ def main():
         if len(build_results['artifacts_processed']) > 10:
             print(f"   ... and {len(build_results['artifacts_processed']) - 10} more")
 
-        # Step 2: Analyze Heavy Traffic Patterns
+        # Step 2: Analyze README-Centric Patterns
         print("\n" + "=" * 60)
-        print("🔍 STEP 2: Analyzing Heavy Traffic Patterns")
+        print("🔍 STEP 2: Analyzing README-Centric Patterns")
         print("=" * 60)
 
-        heavy_traffic = graph_analytics.analyze_heavy_traffic_patterns()
+        readme_patterns = graph_analytics.analyze_heavy_traffic_patterns()
 
-        # Display high-degree nodes
-        high_degree_nodes = heavy_traffic.get('high_degree_nodes', {})
-        all_nodes = high_degree_nodes.get('all_nodes', [])
+        # Display README section patterns
+        section_patterns = readme_patterns.get('readme_section_patterns', {})
+        total_with_readme = section_patterns.get('total_artifacts_with_readme', 0)
+        common_sections = section_patterns.get('common_sections', [])
+        universal_sections = section_patterns.get('universal_sections', [])
 
-        print(f"🎯 Found {len(all_nodes)} high-connectivity nodes")
+        print(f"📚 Artifacts with README: {total_with_readme}")
 
-        if all_nodes:
-            print("\n📊 Top Connected Nodes:")
-            for i, node in enumerate(all_nodes[:5]):
-                node_name = node.get('node_name', 'Unknown')
-                degree = node.get('degree', 0)
-                node_type = node.get('node_labels', ['Unknown'])[0]
-                print(f"   {i + 1}. {node_name} ({node_type}): {degree} connections")
+        if universal_sections:
+            print(f"\n⭐ Universal README Sections (>80% of artifacts):")
+            for section in universal_sections:
+                heading = section.get('heading', 'N/A')
+                prevalence = section.get('prevalence_percentage', 0)
+                artifact_count = section.get('artifact_count', 0)
+                print(f"   • {heading}: {prevalence:.1f}% ({artifact_count}/{total_with_readme} artifacts)")
 
-        # Display frequent relationships
-        frequent_rels = heavy_traffic.get('frequent_relationships', {})
-        common_rels = frequent_rels.get('most_common_relationships', [])
+        if common_sections:
+            print(f"\n📊 Most Common README Sections:")
+            for i, section in enumerate(common_sections[:8]):
+                heading = section.get('heading', 'N/A')
+                prevalence = section.get('prevalence_percentage', 0)
+                artifact_count = section.get('artifact_count', 0)
+                print(f"   {i + 1}. {heading}: {prevalence:.1f}% ({artifact_count}/{total_with_readme} artifacts)")
 
-        print(f"\n🔗 Most Frequent Relationship Patterns:")
-        for i, rel in enumerate(common_rels[:5]):
-            pattern = f"{rel['source_type']}-{rel['relationship_type']}->{rel['target_type']}"
-            frequency = rel['frequency']
-            print(f"   {i + 1}. {pattern}: {frequency} instances")
+        # Display README content connections
+        content_connections = readme_patterns.get('readme_content_connections', {})
+        setup_refs = content_connections.get('setup_references', [])
 
-        # Display centrality analysis
-        centrality = heavy_traffic.get('central_nodes', {})
-        artifact_importance = centrality.get('artifact_importance', [])
+        if setup_refs:
+            print(f"\n🔧 Setup/Installation Section Patterns:")
+            for ref in setup_refs[:5]:
+                heading = ref.get('setup_heading', 'N/A')
+                artifact_count = ref.get('artifact_count', 0)
+                print(f"   • \"{heading}\": {artifact_count} artifacts")
 
-        if artifact_importance:
-            print(f"\n⭐ Most Important Artifacts (by connectivity):")
-            for i, artifact in enumerate(artifact_importance[:5]):
-                name = artifact.get('artifact_name', 'Unknown')
-                connections = artifact.get('connections', 0)
-                eval_score = artifact.get('eval_score', 'N/A')
-                print(f"   {i + 1}. {name}: {connections} connections (score: {eval_score})")
+        # Display universal patterns
+        universal_patterns = readme_patterns.get('universal_artifact_patterns', {})
+        universal_files = universal_patterns.get('universal_file_types', [])
+        common_dirs = universal_patterns.get('common_directory_structures', [])
+
+        if universal_files:
+            print(f"\n📁 Universal File Types (>50% of artifacts):")
+            for file_type in universal_files[:5]:
+                name = file_type.get('file_type', 'N/A')
+                prevalence = file_type.get('prevalence_percentage', 0)
+                artifact_count = file_type.get('artifact_count', 0)
+                total = file_type.get('total_artifacts', 1)
+                print(f"   • {name}: {prevalence:.1f}% ({artifact_count}/{total} artifacts)")
+
+        if common_dirs:
+            print(f"\n📂 Common Directory Structures (>30% of artifacts):")
+            for dir_info in common_dirs[:5]:
+                name = dir_info.get('dir_name', 'N/A')
+                prevalence = dir_info.get('prevalence_percentage', 0)
+                artifact_count = dir_info.get('artifact_count', 0)
+                total = dir_info.get('total_artifacts', 1)
+                print(f"   • {name}: {prevalence:.1f}% ({artifact_count}/{total} artifacts)")
 
         # Step 3: Discover Success Patterns
         print("\n" + "=" * 60)

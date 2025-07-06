@@ -47,23 +47,302 @@ class GraphAnalyticsEngine:
         
     def analyze_heavy_traffic_patterns(self) -> Dict[str, Any]:
         """
-        Identify nodes and relationships with heavy traffic (high connectivity).
+        Analyze README-centric patterns and common features across artifacts.
         
         Returns:
-            Dictionary containing heavy traffic analysis
+            Dictionary containing README-focused analysis
         """
-        logger.info("Analyzing heavy traffic patterns...")
+        logger.info("Analyzing README-centric patterns and common features...")
         
         analysis = {
-            "high_degree_nodes": self._find_high_degree_nodes(),
-            "frequent_relationships": self._find_frequent_relationships(),
-            "central_nodes": self._calculate_centrality_measures(),
-            "relationship_clusters": self._analyze_relationship_clusters(),
-            "traffic_patterns": self._analyze_traffic_patterns()
+            "readme_section_patterns": self._analyze_readme_section_patterns(),
+            "readme_content_connections": self._analyze_readme_content_connections(),
+            "common_readme_features": self._find_common_readme_features(),
+            "readme_repository_links": self._analyze_readme_repository_links(),
+            "universal_artifact_patterns": self._find_universal_patterns()
         }
         
         self.analytics_results["heavy_traffic"] = analysis
         return analysis
+    
+    def _analyze_readme_section_patterns(self) -> Dict[str, Any]:
+        """Analyze patterns in README sections across all artifacts."""
+        # Find most common README sections
+        readme_sections_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        RETURN 
+            section.section_type as section_type,
+            section.heading as heading,
+            COUNT(DISTINCT a) as artifact_count,
+            COUNT(section) as total_occurrences,
+            COLLECT(DISTINCT a.name)[0..5] as example_artifacts
+        ORDER BY artifact_count DESC, total_occurrences DESC
+        LIMIT 20
+        """
+        
+        readme_sections = self.graph.run(readme_sections_query).data()
+        
+        # Find README section prevalence
+        total_artifacts_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        RETURN COUNT(DISTINCT a) as total_with_readme
+        """
+        
+        total_with_readme = self.graph.run(total_artifacts_query).data()[0]["total_with_readme"]
+        
+        # Calculate prevalence percentages
+        for section in readme_sections:
+            section["prevalence_percentage"] = (section["artifact_count"] / total_with_readme) * 100 if total_with_readme > 0 else 0
+            section["is_universal"] = section["prevalence_percentage"] > 80
+        
+        return {
+            "total_artifacts_with_readme": total_with_readme,
+            "common_sections": readme_sections,
+            "universal_sections": [s for s in readme_sections if s["is_universal"]],
+            "critical_sections": [s for s in readme_sections if s["prevalence_percentage"] > 60]
+        }
+    
+    def _analyze_readme_content_connections(self) -> Dict[str, Any]:
+        """Analyze how README content connects to repository structure."""
+        # README to code file references
+        readme_code_refs_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:REFERENCES]->(code:CodeFile)
+        RETURN 
+            code.language as language,
+            code.file_type as file_type,
+            COUNT(DISTINCT a) as artifact_count,
+            COUNT(*) as total_references
+        ORDER BY artifact_count DESC
+        LIMIT 10
+        """
+        
+        readme_code_refs = self.graph.run(readme_code_refs_query).data()
+        
+        # README to directory structure references
+        readme_dir_refs_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:MENTIONS]->(dir:Directory)
+        RETURN 
+            dir.name as directory_name,
+            COUNT(DISTINCT a) as artifact_count,
+            COUNT(*) as total_mentions
+        ORDER BY artifact_count DESC
+        LIMIT 15
+        """
+        
+        readme_dir_refs = self.graph.run(readme_dir_refs_query).data()
+        
+        # README to setup/installation references
+        readme_setup_refs_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WHERE toLower(section.heading) CONTAINS 'install' 
+           OR toLower(section.heading) CONTAINS 'setup'
+           OR toLower(section.heading) CONTAINS 'usage'
+           OR toLower(section.heading) CONTAINS 'run'
+        RETURN 
+            section.heading as setup_heading,
+            COUNT(DISTINCT a) as artifact_count,
+            (COUNT(DISTINCT a) * 100.0 / COUNT(DISTINCT a)) as prevalence
+        ORDER BY artifact_count DESC
+        """
+        
+        readme_setup_refs = self.graph.run(readme_setup_refs_query).data()
+        
+        return {
+            "code_references": readme_code_refs,
+            "directory_references": readme_dir_refs,
+            "setup_references": readme_setup_refs
+        }
+    
+    def _find_common_readme_features(self) -> Dict[str, Any]:
+        """Find features that are common across README files."""
+        # Common README keywords/content
+        readme_keywords_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WITH section.content as content, COUNT(DISTINCT a) as artifact_count
+        WHERE content IS NOT NULL
+        UNWIND split(toLower(content), ' ') as word
+        WITH word, artifact_count
+        WHERE SIZE(word) > 3 AND word IN ['installation', 'setup', 'usage', 'example', 'docker', 'requirements', 'dependencies', 'citation', 'license', 'contribute', 'overview', 'description', 'running', 'scripts']
+        RETURN 
+            word as keyword,
+            COUNT(*) as total_occurrences,
+            COUNT(DISTINCT artifact_count) as artifacts_containing
+        ORDER BY artifacts_containing DESC, total_occurrences DESC
+        LIMIT 15
+        """
+        
+        try:
+            readme_keywords = self.graph.run(readme_keywords_query).data()
+        except:
+            readme_keywords = []
+        
+        # README structure patterns
+        readme_structure_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        WITH a, readme, COUNT { (readme)-[:CONTAINS]->(:DocSection) } as section_count
+        RETURN 
+            CASE 
+                WHEN section_count <= 3 THEN 'minimal'
+                WHEN section_count <= 6 THEN 'standard'
+                WHEN section_count <= 10 THEN 'detailed'
+                ELSE 'comprehensive'
+            END as structure_type,
+            COUNT(a) as artifact_count,
+            AVG(section_count) as avg_sections
+        ORDER BY artifact_count DESC
+        """
+        
+        readme_structure = self.graph.run(readme_structure_query).data()
+        
+        # README length patterns
+        readme_length_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND readme.content IS NOT NULL
+        WITH a, SIZE(readme.content) as readme_length
+        RETURN 
+            CASE 
+                WHEN readme_length <= 500 THEN 'brief'
+                WHEN readme_length <= 2000 THEN 'moderate'
+                WHEN readme_length <= 5000 THEN 'detailed'
+                ELSE 'extensive'
+            END as length_category,
+            COUNT(a) as artifact_count,
+            AVG(readme_length) as avg_length
+        ORDER BY artifact_count DESC
+        """
+        
+        readme_length = self.graph.run(readme_length_query).data()
+        
+        return {
+            "common_keywords": readme_keywords,
+            "structure_patterns": readme_structure,
+            "length_patterns": readme_length
+        }
+    
+    def _analyze_readme_repository_links(self) -> Dict[str, Any]:
+        """Analyze how README content links to repository elements."""
+        # Scripts mentioned in README
+        readme_scripts_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (a)-[:HAS_CODE]->(script:CodeFile)
+        WHERE script.language IN ['shell', 'bash', 'python', 'javascript']
+           OR script.file_type CONTAINS 'script'
+           OR script.path CONTAINS '.sh'
+           OR script.path CONTAINS '.py'
+           OR script.path CONTAINS '.js'
+        WITH a, script
+        OPTIONAL MATCH (readme)-[:MENTIONS]->(script)
+        RETURN 
+            script.language as script_type,
+            COUNT(DISTINCT a) as artifacts_with_scripts,
+            COUNT(DISTINCT CASE WHEN (readme)-[:MENTIONS]->(script) THEN a END) as artifacts_mentioning_scripts,
+            (COUNT(DISTINCT CASE WHEN (readme)-[:MENTIONS]->(script) THEN a END) * 100.0 / COUNT(DISTINCT a)) as mention_rate
+        ORDER BY artifacts_with_scripts DESC
+        """
+        
+        readme_scripts = self.graph.run(readme_scripts_query).data()
+        
+        # Data files mentioned in README
+        readme_data_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (a)-[:CONTAINS]->(data:File)
+        WHERE data.path CONTAINS '.csv' 
+           OR data.path CONTAINS '.json'
+           OR data.path CONTAINS '.xml'
+           OR data.path CONTAINS '.txt'
+           OR data.path CONTAINS 'data'
+        WITH a, COUNT(data) as data_file_count
+        RETURN 
+            CASE 
+                WHEN data_file_count = 0 THEN 'no_data'
+                WHEN data_file_count <= 5 THEN 'few_data_files'
+                WHEN data_file_count <= 20 THEN 'moderate_data'
+                ELSE 'data_heavy'
+            END as data_category,
+            COUNT(a) as artifact_count
+        ORDER BY artifact_count DESC
+        """
+        
+        readme_data = self.graph.run(readme_data_query).data()
+        
+        return {
+            "script_mentions": readme_scripts,
+            "data_file_patterns": readme_data
+        }
+    
+    def _find_universal_patterns(self) -> Dict[str, Any]:
+        """Find patterns that appear across ALL or most artifacts."""
+        # Universal file types
+        universal_files_query = """
+        MATCH (a:Artifact)
+        WITH COUNT(a) as total_artifacts
+        MATCH (a:Artifact)-[:CONTAINS]->(f:File)
+        WITH total_artifacts, f.file_type as file_type, COUNT(DISTINCT a) as artifact_count
+        WHERE artifact_count > total_artifacts * 0.5
+        RETURN 
+            file_type,
+            artifact_count,
+            total_artifacts,
+            (artifact_count * 100.0 / total_artifacts) as prevalence_percentage
+        ORDER BY prevalence_percentage DESC
+        """
+        
+        universal_files = self.graph.run(universal_files_query).data()
+        
+        # Universal directory structures
+        universal_dirs_query = """
+        MATCH (a:Artifact)
+        WITH COUNT(a) as total_artifacts
+        MATCH (a:Artifact)-[:CONTAINS]->(d:Directory)
+        WITH total_artifacts, d.name as dir_name, COUNT(DISTINCT a) as artifact_count
+        WHERE artifact_count > total_artifacts * 0.3
+        RETURN 
+            dir_name,
+            artifact_count,
+            total_artifacts,
+            (artifact_count * 100.0 / total_artifacts) as prevalence_percentage
+        ORDER BY prevalence_percentage DESC
+        LIMIT 10
+        """
+        
+        universal_dirs = self.graph.run(universal_dirs_query).data()
+        
+        # Universal documentation patterns
+        universal_docs_query = """
+        MATCH (a:Artifact)
+        WITH COUNT(a) as total_artifacts
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(d:Documentation)
+        WITH total_artifacts, d.doc_type as doc_type, COUNT(DISTINCT a) as artifact_count
+        WHERE artifact_count > total_artifacts * 0.4
+        RETURN 
+            doc_type,
+            artifact_count,
+            total_artifacts,
+            (artifact_count * 100.0 / total_artifacts) as prevalence_percentage
+        ORDER BY prevalence_percentage DESC
+        """
+        
+        universal_docs = self.graph.run(universal_docs_query).data()
+        
+        return {
+            "universal_file_types": universal_files,
+            "common_directory_structures": universal_dirs,
+            "universal_documentation_types": universal_docs
+        }
     
     def _find_high_degree_nodes(self) -> List[Dict[str, Any]]:
         """Find nodes with highest degree (most connections)."""
@@ -618,20 +897,44 @@ class GraphAnalyticsEngine:
         """Extract critical factors for success based on pattern analysis."""
         factors = []
         
-        # From heavy traffic analysis
+        # From README-centric analysis
         heavy_traffic = self.analytics_results.get("heavy_traffic", {})
-        frequent_rels = heavy_traffic.get("frequent_relationships", {})
+        readme_sections = heavy_traffic.get("readme_section_patterns", {})
         
-        if "most_common_relationships" in frequent_rels:
-            top_relationships = frequent_rels["most_common_relationships"][:5]
-            for rel in top_relationships:
+        # Universal README sections
+        universal_sections = readme_sections.get("universal_sections", [])
+        for section in universal_sections:
+            factors.append({
+                "type": "universal_readme_section",
+                "factor": f"README section: {section['heading']}",
+                "prevalence": section["prevalence_percentage"],
+                "importance": "critical",
+                "rule": f"README should include '{section['heading']}' section (found in {section['prevalence_percentage']:.1f}% of successful artifacts)"
+            })
+        
+        # Critical README sections  
+        critical_sections = readme_sections.get("critical_sections", [])
+        for section in critical_sections[:5]:  # Top 5 critical sections
+            if section not in universal_sections:  # Avoid duplicates
                 factors.append({
-                    "type": "relationship_pattern",
-                    "factor": f"{rel['source_type']}-{rel['relationship_type']}->{rel['target_type']}",
-                    "frequency": rel["frequency"],
-                    "importance": "high" if rel["frequency"] > 10 else "medium",
-                    "rule": f"Artifacts should establish {rel['relationship_type']} relationships with {rel['target_type']} nodes"
+                    "type": "critical_readme_section",
+                    "factor": f"README section: {section['heading']}",
+                    "prevalence": section["prevalence_percentage"],
+                    "importance": "high",
+                    "rule": f"README should consider including '{section['heading']}' section ({section['prevalence_percentage']:.1f}% prevalence)"
                 })
+        
+        # Universal artifact patterns
+        universal_patterns = heavy_traffic.get("universal_artifact_patterns", {})
+        universal_files = universal_patterns.get("universal_file_types", [])
+        for file_type in universal_files[:3]:  # Top 3 universal file types
+            factors.append({
+                "type": "universal_file_type",
+                "factor": f"File type: {file_type['file_type']}",
+                "prevalence": file_type["prevalence_percentage"],
+                "importance": "high",
+                "rule": f"Artifacts should include {file_type['file_type']} files ({file_type['prevalence_percentage']:.1f}% prevalence)"
+            })
         
         # From success patterns
         success_patterns = self.analytics_results.get("success_patterns", {})
@@ -671,30 +974,45 @@ class GraphAnalyticsEngine:
         return warnings
     
     def _generate_optimization_rules(self) -> List[Dict[str, Any]]:
-        """Generate optimization rules based on successful patterns."""
+        """Generate optimization rules based on README-centric patterns."""
         rules = []
         
-        # Documentation optimization rules
-        success_patterns = self.analytics_results.get("success_patterns", {})
-        doc_patterns = success_patterns.get("successful_artifact_patterns", {}).get("documentation_structure_patterns", [])
+        # README optimization rules
+        heavy_traffic = self.analytics_results.get("heavy_traffic", {})
+        readme_features = heavy_traffic.get("common_readme_features", {})
         
-        for pattern in doc_patterns[:3]:  # Top 3 patterns
+        # README structure recommendations
+        structure_patterns = readme_features.get("structure_patterns", [])
+        for pattern in structure_patterns[:2]:  # Top 2 structure patterns
             rules.append({
-                "category": "documentation",
-                "rule": f"Include {pattern['doc_type']} documentation with sections: {', '.join(pattern['section_types'][:3])}",
+                "category": "readme_structure",
+                "rule": f"Use {pattern['structure_type']} README structure with ~{pattern['avg_sections']:.0f} sections",
                 "evidence": f"Found in {pattern['artifact_count']} successful artifacts",
                 "priority": "high" if pattern['artifact_count'] > 5 else "medium"
             })
         
-        # Code organization rules
-        code_patterns = success_patterns.get("successful_artifact_patterns", {}).get("code_organization_patterns", [])
+        # README content recommendations
+        content_connections = heavy_traffic.get("readme_content_connections", {})
+        setup_refs = content_connections.get("setup_references", [])
         
-        for pattern in code_patterns[:3]:
-            if pattern['avg_files_per_artifact'] > 0:
+        for setup_ref in setup_refs[:3]:  # Top 3 setup section patterns
+            rules.append({
+                "category": "readme_content",
+                "rule": f"Include clear setup instructions with heading like '{setup_ref['setup_heading']}'",
+                "evidence": f"Found in {setup_ref['artifact_count']} successful artifacts",
+                "priority": "high"
+            })
+        
+        # Repository organization rules based on common patterns
+        universal_patterns = heavy_traffic.get("universal_artifact_patterns", {})
+        common_dirs = universal_patterns.get("common_directory_structures", [])
+        
+        for dir_pattern in common_dirs[:3]:  # Top 3 directory patterns
+            if dir_pattern['prevalence_percentage'] > 50:
                 rules.append({
-                    "category": "code_organization",
-                    "rule": f"For {pattern['language']} projects, aim for {pattern['avg_files_per_artifact']:.1f} files on average",
-                    "evidence": f"Pattern from {pattern['artifact_count']} successful artifacts",
+                    "category": "repository_structure",
+                    "rule": f"Consider including '{dir_pattern['dir_name']}' directory for better organization",
+                    "evidence": f"Present in {dir_pattern['prevalence_percentage']:.1f}% of successful artifacts",
                     "priority": "medium"
                 })
         
@@ -729,7 +1047,7 @@ class GraphAnalyticsEngine:
                     )),
                     "graph_statistics": self.kg_builder.get_graph_statistics()
                 },
-                "heavy_traffic_analysis": self.analytics_results.get("heavy_traffic", {}),
+                "readme_centric_analysis": self.analytics_results.get("heavy_traffic", {}),
                 "success_patterns": self.analytics_results.get("success_patterns", {}),
                 "pattern_based_rules": self.generate_pattern_based_rules()
             }
@@ -753,15 +1071,18 @@ class GraphAnalyticsEngine:
             "recommendations": []
         }
         
-        # Heavy traffic summary
+        # README-centric analysis summary
         if "heavy_traffic" in self.analytics_results:
             heavy_traffic = self.analytics_results["heavy_traffic"]
-            high_degree = heavy_traffic.get("high_degree_nodes", {})
+            readme_sections = heavy_traffic.get("readme_section_patterns", {})
+            universal_patterns = heavy_traffic.get("universal_artifact_patterns", {})
             
             summary["heavy_traffic_summary"] = {
-                "total_high_degree_nodes": high_degree.get("statistics", {}).get("total_high_degree_nodes", 0),
-                "max_degree": high_degree.get("statistics", {}).get("max_degree", 0),
-                "most_connected_node_types": list(high_degree.get("by_category", {}).keys())[:3]
+                "total_artifacts_with_readme": readme_sections.get("total_artifacts_with_readme", 0),
+                "universal_readme_sections": len(readme_sections.get("universal_sections", [])),
+                "common_readme_sections": len(readme_sections.get("common_sections", [])),
+                "universal_file_types": len(universal_patterns.get("universal_file_types", [])),
+                "common_directories": len(universal_patterns.get("common_directory_structures", []))
             }
         
         # Success patterns summary
@@ -780,9 +1101,11 @@ class GraphAnalyticsEngine:
         
         # Key insights
         summary["key_insights"] = [
-            f"Analyzed {summary['heavy_traffic_summary'].get('total_high_degree_nodes', 0)} high-connectivity nodes",
-            f"Identified {summary['success_patterns_summary'].get('high_scoring_artifacts', 0)} high-scoring artifacts",
-            f"Found {len(summary['success_patterns_summary'].get('most_common_features', []))} key success features"
+            f"Analyzed {summary['heavy_traffic_summary'].get('total_artifacts_with_readme', 0)} artifacts with README files",
+            f"Identified {summary['heavy_traffic_summary'].get('universal_readme_sections', 0)} universal README sections",
+            f"Found {summary['heavy_traffic_summary'].get('universal_file_types', 0)} universal file types across artifacts",
+            f"Discovered {summary['success_patterns_summary'].get('high_scoring_artifacts', 0)} high-scoring artifacts",
+            f"Identified {len(summary['success_patterns_summary'].get('most_common_features', []))} key success features"
         ]
         
         return summary
