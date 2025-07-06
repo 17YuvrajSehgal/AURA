@@ -88,38 +88,82 @@ def main():
         total_with_readme = section_patterns.get('total_artifacts_with_readme', 0)
         common_sections = section_patterns.get('common_sections', [])
         universal_sections = section_patterns.get('universal_sections', [])
+        critical_sections = section_patterns.get('critical_sections', [])
+        readme_archetypes = section_patterns.get('readme_archetypes', [])
+        section_centrality = section_patterns.get('section_centrality', {})
 
         print(f"📚 Artifacts with README: {total_with_readme}")
 
-        if universal_sections:
-            print(f"\n⭐ Universal README Sections (>80% of artifacts):")
-            for section in universal_sections:
-                heading = section.get('heading', 'N/A')
+        # Display README archetypes
+        if readme_archetypes:
+            print(f"\n🏛️ README Archetypes Found:")
+            for archetype in readme_archetypes[:5]:
+                name = archetype.get('archetype', 'unknown')
+                count = archetype.get('artifact_count', 0)
+                avg_sections = archetype.get('avg_sections', 0)
+                examples = archetype.get('example_artifacts', [])
+                print(f"   • {name}: {count} artifacts (avg {avg_sections:.1f} sections)")
+                if examples:
+                    print(f"     Examples: {', '.join(examples[:2])}")
+
+        # Display critical sections
+        if critical_sections:
+            print(f"\n🎯 Critical README Sections (>70% prevalence):")
+            for section in critical_sections[:5]:
+                heading = section.get('normalized_heading', section.get('heading', 'N/A'))
                 prevalence = section.get('prevalence_percentage', 0)
                 artifact_count = section.get('artifact_count', 0)
+                code_rate = section.get('code_snippet_rate', 0)
+                script_rate = section.get('script_reference_rate', 0)
                 print(f"   • {heading}: {prevalence:.1f}% ({artifact_count}/{total_with_readme} artifacts)")
+                if code_rate > 0 or script_rate > 0:
+                    print(f"     Code: {code_rate:.1f}%, Scripts: {script_rate:.1f}%")
 
-        if common_sections:
-            print(f"\n📊 Most Common README Sections:")
-            for i, section in enumerate(common_sections[:8]):
-                heading = section.get('heading', 'N/A')
-                prevalence = section.get('prevalence_percentage', 0)
-                artifact_count = section.get('artifact_count', 0)
-                print(f"   {i + 1}. {heading}: {prevalence:.1f}% ({artifact_count}/{total_with_readme} artifacts)")
+        # Display section centrality
+        section_rankings = section_centrality.get('section_rankings', [])
+        top_critical = section_centrality.get('top_critical_sections', [])
 
-        # Display README content connections
-        content_connections = readme_patterns.get('readme_content_connections', {})
-        setup_refs = content_connections.get('setup_references', [])
+        if top_critical:
+            print(f"\n⭐ Most Critical Section Types (by centrality):")
+            for section in top_critical[:5]:
+                section_type = section.get('section_type', 'unknown')
+                importance = section.get('relative_importance', 0)
+                actionable = section.get('actionable_content_ratio', 0)
+                print(f"   • {section_type}: {importance:.1f}% importance, {actionable:.1f}% actionable content")
 
-        if setup_refs:
-            print(f"\n🔧 Setup/Installation Section Patterns:")
-            for ref in setup_refs[:5]:
-                heading = ref.get('setup_heading', 'N/A')
-                artifact_count = ref.get('artifact_count', 0)
-                print(f"   • \"{heading}\": {artifact_count} artifacts")
+        # Display graph motifs
+        universal_patterns = readme_patterns.get('universal_artifact_patterns', {})
+        readme_motifs = universal_patterns.get('readme_motifs', {})
+
+        if readme_motifs:
+            individual_motifs = readme_motifs.get('individual_motifs', {})
+            composite_motifs = readme_motifs.get('composite_motifs', [])
+            motif_summary = readme_motifs.get('motif_summary', {})
+
+            print(f"\n🔍 README Graph Motifs Discovered:")
+            print(f"   📊 Total motifs: {motif_summary.get('total_motifs_found', 0)}")
+            print(f"   💪 Strong motifs: {len(motif_summary.get('strong_motifs', []))}")
+            print(f"   📈 Average strength: {motif_summary.get('average_motif_strength', 0):.1f}%")
+
+            if individual_motifs:
+                print(f"\n🧩 Individual Motifs:")
+                for motif_type, motif_data in individual_motifs.items():
+                    strength = motif_data.get('motif_strength', 0)
+                    artifacts = motif_data.get('successful_artifacts', 0)
+                    marker = "🔥" if motif_data.get('is_strong_motif', False) else "📌"
+                    print(f"   {marker} {motif_type}: {strength:.1f}% strength ({artifacts} artifacts)")
+
+            if composite_motifs:
+                print(f"\n🎯 Composite Motifs (artifacts with multiple patterns):")
+                for motif in composite_motifs[:3]:
+                    name = motif.get('artifact_name', 'unknown')
+                    score = motif.get('score', 0)
+                    count = motif.get('motif_count', 0)
+                    pattern = motif.get('motif_pattern_string', 'unknown')
+                    print(f"   • {name}: {count} motifs, score {score:.2f}")
+                    print(f"     Patterns: {pattern}")
 
         # Display universal patterns
-        universal_patterns = readme_patterns.get('universal_artifact_patterns', {})
         universal_files = universal_patterns.get('universal_file_types', [])
         common_dirs = universal_patterns.get('common_directory_structures', [])
 
@@ -140,6 +184,52 @@ def main():
                 artifact_count = dir_info.get('artifact_count', 0)
                 total = dir_info.get('total_artifacts', 1)
                 print(f"   • {name}: {prevalence:.1f}% ({artifact_count}/{total} artifacts)")
+
+        # Display README quality analysis
+        readme_quality = universal_patterns.get('readme_quality_analysis', {})
+        if readme_quality:
+            quality_stats = readme_quality.get('quality_statistics', {})
+            top_quality = readme_quality.get('top_quality_readmes', [])
+            improvement_candidates = readme_quality.get('improvement_candidates', [])
+
+            print(f"\n📊 README Quality Analysis:")
+            print(f"   📚 READMEs analyzed: {quality_stats.get('total_readmes_analyzed', 0)}")
+            print(f"   📈 Average quality score: {quality_stats.get('avg_quality_score', 0):.1f}/100")
+            print(f"   🔗 README-Artifact correlation: {quality_stats.get('readme_artifact_correlation', 0):.3f}")
+
+            # Quality distribution
+            quality_dist = quality_stats.get('quality_distribution', {})
+            print(f"   📊 Quality Distribution:")
+            for grade, count in quality_dist.items():
+                if count > 0:
+                    print(f"     Grade {grade}: {count} READMEs")
+
+            # Instructional quality
+            instr_dist = quality_stats.get('instructional_quality_distribution', {})
+            print(f"   🎓 Instructional Quality:")
+            for level, count in instr_dist.items():
+                if count > 0:
+                    print(f"     {level.capitalize()}: {count} READMEs")
+
+            # Top quality READMEs
+            if top_quality:
+                print(f"\n🌟 Top Quality READMEs (Score ≥80):")
+                for readme in top_quality[:5]:
+                    name = readme.get('artifact_name', 'unknown')
+                    score = readme.get('quality_score', 0)
+                    grade = readme.get('quality_grade', 'N/A')
+                    instr = readme.get('instructional_quality', 'N/A')
+                    print(f"   • {name}: {score:.1f}/100 (Grade {grade}, {instr} instruction)")
+
+            # Improvement candidates
+            if improvement_candidates:
+                print(f"\n📝 README Improvement Candidates (Score <60):")
+                for readme in improvement_candidates[:3]:
+                    name = readme.get('artifact_name', 'unknown')
+                    score = readme.get('quality_score', 0)
+                    grade = readme.get('quality_grade', 'N/A')
+                    print(f"   • {name}: {score:.1f}/100 (Grade {grade})")
+                    print(f"     💡 Suggested improvements: Add installation, usage, examples sections")
 
         # Step 3: Discover Success Patterns
         print("\n" + "=" * 60)

@@ -44,7 +44,7 @@ class EnhancedKGBuilder:
             neo4j_uri: str = "bolt://localhost:7687",
             neo4j_user: str = "neo4j",
             neo4j_password: str = "password",
-            clear_existing: bool = False
+            clear_existing: bool = True
     ):
         """
         Initialize the Enhanced Knowledge Graph Builder.
@@ -450,6 +450,8 @@ class EnhancedKGBuilder:
                     section_node = Node(
                         "DocSection",
                         title=section["title"],
+                        heading=section.get("heading", section["title"]),
+                        content=section["content"],
                         level=section["level"],
                         content_length=len(section["content"]),
                         line_number=section.get("line_number", 0),
@@ -641,47 +643,125 @@ class EnhancedKGBuilder:
         return []
 
     def _extract_doc_sections(self, content: str, file_type: str) -> List[Dict]:
-        """Extract sections from documentation content."""
+        """Extract sections from documentation content with full section text."""
         sections = []
         lines = content.split('\n')
 
+        # Find all section headers first
+        section_indices = []
+
         for i, line in enumerate(lines):
-            line = line.strip()
-            if file_type == '.md' and line.startswith('#'):
-                level = len(line) - len(line.lstrip('#'))
-                title = line.lstrip('#').strip()
-                sections.append({
+            line_stripped = line.strip()
+            if file_type == '.md' and line_stripped.startswith('#'):
+                level = len(line_stripped) - len(line_stripped.lstrip('#'))
+                title = line_stripped.lstrip('#').strip()
+                section_indices.append({
+                    "index": i,
                     "title": title,
                     "level": level,
-                    "content": line,
                     "line_number": i + 1
                 })
-            elif file_type == '.rst' and line and i + 1 < len(lines):
+            elif file_type == '.rst' and line_stripped and i + 1 < len(lines):
                 next_line = lines[i + 1].strip()
-                if next_line and all(c in '=-~^"' for c in next_line) and len(next_line) >= len(line):
-                    sections.append({
-                        "title": line,
-                        "level": {'=': 1, '-': 2, '~': 3, '^': 4, '"': 5}.get(next_line[0], 1),
-                        "content": line,
+                if next_line and all(c in '=-~^"' for c in next_line) and len(next_line) >= len(line_stripped):
+                    level = {'=': 1, '-': 2, '~': 3, '^': 4, '"': 5}.get(next_line[0], 1)
+                    section_indices.append({
+                        "index": i,
+                        "title": line_stripped,
+                        "level": level,
                         "line_number": i + 1
                     })
+
+        # Extract content for each section
+        for i, section_info in enumerate(section_indices):
+            start_idx = section_info["index"]
+
+            # Find end of section (next section or end of document)
+            if i + 1 < len(section_indices):
+                end_idx = section_indices[i + 1]["index"]
+            else:
+                end_idx = len(lines)
+
+            # Extract section content (skip the header line itself)
+            section_lines = []
+            for line_idx in range(start_idx + 1, end_idx):
+                if line_idx < len(lines):
+                    section_lines.append(lines[line_idx])
+
+            section_content = '\n'.join(section_lines).strip()
+
+            sections.append({
+                "title": section_info["title"],
+                "level": section_info["level"],
+                "content": section_content,
+                "heading": lines[start_idx].strip(),  # Original header line
+                "line_number": section_info["line_number"]
+            })
+
+        # If no sections found, create a single section with all content
+        if not sections and content.strip():
+            sections.append({
+                "title": "Document Content",
+                "level": 1,
+                "content": content.strip(),
+                "heading": "Document Content",
+                "line_number": 1
+            })
 
         return sections
 
     def _classify_doc_section(self, title: str) -> str:
-        """Classify documentation section type."""
+        """Classify documentation section type with comprehensive categories."""
         title_lower = title.lower()
 
-        if any(word in title_lower for word in ['install', 'setup', 'getting started']):
+        # Installation and setup
+        if any(word in title_lower for word in ['install', 'setup', 'getting started', 'quickstart', 'requirement']):
             return "installation"
-        elif any(word in title_lower for word in ['usage', 'example', 'tutorial']):
+
+        # Usage and tutorials
+        elif any(word in title_lower for word in ['usage', 'how to', 'tutorial', 'guide']):
             return "usage"
+
+        # Examples and demos
+        elif any(word in title_lower for word in ['example', 'demo', 'sample']):
+            return "examples"
+
+        # Results and findings
+        elif any(word in title_lower for word in ['result', 'finding', 'output', 'performance', 'evaluation']):
+            return "results"
+
+        # Citations and references
+        elif any(word in title_lower for word in ['citation', 'cite', 'reference', 'bibtex', 'bibliography']):
+            return "citation"
+
+        # Reproducibility and replication
+        elif any(word in title_lower for word in ['reproduc', 'replicat', 'verify', 'validat', 'benchmark']):
+            return "reproduction"
+
+        # Overview and description
+        elif any(word in title_lower for word in ['overview', 'description', 'about', 'introduction', 'abstract']):
+            return "overview"
+
+        # API and technical reference
         elif any(word in title_lower for word in ['api', 'reference', 'documentation']):
             return "api"
-        elif any(word in title_lower for word in ['license', 'copyright']):
+
+        # Legal and licensing
+        elif any(word in title_lower for word in ['license', 'copyright', 'legal']):
             return "license"
-        elif any(word in title_lower for word in ['contribute', 'development']):
-            return "development"
+
+        # Contributing and development
+        elif any(word in title_lower for word in ['contribute', 'contributing', 'development', 'develop']):
+            return "contribution"
+
+        # Dependencies and requirements
+        elif any(word in title_lower for word in ['depend', 'require']):
+            return "requirements"
+
+        # Dataset and data information
+        elif any(word in title_lower for word in ['data', 'dataset', 'corpus']):
+            return "data"
+
         else:
             return "general"
 

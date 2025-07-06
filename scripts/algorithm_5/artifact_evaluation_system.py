@@ -13,19 +13,17 @@ Features:
 - Visualization capabilities
 """
 
+import hashlib
 import json
 import logging
-import os
 import re
+from dataclasses import dataclass, asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
-import hashlib
-import numpy as np
-from collections import defaultdict
+from typing import Dict, List, Optional, Any
 
-from py2neo import Graph, Node, Relationship, NodeMatcher, RelationshipMatcher
+from py2neo import Node, Relationship
+
 from enhanced_kg_builder import EnhancedKGBuilder
 
 logging.basicConfig(level=logging.INFO)
@@ -41,30 +39,30 @@ class ArtifactFeatures:
     has_license: bool = False
     has_changelog: bool = False
     documentation_sections: int = 0
-    
+
     # Reproducibility features
     has_docker: bool = False
     has_requirements: bool = False
     has_setup_instructions: bool = False
     has_examples: bool = False
     has_tests: bool = False
-    
+
     # Availability features
     has_zenodo_doi: bool = False
     has_github_url: bool = False
     has_data_files: bool = False
-    
+
     # Code structure features
     total_files: int = 0
     code_files: int = 0
     programming_languages: List[str] = None
     build_systems: List[str] = None
-    
+
     # Complexity features
     tree_depth: int = 0
     repo_size_mb: float = 0.0
     setup_complexity: str = "unknown"
-    
+
     def __post_init__(self):
         if self.programming_languages is None:
             self.programming_languages = []
@@ -76,14 +74,14 @@ class ArtifactEvaluationSystem:
     """
     Comprehensive artifact evaluation system using Knowledge Graphs and LLMs.
     """
-    
+
     def __init__(
-        self,
-        neo4j_uri: str = "bolt://localhost:7687",
-        neo4j_user: str = "neo4j",
-        neo4j_password: str = "password",
-        openai_api_key: Optional[str] = None,
-        clear_existing: bool = False
+            self,
+            neo4j_uri: str = "bolt://localhost:7687",
+            neo4j_user: str = "neo4j",
+            neo4j_password: str = "password",
+            openai_api_key: Optional[str] = None,
+            clear_existing: bool = False
     ):
         """
         Initialize the Artifact Evaluation System.
@@ -102,11 +100,11 @@ class ArtifactEvaluationSystem:
             neo4j_password=neo4j_password,
             clear_existing=clear_existing
         )
-        
+
         self.graph = self.kg_builder.graph
         self.node_matcher = self.kg_builder.node_matcher
         self.relationship_matcher = self.kg_builder.relationship_matcher
-        
+
         # LLM configuration
         self.openai_api_key = openai_api_key
         if openai_api_key:
@@ -120,7 +118,7 @@ class ArtifactEvaluationSystem:
                 self.openai_client = None
         else:
             self.openai_client = None
-        
+
         # Evaluation criteria weights
         self.evaluation_weights = {
             "documentation_quality": 0.25,
@@ -129,10 +127,10 @@ class ArtifactEvaluationSystem:
             "code_structure": 0.15,
             "complexity": 0.10
         }
-        
+
         # Create evaluation-specific indexes
         self._create_evaluation_indexes()
-    
+
     def _create_evaluation_indexes(self):
         """Create indexes for evaluation-specific properties."""
         indexes = [
@@ -140,13 +138,13 @@ class ArtifactEvaluationSystem:
             "CREATE INDEX artifact_type IF NOT EXISTS FOR (a:Artifact) ON (a.artifact_type)",
             "CREATE INDEX acceptance_prediction IF NOT EXISTS FOR (a:Artifact) ON (a.acceptance_prediction)",
         ]
-        
+
         for index_query in indexes:
             try:
                 self.graph.run(index_query)
             except Exception as e:
                 logger.debug(f"Index creation skipped: {e}")
-    
+
     def evaluate_artifact_from_json(self, json_file_path: str) -> Dict[str, Any]:
         """
         Evaluate an artifact from JSON analysis file.
@@ -160,44 +158,44 @@ class ArtifactEvaluationSystem:
         try:
             with open(json_file_path, 'r', encoding='utf-8') as f:
                 analysis_data = json.load(f)
-            
+
             if not analysis_data.get("success", False):
                 return {
                     "success": False,
                     "error": f"Analysis data indicates failure: {analysis_data.get('error', 'Unknown error')}",
                     "artifact_name": analysis_data.get("artifact_name", "unknown")
                 }
-            
+
             artifact_name = analysis_data.get("artifact_name", "unknown")
             logger.info(f"Evaluating artifact: {artifact_name}")
-            
+
             # Extract features from JSON
             features = self._extract_features_from_json(analysis_data)
-            
+
             # Build knowledge graph from analysis data
             kg_result = self._build_kg_from_analysis(analysis_data, features)
-            
+
             # Perform LLM-based semantic analysis
             semantic_analysis = self._perform_semantic_analysis(analysis_data)
-            
+
             # Calculate evaluation scores
             evaluation_scores = self._calculate_evaluation_scores(features, semantic_analysis)
-            
+
             # Predict acceptance likelihood
             acceptance_prediction = self._predict_acceptance(features, evaluation_scores)
-            
+
             # Generate recommendations
             recommendations = self._generate_recommendations(features, evaluation_scores)
-            
+
             # Update artifact node with evaluation results
             self._update_artifact_with_evaluation(
-                artifact_name, 
-                features, 
-                evaluation_scores, 
+                artifact_name,
+                features,
+                evaluation_scores,
                 acceptance_prediction,
                 recommendations
             )
-            
+
             return {
                 "success": True,
                 "artifact_name": artifact_name,
@@ -208,7 +206,7 @@ class ArtifactEvaluationSystem:
                 "recommendations": recommendations,
                 "kg_result": kg_result
             }
-            
+
         except Exception as e:
             logger.error(f"Error evaluating artifact from JSON: {e}")
             return {
@@ -216,80 +214,81 @@ class ArtifactEvaluationSystem:
                 "error": str(e),
                 "artifact_name": "unknown"
             }
-    
+
     def _extract_features_from_json(self, analysis_data: Dict) -> ArtifactFeatures:
         """Extract features from JSON analysis data."""
         features = ArtifactFeatures()
-        
+
         # Basic artifact info
         features.total_files = len(analysis_data.get("tree_structure", []))
         features.repo_size_mb = analysis_data.get("repo_size_mb", 0.0)
-        
+
         # Documentation features
         doc_files = analysis_data.get("documentation_files", [])
         features.has_readme = any("readme" in f["path"].lower() for f in doc_files)
         features.documentation_sections = sum(len(f.get("content", [])) for f in doc_files)
-        
+
         if features.has_readme:
             readme_content = next((f["content"] for f in doc_files if "readme" in f["path"].lower()), [])
             features.readme_length = sum(len(line) for line in readme_content)
-        
+
         # License and other files
         features.has_license = len(analysis_data.get("license_files", [])) > 0
-        
+
         # Reproducibility features
         features.has_docker = len(analysis_data.get("docker_files", [])) > 0
-        features.has_requirements = any("requirements" in f["path"].lower() for f in analysis_data.get("build_files", []))
-        
+        features.has_requirements = any(
+            "requirements" in f["path"].lower() for f in analysis_data.get("build_files", []))
+
         # Code structure
         features.code_files = len(analysis_data.get("code_files", []))
-        
+
         # Setup complexity analysis
         features.setup_complexity = self._analyze_setup_complexity(analysis_data)
-        
+
         # Tree depth calculation
         features.tree_depth = self._calculate_tree_depth(analysis_data.get("tree_structure", []))
-        
+
         # Availability features
         features.has_data_files = len(analysis_data.get("data_files", [])) > 0
-        
+
         # Check for Zenodo DOI in documentation
         features.has_zenodo_doi = self._check_zenodo_doi(analysis_data)
-        
+
         # Check for setup instructions and examples
         features.has_setup_instructions = self._check_setup_instructions(analysis_data)
         features.has_examples = self._check_examples(analysis_data)
-        
+
         return features
-    
+
     def _analyze_setup_complexity(self, analysis_data: Dict) -> str:
         """Analyze setup complexity based on files and documentation."""
         complexity_score = 0
-        
+
         # Check for multiple build systems
         build_files = analysis_data.get("build_files", [])
         docker_files = analysis_data.get("docker_files", [])
-        
+
         if docker_files:
             complexity_score += 2  # Docker reduces complexity
-        
+
         if build_files:
             complexity_score += len(build_files) * 0.5
-        
+
         # Check documentation for setup instructions
         doc_files = analysis_data.get("documentation_files", [])
         setup_mentions = 0
         for doc in doc_files:
             content = " ".join(doc.get("content", []))
             setup_mentions += len(re.findall(r'\b(install|setup|configuration|prerequisite)\b', content.lower()))
-        
+
         if setup_mentions > 10:
             complexity_score += 3
         elif setup_mentions > 5:
             complexity_score += 2
         elif setup_mentions > 0:
             complexity_score += 1
-        
+
         # Classify complexity
         if complexity_score <= 2:
             return "low"
@@ -297,78 +296,78 @@ class ArtifactEvaluationSystem:
             return "medium"
         else:
             return "high"
-    
+
     def _calculate_tree_depth(self, tree_structure: List[str]) -> int:
         """Calculate maximum depth of tree structure."""
         if not tree_structure:
             return 0
-        
+
         max_depth = 0
         for item in tree_structure:
             if isinstance(item, str):
                 depth = item.count("│") + item.count("├") + item.count("└")
                 max_depth = max(max_depth, depth)
-        
+
         return max_depth
-    
+
     def _check_zenodo_doi(self, analysis_data: Dict) -> bool:
         """Check if artifact mentions Zenodo DOI."""
         doc_files = analysis_data.get("documentation_files", [])
-        
+
         for doc in doc_files:
             content = " ".join(doc.get("content", []))
             if re.search(r'zenodo\.org|doi\.org.*zenodo|10\.5281/zenodo', content.lower()):
                 return True
-        
+
         return False
-    
+
     def _check_setup_instructions(self, analysis_data: Dict) -> bool:
         """Check if artifact has setup instructions."""
         doc_files = analysis_data.get("documentation_files", [])
-        
+
         for doc in doc_files:
             content = " ".join(doc.get("content", []))
             if re.search(r'(installation|setup|getting started|how to run|usage)', content.lower()):
                 return True
-        
+
         return False
-    
+
     def _check_examples(self, analysis_data: Dict) -> bool:
         """Check if artifact has examples."""
         doc_files = analysis_data.get("documentation_files", [])
-        
+
         for doc in doc_files:
             content = " ".join(doc.get("content", []))
             if re.search(r'(example|demo|tutorial|sample)', content.lower()):
                 return True
-        
+
         return False
-    
+
     def _build_kg_from_analysis(self, analysis_data: Dict, features: ArtifactFeatures) -> Dict:
         """Build knowledge graph from analysis data."""
         try:
             artifact_name = analysis_data.get("artifact_name", "unknown")
-            
+
             # Create artifact node with evaluation features
             artifact_node = self._create_evaluation_artifact_node(artifact_name, analysis_data, features)
-            
+
             # Create documentation nodes
             doc_nodes = self._create_documentation_nodes(analysis_data, artifact_node)
-            
+
             # Create code structure nodes
             code_nodes = self._create_code_structure_nodes(analysis_data, artifact_node)
-            
+
             # Create dependency nodes
             dep_nodes = self._create_dependency_nodes(analysis_data, artifact_node)
-            
+
             total_nodes = 1 + len(doc_nodes) + len(code_nodes) + len(dep_nodes)
-            
+
             return {
                 "success": True,
                 "nodes_created": total_nodes,
                 "artifact_node": artifact_node
             }
-            
+
         except Exception as e:
             logger.error(f"Error building KG from analysis: {e}")
             return {
@@ -376,21 +375,22 @@ class ArtifactEvaluationSystem:
                 "error": str(e),
                 "nodes_created": 0
             }
-    
-    def _create_evaluation_artifact_node(self, artifact_name: str, analysis_data: Dict, features: ArtifactFeatures) -> Node:
+
+    def _create_evaluation_artifact_node(self, artifact_name: str, analysis_data: Dict,
+                                         features: ArtifactFeatures) -> Node:
         """Create artifact node with evaluation features."""
         artifact_hash = hashlib.md5(artifact_name.encode()).hexdigest()[:8]
-        
+
         # Determine artifact type
         artifact_type = self._classify_artifact_type(analysis_data)
-        
+
         artifact_node = Node(
             "Artifact",
             name=artifact_name,
             hash=artifact_hash,
             created_at=datetime.now().isoformat(),
             artifact_type=artifact_type,
-            
+
             # Feature properties
             has_readme=features.has_readme,
             readme_length=features.readme_length,
@@ -404,12 +404,12 @@ class ArtifactEvaluationSystem:
             repo_size_mb=features.repo_size_mb,
             setup_complexity=features.setup_complexity,
             tree_depth=features.tree_depth,
-            
+
             # Analysis metadata
             extraction_method=analysis_data.get("extraction_method", "unknown"),
             analysis_performed=analysis_data.get("analysis_performed", False)
         )
-        
+
         # Use merge to avoid duplicates
         existing = self.node_matcher.match("Artifact", name=artifact_name).first()
         if existing:
@@ -419,20 +419,20 @@ class ArtifactEvaluationSystem:
         else:
             self.graph.create(artifact_node)
             return artifact_node
-    
+
     def _classify_artifact_type(self, analysis_data: Dict) -> str:
         """Classify artifact type based on content."""
         doc_files = analysis_data.get("documentation_files", [])
         code_files = analysis_data.get("code_files", [])
         data_files = analysis_data.get("data_files", [])
-        
+
         # Check documentation for type hints
         doc_content = ""
         for doc in doc_files:
             doc_content += " ".join(doc.get("content", []))
-        
+
         doc_content_lower = doc_content.lower()
-        
+
         if re.search(r'\b(dataset|data|benchmark|corpus)\b', doc_content_lower):
             return "dataset"
         elif re.search(r'\b(replication|reproduction|replicate)\b', doc_content_lower):
@@ -445,12 +445,13 @@ class ArtifactEvaluationSystem:
             return "dataset"
         else:
             return "mixed"
-    
+
     def _create_documentation_nodes(self, analysis_data: Dict, artifact_node: Node) -> List[Node]:
-        """Create documentation nodes and relationships."""
+        """Create documentation nodes and DocSection nodes with semantic content."""
         doc_nodes = []
-        
+
         for doc_file in analysis_data.get("documentation_files", []):
+            # Create Documentation node
             doc_node = Node(
                 "Documentation",
                 path=doc_file["path"],
@@ -458,17 +459,161 @@ class ArtifactEvaluationSystem:
                 sections=len(doc_file.get("content", [])),
                 doc_type=self._classify_doc_type(doc_file["path"])
             )
-            
+
             self.graph.create(doc_node)
             self.graph.create(Relationship(artifact_node, "HAS_DOCUMENTATION", doc_node))
             doc_nodes.append(doc_node)
-        
+
+            # Extract and create DocSection nodes with semantic content
+            if doc_file.get("content"):
+                full_content = "\n".join(doc_file["content"])
+                sections = self._extract_doc_sections_from_content(full_content, doc_file["path"])
+
+                for section in sections:
+                    section_node = Node(
+                        "DocSection",
+                        title=section["title"],
+                        heading=section.get("heading", section["title"]),
+                        content=section["content"],
+                        level=section["level"],
+                        content_length=len(section["content"]),
+                        line_number=section.get("line_number", 0),
+                        section_type=self._classify_doc_section_type(section["title"])
+                    )
+
+                    self.graph.create(section_node)
+                    self.graph.create(Relationship(doc_node, "CONTAINS", section_node))
+
         return doc_nodes
-    
+
+    def _extract_doc_sections_from_content(self, content: str, file_path: str) -> List[Dict]:
+        """Extract sections from documentation content with full section text."""
+        sections = []
+        lines = content.split('\n')
+        file_type = Path(file_path).suffix.lower()
+
+        # Find all section headers first
+        section_indices = []
+
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            if file_type == '.md' and line_stripped.startswith('#'):
+                level = len(line_stripped) - len(line_stripped.lstrip('#'))
+                title = line_stripped.lstrip('#').strip()
+                section_indices.append({
+                    "index": i,
+                    "title": title,
+                    "level": level,
+                    "line_number": i + 1
+                })
+            elif file_type == '.rst' and line_stripped and i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                if next_line and all(c in '=-~^"' for c in next_line) and len(next_line) >= len(line_stripped):
+                    level = {'=': 1, '-': 2, '~': 3, '^': 4, '"': 5}.get(next_line[0], 1)
+                    section_indices.append({
+                        "index": i,
+                        "title": line_stripped,
+                        "level": level,
+                        "line_number": i + 1
+                    })
+
+        # Extract content for each section
+        for i, section_info in enumerate(section_indices):
+            start_idx = section_info["index"]
+
+            # Find end of section (next section or end of document)
+            if i + 1 < len(section_indices):
+                end_idx = section_indices[i + 1]["index"]
+            else:
+                end_idx = len(lines)
+
+            # Extract section content (skip the header line itself)
+            section_lines = []
+            for line_idx in range(start_idx + 1, end_idx):
+                if line_idx < len(lines):
+                    section_lines.append(lines[line_idx])
+
+            section_content = '\n'.join(section_lines).strip()
+
+            sections.append({
+                "title": section_info["title"],
+                "level": section_info["level"],
+                "content": section_content,
+                "heading": lines[start_idx].strip(),  # Original header line
+                "line_number": section_info["line_number"]
+            })
+
+        # If no sections found, create a single section with all content
+        if not sections and content.strip():
+            sections.append({
+                "title": "Document Content",
+                "level": 1,
+                "content": content.strip(),
+                "heading": "Document Content",
+                "line_number": 1
+            })
+
+        return sections
+
+    def _classify_doc_section_type(self, title: str) -> str:
+        """Classify documentation section type with comprehensive categories."""
+        title_lower = title.lower()
+
+        # Installation and setup
+        if any(word in title_lower for word in ['install', 'setup', 'getting started', 'quickstart', 'requirement']):
+            return "installation"
+
+        # Usage and tutorials
+        elif any(word in title_lower for word in ['usage', 'how to', 'tutorial', 'guide']):
+            return "usage"
+
+        # Examples and demos
+        elif any(word in title_lower for word in ['example', 'demo', 'sample']):
+            return "examples"
+
+        # Results and findings
+        elif any(word in title_lower for word in ['result', 'finding', 'output', 'performance', 'evaluation']):
+            return "results"
+
+        # Citations and references
+        elif any(word in title_lower for word in ['citation', 'cite', 'reference', 'bibtex', 'bibliography']):
+            return "citation"
+
+        # Reproducibility and replication
+        elif any(word in title_lower for word in ['reproduce', 'replicat', 'verify', 'validat', 'benchmark']):
+            return "reproduction"
+
+        # Overview and description
+        elif any(word in title_lower for word in ['overview', 'description', 'about', 'introduction', 'abstract']):
+            return "overview"
+
+        # API and technical reference
+        elif any(word in title_lower for word in ['api', 'reference', 'documentation']):
+            return "api"
+
+        # Legal and licensing
+        elif any(word in title_lower for word in ['license', 'copyright', 'legal']):
+            return "license"
+
+        # Contributing and development
+        elif any(word in title_lower for word in ['contribute', 'contributing', 'development', 'develop']):
+            return "contribution"
+
+        # Dependencies and requirements
+        elif any(word in title_lower for word in ['depend', 'require']):
+            return "requirements"
+
+        # Dataset and data information
+        elif any(word in title_lower for word in ['data', 'dataset', 'corpus']):
+            return "data"
+
+        else:
+            return "general"
+
     def _classify_doc_type(self, path: str) -> str:
         """Classify documentation type."""
         path_lower = path.lower()
-        
+
         if "readme" in path_lower:
             return "readme"
         elif "license" in path_lower:
@@ -479,11 +624,11 @@ class ArtifactEvaluationSystem:
             return "api"
         else:
             return "general"
-    
+
     def _create_code_structure_nodes(self, analysis_data: Dict, artifact_node: Node) -> List[Node]:
         """Create code structure nodes."""
         code_nodes = []
-        
+
         for code_file in analysis_data.get("code_files", []):
             code_node = Node(
                 "CodeFile",
@@ -491,17 +636,17 @@ class ArtifactEvaluationSystem:
                 content_length=sum(len(line) for line in code_file.get("content", [])),
                 language=self._detect_language(code_file["path"])
             )
-            
+
             self.graph.create(code_node)
             self.graph.create(Relationship(artifact_node, "HAS_CODE", code_node))
             code_nodes.append(code_node)
-        
+
         return code_nodes
-    
+
     def _detect_language(self, path: str) -> str:
         """Detect programming language from file path."""
         ext = Path(path).suffix.lower()
-        
+
         language_map = {
             ".py": "python",
             ".js": "javascript",
@@ -517,13 +662,13 @@ class ArtifactEvaluationSystem:
             ".sh": "shell",
             ".sql": "sql"
         }
-        
+
         return language_map.get(ext, "unknown")
-    
+
     def _create_dependency_nodes(self, analysis_data: Dict, artifact_node: Node) -> List[Node]:
         """Create dependency nodes."""
         dep_nodes = []
-        
+
         # Check for various dependency files
         dependency_indicators = [
             "requirements.txt",
@@ -533,7 +678,7 @@ class ArtifactEvaluationSystem:
             "setup.py",
             "pyproject.toml"
         ]
-        
+
         build_files = analysis_data.get("build_files", [])
         for build_file in build_files:
             if any(indicator in build_file.get("path", "") for indicator in dependency_indicators):
@@ -542,17 +687,17 @@ class ArtifactEvaluationSystem:
                     path=build_file["path"],
                     type=self._classify_dependency_file(build_file["path"])
                 )
-                
+
                 self.graph.create(dep_node)
                 self.graph.create(Relationship(artifact_node, "HAS_DEPENDENCIES", dep_node))
                 dep_nodes.append(dep_node)
-        
+
         return dep_nodes
-    
+
     def _classify_dependency_file(self, path: str) -> str:
         """Classify dependency file type."""
         path_lower = path.lower()
-        
+
         if "requirements" in path_lower:
             return "python_requirements"
         elif "package.json" in path_lower:
@@ -567,49 +712,49 @@ class ArtifactEvaluationSystem:
             return "python_pyproject"
         else:
             return "unknown"
-    
+
     def _perform_semantic_analysis(self, analysis_data: Dict) -> Dict[str, Any]:
         """Perform LLM-based semantic analysis."""
         if not self.openai_client:
             logger.warning("OpenAI client not available, skipping semantic analysis")
             return {"available": False, "reason": "OpenAI client not configured"}
-        
+
         try:
             # Extract documentation content
             doc_content = self._extract_documentation_content(analysis_data)
-            
+
             if not doc_content:
                 return {"available": False, "reason": "No documentation content available"}
-            
+
             # Analyze with LLM
             analysis_result = self._analyze_with_llm(doc_content)
-            
+
             return {
                 "available": True,
                 "analysis": analysis_result,
                 "content_length": len(doc_content)
             }
-            
+
         except Exception as e:
             logger.error(f"Semantic analysis failed: {e}")
             return {"available": False, "reason": str(e)}
-    
+
     def _extract_documentation_content(self, analysis_data: Dict) -> str:
         """Extract documentation content for LLM analysis."""
         doc_content = ""
-        
+
         for doc_file in analysis_data.get("documentation_files", []):
             if "readme" in doc_file["path"].lower():
                 doc_content += "\n".join(doc_file.get("content", []))
                 break
-        
+
         # If no README, use first documentation file
         if not doc_content and analysis_data.get("documentation_files"):
             first_doc = analysis_data["documentation_files"][0]
             doc_content = "\n".join(first_doc.get("content", []))
-        
+
         return doc_content
-    
+
     def _analyze_with_llm(self, content: str) -> Dict[str, Any]:
         """Analyze content with LLM."""
         prompt = f"""
@@ -642,7 +787,7 @@ class ArtifactEvaluationSystem:
             "summary": "<brief summary>"
         }}
         """
-        
+
         try:
             response = self.openai_client.ChatCompletion.create(
                 model="gpt-3.5-turbo",
@@ -650,24 +795,24 @@ class ArtifactEvaluationSystem:
                 max_tokens=1000,
                 temperature=0.3
             )
-            
+
             content = response.choices[0].message.content.strip()
-            
+
             # Try to parse JSON response
             try:
                 return json.loads(content)
             except json.JSONDecodeError:
                 # If not valid JSON, return raw content
                 return {"raw_response": content}
-                
+
         except Exception as e:
             logger.error(f"LLM analysis failed: {e}")
             return {"error": str(e)}
-    
+
     def _calculate_evaluation_scores(self, features: ArtifactFeatures, semantic_analysis: Dict) -> Dict[str, float]:
         """Calculate evaluation scores based on features and semantic analysis."""
         scores = {}
-        
+
         # Documentation Quality Score
         doc_score = 0.0
         if features.has_readme:
@@ -678,14 +823,14 @@ class ArtifactEvaluationSystem:
             doc_score += 0.2
         if features.documentation_sections > 3:
             doc_score += 0.1
-        
+
         # Add LLM analysis if available
         if semantic_analysis.get("available") and "analysis" in semantic_analysis:
             llm_doc_score = semantic_analysis["analysis"].get("documentation_quality", 5) / 10.0
             doc_score = (doc_score + llm_doc_score) / 2
-        
+
         scores["documentation_quality"] = min(doc_score, 1.0)
-        
+
         # Reproducibility Score
         repro_score = 0.0
         if features.has_docker:
@@ -698,14 +843,14 @@ class ArtifactEvaluationSystem:
             repro_score += 0.2
         elif features.setup_complexity == "medium":
             repro_score += 0.1
-        
+
         # Add LLM analysis if available
         if semantic_analysis.get("available") and "analysis" in semantic_analysis:
             llm_repro_score = semantic_analysis["analysis"].get("reproducibility", 5) / 10.0
             repro_score = (repro_score + llm_repro_score) / 2
-        
+
         scores["reproducibility"] = min(repro_score, 1.0)
-        
+
         # Availability Score
         avail_score = 0.0
         if features.has_zenodo_doi:
@@ -714,14 +859,14 @@ class ArtifactEvaluationSystem:
             avail_score += 0.3
         if features.code_files > 0:
             avail_score += 0.3
-        
+
         # Add LLM analysis if available
         if semantic_analysis.get("available") and "analysis" in semantic_analysis:
             llm_avail_score = semantic_analysis["analysis"].get("availability", 5) / 10.0
             avail_score = (avail_score + llm_avail_score) / 2
-        
+
         scores["availability"] = min(avail_score, 1.0)
-        
+
         # Code Structure Score
         structure_score = 0.0
         if features.code_files > 0:
@@ -732,31 +877,31 @@ class ArtifactEvaluationSystem:
             structure_score += 0.2
         if features.repo_size_mb < 100:  # Reasonable size
             structure_score += 0.2
-        
+
         scores["code_structure"] = min(structure_score, 1.0)
-        
+
         # Complexity Score (inverse - lower complexity is better)
         complexity_score = 1.0
         if features.setup_complexity == "high":
             complexity_score -= 0.5
         elif features.setup_complexity == "medium":
             complexity_score -= 0.2
-        
+
         if features.repo_size_mb > 500:  # Very large repository
             complexity_score -= 0.3
-        
+
         scores["complexity"] = max(complexity_score, 0.0)
-        
+
         return scores
-    
+
     def _predict_acceptance(self, features: ArtifactFeatures, scores: Dict[str, float]) -> Dict[str, Any]:
         """Predict acceptance likelihood based on features and scores."""
         # Calculate weighted score
         weighted_score = sum(
-            scores.get(criteria, 0) * weight 
+            scores.get(criteria, 0) * weight
             for criteria, weight in self.evaluation_weights.items()
         )
-        
+
         # Simple threshold-based prediction
         if weighted_score >= 0.8:
             likelihood = "high"
@@ -767,7 +912,7 @@ class ArtifactEvaluationSystem:
         else:
             likelihood = "low"
             confidence = 0.6
-        
+
         return {
             "likelihood": likelihood,
             "confidence": confidence,
@@ -775,11 +920,11 @@ class ArtifactEvaluationSystem:
             "threshold_high": 0.8,
             "threshold_medium": 0.6
         }
-    
+
     def _generate_recommendations(self, features: ArtifactFeatures, scores: Dict[str, float]) -> List[Dict[str, str]]:
         """Generate recommendations for improving the artifact."""
         recommendations = []
-        
+
         # Documentation recommendations
         if scores.get("documentation_quality", 0) < 0.7:
             if not features.has_readme:
@@ -794,7 +939,7 @@ class ArtifactEvaluationSystem:
                     "priority": "medium",
                     "recommendation": "Expand README with more detailed information"
                 })
-        
+
         # Reproducibility recommendations
         if scores.get("reproducibility", 0) < 0.7:
             if not features.has_docker:
@@ -809,7 +954,7 @@ class ArtifactEvaluationSystem:
                     "priority": "high",
                     "recommendation": "Add clear setup and installation instructions"
                 })
-        
+
         # Availability recommendations
         if scores.get("availability", 0) < 0.7:
             if not features.has_zenodo_doi:
@@ -818,21 +963,21 @@ class ArtifactEvaluationSystem:
                     "priority": "medium",
                     "recommendation": "Consider archiving the artifact on Zenodo for persistent access"
                 })
-        
+
         return recommendations
-    
+
     def _update_artifact_with_evaluation(
-        self, 
-        artifact_name: str, 
-        features: ArtifactFeatures, 
-        scores: Dict[str, float],
-        prediction: Dict[str, Any],
-        recommendations: List[Dict[str, str]]
+            self,
+            artifact_name: str,
+            features: ArtifactFeatures,
+            scores: Dict[str, float],
+            prediction: Dict[str, Any],
+            recommendations: List[Dict[str, str]]
     ):
         """Update artifact node with evaluation results."""
         try:
             artifact_node = self.node_matcher.match("Artifact", name=artifact_name).first()
-            
+
             if artifact_node:
                 # Update with evaluation results
                 artifact_node.update({
@@ -847,9 +992,9 @@ class ArtifactEvaluationSystem:
                     "total_recommendations": len(recommendations),
                     "evaluated_at": datetime.now().isoformat()
                 })
-                
+
                 self.graph.push(artifact_node)
-                
+
                 # Create recommendation nodes
                 for rec in recommendations:
                     rec_node = Node(
@@ -859,15 +1004,15 @@ class ArtifactEvaluationSystem:
                         recommendation=rec["recommendation"],
                         created_at=datetime.now().isoformat()
                     )
-                    
+
                     self.graph.create(rec_node)
                     self.graph.create(Relationship(artifact_node, "HAS_RECOMMENDATION", rec_node))
-                
+
                 logger.info(f"Updated artifact {artifact_name} with evaluation results")
-            
+
         except Exception as e:
             logger.error(f"Error updating artifact with evaluation: {e}")
-    
+
     def get_evaluation_summary(self, artifact_name: str) -> Dict[str, Any]:
         """Get comprehensive evaluation summary for an artifact."""
         try:
@@ -876,15 +1021,15 @@ class ArtifactEvaluationSystem:
             OPTIONAL MATCH (a)-[:HAS_RECOMMENDATION]->(r:Recommendation)
             RETURN a, collect(r) as recommendations
             """
-            
+
             result = self.graph.run(query, artifact_name=artifact_name).data()
-            
+
             if not result:
                 return {"error": f"Artifact {artifact_name} not found"}
-            
+
             artifact = result[0]["a"]
             recommendations = result[0]["recommendations"]
-            
+
             return {
                 "artifact_name": artifact_name,
                 "evaluation_score": artifact.get("evaluation_score", 0),
@@ -915,11 +1060,11 @@ class ArtifactEvaluationSystem:
                     "repo_size_mb": artifact.get("repo_size_mb", 0)
                 }
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting evaluation summary: {e}")
             return {"error": str(e)}
-    
+
     def compare_artifacts(self, artifact_names: List[str]) -> Dict[str, Any]:
         """Compare multiple artifacts based on evaluation scores."""
         try:
@@ -934,12 +1079,12 @@ class ArtifactEvaluationSystem:
                    a.availability_score as avail_score
             ORDER BY a.evaluation_score DESC
             """
-            
+
             results = self.graph.run(query, artifact_names=artifact_names).data()
-            
+
             if not results:
                 return {"error": "No artifacts found"}
-            
+
             comparison = {
                 "artifacts": results,
                 "best_artifact": results[0]["name"] if results else None,
@@ -950,34 +1095,34 @@ class ArtifactEvaluationSystem:
                     "low": len([r for r in results if (r["score"] or 0) < 0.6])
                 }
             }
-            
+
             return comparison
-            
+
         except Exception as e:
             logger.error(f"Error comparing artifacts: {e}")
             return {"error": str(e)}
-    
+
     def export_evaluation_report(self, artifact_name: str, output_path: str) -> str:
         """Export comprehensive evaluation report."""
         try:
             summary = self.get_evaluation_summary(artifact_name)
-            
+
             if "error" in summary:
                 return f"Error: {summary['error']}"
-            
+
             # Create HTML report
             html_report = self._generate_html_report(summary)
-            
+
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(html_report)
-            
+
             logger.info(f"Evaluation report exported to: {output_path}")
             return output_path
-            
+
         except Exception as e:
             logger.error(f"Error exporting evaluation report: {e}")
             return f"Error: {str(e)}"
-    
+
     def _generate_html_report(self, summary: Dict[str, Any]) -> str:
         """Generate HTML evaluation report."""
         html = f"""
@@ -1027,9 +1172,9 @@ class ArtifactEvaluationSystem:
         </body>
         </html>
         """
-        
+
         return html
-    
+
     def _generate_score_bars(self, scores: Dict[str, float]) -> str:
         """Generate HTML for score visualization."""
         html = ""
@@ -1039,27 +1184,27 @@ class ArtifactEvaluationSystem:
             <div style="margin: 10px 0;">
                 <div>{criteria.replace('_', ' ').title()}: {score:.2f}</div>
                 <div class="score-bar">
-                    <div class="score-fill {score_class}" style="width: {score*100}%;"></div>
+                    <div class="score-fill {score_class}" style="width: {score * 100}%;"></div>
                 </div>
             </div>
             """
         return html
-    
+
     def _generate_features_table(self, features: Dict[str, Any]) -> str:
         """Generate HTML table for artifact features."""
         html = "<table border='1' style='border-collapse: collapse; width: 100%;'>"
-        
+
         for key, value in features.items():
             html += f"<tr><td>{key.replace('_', ' ').title()}</td><td>{value}</td></tr>"
-        
+
         html += "</table>"
         return html
-    
+
     def _generate_recommendations_html(self, recommendations: List[Dict[str, str]]) -> str:
         """Generate HTML for recommendations."""
         if not recommendations:
             return "<p>No recommendations available.</p>"
-        
+
         html = ""
         for rec in recommendations:
             priority_color = {"high": "#f44336", "medium": "#ff9800", "low": "#4caf50"}.get(rec["priority"], "#757575")
@@ -1069,9 +1214,9 @@ class ArtifactEvaluationSystem:
                 {rec['recommendation']}
             </div>
             """
-        
+
         return html
-    
+
     def close(self):
         """Close connections."""
         if self.kg_builder:
@@ -1081,7 +1226,7 @@ class ArtifactEvaluationSystem:
 def main():
     """Example usage of the Artifact Evaluation System."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Artifact Evaluation System")
     parser.add_argument("json_file", help="Path to artifact analysis JSON file")
     parser.add_argument("--neo4j-uri", default="bolt://localhost:7687", help="Neo4j URI")
@@ -1089,9 +1234,9 @@ def main():
     parser.add_argument("--neo4j-password", default="password", help="Neo4j password")
     parser.add_argument("--openai-api-key", help="OpenAI API key for LLM analysis")
     parser.add_argument("--output-report", help="Output path for evaluation report")
-    
+
     args = parser.parse_args()
-    
+
     # Create evaluation system
     evaluator = ArtifactEvaluationSystem(
         neo4j_uri=args.neo4j_uri,
@@ -1099,29 +1244,29 @@ def main():
         neo4j_password=args.neo4j_password,
         openai_api_key=args.openai_api_key
     )
-    
+
     try:
         # Evaluate artifact
         result = evaluator.evaluate_artifact_from_json(args.json_file)
-        
+
         if result["success"]:
             print(f"✅ Evaluation completed for: {result['artifact_name']}")
             print(f"Overall Score: {result['evaluation_scores']}")
             print(f"Acceptance Prediction: {result['acceptance_prediction']}")
-            
+
             # Export report if requested
             if args.output_report:
                 report_path = evaluator.export_evaluation_report(
-                    result['artifact_name'], 
+                    result['artifact_name'],
                     args.output_report
                 )
                 print(f"📄 Report exported to: {report_path}")
         else:
             print(f"❌ Evaluation failed: {result['error']}")
-    
+
     finally:
         evaluator.close()
 
 
 if __name__ == "__main__":
-    main() 
+    main()

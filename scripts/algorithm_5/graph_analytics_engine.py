@@ -66,8 +66,11 @@ class GraphAnalyticsEngine:
         return analysis
     
     def _analyze_readme_section_patterns(self) -> Dict[str, Any]:
-        """Analyze patterns in README sections across all artifacts."""
-        # Find most common README sections
+        """Analyze patterns in README sections across all artifacts with semantic enrichment."""
+        # Enhance DocSection nodes with semantic properties
+        self._enhance_docsection_semantics()
+        
+        # Find most common README sections with semantic properties
         readme_sections_query = """
         MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
         WHERE toLower(readme.path) CONTAINS 'readme'
@@ -75,8 +78,13 @@ class GraphAnalyticsEngine:
         RETURN 
             section.section_type as section_type,
             section.heading as heading,
+            section.normalized_heading as normalized_heading,
             COUNT(DISTINCT a) as artifact_count,
             COUNT(section) as total_occurrences,
+            AVG(section.content_length) as avg_content_length,
+            COUNT(DISTINCT CASE WHEN section.has_code_snippet = true THEN a END) as artifacts_with_code,
+            COUNT(DISTINCT CASE WHEN section.has_script_reference = true THEN a END) as artifacts_with_scripts,
+            COUNT(DISTINCT CASE WHEN section.has_data_link = true THEN a END) as artifacts_with_data,
             COLLECT(DISTINCT a.name)[0..5] as example_artifacts
         ORDER BY artifact_count DESC, total_occurrences DESC
         LIMIT 20
@@ -84,7 +92,7 @@ class GraphAnalyticsEngine:
         
         readme_sections = self.graph.run(readme_sections_query).data()
         
-        # Find README section prevalence
+        # Find README section prevalence and classify criticality
         total_artifacts_query = """
         MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
         WHERE toLower(readme.path) CONTAINS 'readme'
@@ -93,17 +101,202 @@ class GraphAnalyticsEngine:
         
         total_with_readme = self.graph.run(total_artifacts_query).data()[0]["total_with_readme"]
         
-        # Calculate prevalence percentages
+        # Calculate prevalence percentages and semantic insights
         for section in readme_sections:
             section["prevalence_percentage"] = (section["artifact_count"] / total_with_readme) * 100 if total_with_readme > 0 else 0
             section["is_universal"] = section["prevalence_percentage"] > 80
+            section["is_critical"] = section["prevalence_percentage"] > 70
+            section["is_recommended"] = section["prevalence_percentage"] > 40
+            section["code_snippet_rate"] = (section["artifacts_with_code"] / section["artifact_count"]) * 100 if section["artifact_count"] > 0 else 0
+            section["script_reference_rate"] = (section["artifacts_with_scripts"] / section["artifact_count"]) * 100 if section["artifact_count"] > 0 else 0
+            section["data_link_rate"] = (section["artifacts_with_data"] / section["artifact_count"]) * 100 if section["artifact_count"] > 0 else 0
+        
+        # Analyze README archetypes
+        readme_archetypes = self._classify_readme_archetypes()
+        
+        # Analyze section centrality
+        section_centrality = self._analyze_section_centrality()
         
         return {
             "total_artifacts_with_readme": total_with_readme,
             "common_sections": readme_sections,
             "universal_sections": [s for s in readme_sections if s["is_universal"]],
-            "critical_sections": [s for s in readme_sections if s["prevalence_percentage"] > 60]
+            "critical_sections": [s for s in readme_sections if s["is_critical"]],
+            "recommended_sections": [s for s in readme_sections if s["is_recommended"]],
+            "readme_archetypes": readme_archetypes,
+            "section_centrality": section_centrality
         }
+    
+    def _enhance_docsection_semantics(self):
+        """Enhance DocSection nodes with semantic properties."""
+        # Add semantic properties to DocSection nodes
+        enhancement_query = """
+        MATCH (section:DocSection)
+        WHERE section.content IS NOT NULL
+        WITH section, toLower(section.content) as content_lower, toLower(section.heading) as heading_lower
+        SET section.content_length = SIZE(section.content),
+            section.normalized_heading = CASE 
+                WHEN heading_lower CONTAINS 'install' OR heading_lower CONTAINS 'setup' OR heading_lower CONTAINS 'getting started' OR heading_lower CONTAINS 'quickstart' THEN 'installation'
+                WHEN heading_lower CONTAINS 'usage' OR heading_lower CONTAINS 'how to' OR heading_lower CONTAINS 'tutorial' THEN 'usage'
+                WHEN heading_lower CONTAINS 'example' OR heading_lower CONTAINS 'demo' THEN 'examples'
+                WHEN heading_lower CONTAINS 'result' OR heading_lower CONTAINS 'output' OR heading_lower CONTAINS 'finding' THEN 'results'
+                WHEN heading_lower CONTAINS 'citation' OR heading_lower CONTAINS 'cite' OR heading_lower CONTAINS 'bibtex' THEN 'citation'
+                WHEN heading_lower CONTAINS 'license' OR heading_lower CONTAINS 'licence' THEN 'license'
+                WHEN heading_lower CONTAINS 'contribute' OR heading_lower CONTAINS 'contributing' THEN 'contribution'
+                WHEN heading_lower CONTAINS 'requirement' OR heading_lower CONTAINS 'depend' THEN 'requirements'
+                WHEN heading_lower CONTAINS 'overview' OR heading_lower CONTAINS 'description' OR heading_lower CONTAINS 'about' THEN 'overview'
+                WHEN heading_lower CONTAINS 'reproduc' OR heading_lower CONTAINS 'replicat' THEN 'reproduction'
+                ELSE section.heading
+            END,
+            section.has_code_snippet = (
+                content_lower CONTAINS '```' OR 
+                content_lower CONTAINS 'python' OR 
+                content_lower CONTAINS 'import' OR
+                content_lower CONTAINS 'def ' OR
+                content_lower CONTAINS 'class ' OR
+                content_lower CONTAINS 'function' OR
+                content_lower CONTAINS 'bash' OR
+                content_lower CONTAINS 'shell'
+            ),
+            section.has_script_reference = (
+                content_lower CONTAINS '.py' OR 
+                content_lower CONTAINS '.sh' OR 
+                content_lower CONTAINS '.js' OR
+                content_lower CONTAINS '.r' OR
+                content_lower CONTAINS 'script' OR
+                content_lower CONTAINS 'run.py' OR
+                content_lower CONTAINS 'main.py'
+            ),
+            section.has_data_link = (
+                content_lower CONTAINS '.csv' OR 
+                content_lower CONTAINS '.json' OR 
+                content_lower CONTAINS '.xml' OR
+                content_lower CONTAINS 'dataset' OR
+                content_lower CONTAINS 'data/' OR
+                content_lower CONTAINS 'zenodo' OR
+                content_lower CONTAINS 'figshare' OR
+                content_lower CONTAINS 'doi'
+            ),
+            section.has_docker_reference = (
+                content_lower CONTAINS 'docker' OR
+                content_lower CONTAINS 'container' OR
+                content_lower CONTAINS 'dockerfile'
+            ),
+            section.has_reproducibility_terms = (
+                content_lower CONTAINS 'reproduc' OR
+                content_lower CONTAINS 'replicat' OR
+                content_lower CONTAINS 'verify' OR
+                content_lower CONTAINS 'validat' OR
+                content_lower CONTAINS 'benchmark'
+            ),
+            section.instructional_quality = CASE
+                WHEN content_lower CONTAINS 'step' AND content_lower CONTAINS 'follow' THEN 'step-by-step'
+                WHEN content_lower CONTAINS 'copy' AND content_lower CONTAINS 'paste' THEN 'copy-paste-ready'
+                WHEN content_lower CONTAINS 'command' AND content_lower CONTAINS 'run' THEN 'command-oriented'
+                WHEN SIZE(section.content) > 200 THEN 'detailed'
+                WHEN SIZE(section.content) > 50 THEN 'moderate'
+                ELSE 'brief'
+            END
+        """
+        
+        try:
+            self.graph.run(enhancement_query)
+            logger.info("Enhanced DocSection nodes with semantic properties")
+        except Exception as e:
+            logger.warning(f"Error enhancing DocSection semantics: {e}")
+    
+    def _classify_readme_archetypes(self) -> List[Dict[str, Any]]:
+        """Classify README files into archetypes based on their structure and content."""
+        archetype_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WITH a, readme, 
+             COUNT(section) as total_sections,
+             COUNT(CASE WHEN section.normalized_heading = 'installation' THEN 1 END) as install_sections,
+             COUNT(CASE WHEN section.normalized_heading = 'usage' THEN 1 END) as usage_sections,
+             COUNT(CASE WHEN section.normalized_heading = 'examples' THEN 1 END) as example_sections,
+             COUNT(CASE WHEN section.normalized_heading = 'results' THEN 1 END) as result_sections,
+             COUNT(CASE WHEN section.normalized_heading = 'reproduction' THEN 1 END) as repro_sections,
+             COUNT(CASE WHEN section.has_code_snippet = true THEN 1 END) as code_sections,
+             COUNT(CASE WHEN section.has_script_reference = true THEN 1 END) as script_sections,
+             COUNT(CASE WHEN section.has_data_link = true THEN 1 END) as data_sections,
+             COUNT(CASE WHEN section.has_reproducibility_terms = true THEN 1 END) as reproducibility_sections
+        WITH a, readme,
+             CASE 
+                WHEN repro_sections > 0 AND result_sections > 0 AND script_sections > 0 THEN 'replication-heavy'
+                WHEN example_sections > 0 AND usage_sections > 0 AND code_sections > 0 THEN 'tutorial'
+                WHEN result_sections > 0 AND data_sections > 0 THEN 'benchmark'
+                WHEN total_sections <= 3 THEN 'summary-only'
+                WHEN usage_sections > 0 AND install_sections > 0 THEN 'standard'
+                ELSE 'other'
+             END as archetype,
+             total_sections,
+             install_sections + usage_sections + example_sections + result_sections + repro_sections as structured_sections,
+             reproducibility_sections
+        SET readme.archetype = archetype
+        RETURN 
+            archetype,
+            COUNT(a) as artifact_count,
+            AVG(total_sections) as avg_sections,
+            AVG(structured_sections) as avg_structured_sections,
+            AVG(reproducibility_sections) as avg_repro_sections,
+            COLLECT(a.name)[0..3] as example_artifacts
+        ORDER BY artifact_count DESC
+        """
+        
+        try:
+            archetypes = self.graph.run(archetype_query).data()
+            return archetypes
+        except Exception as e:
+            logger.warning(f"Error classifying README archetypes: {e}")
+            return []
+    
+    def _analyze_section_centrality(self) -> Dict[str, Any]:
+        """Analyze centrality of different section types in successful artifacts."""
+        centrality_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WITH section.normalized_heading as section_type,
+             COUNT(DISTINCT a) as artifacts_count,
+             COUNT(section) as total_occurrences,
+             AVG(section.content_length) as avg_content_length,
+             SUM(CASE WHEN section.has_code_snippet = true THEN 1 ELSE 0 END) as code_snippets,
+             SUM(CASE WHEN section.has_script_reference = true THEN 1 ELSE 0 END) as script_references,
+             SUM(CASE WHEN section.has_data_link = true THEN 1 ELSE 0 END) as data_links
+        WHERE artifacts_count > 0
+        RETURN 
+            section_type,
+            artifacts_count,
+            total_occurrences,
+            (artifacts_count * 1.0) as centrality_score,
+            avg_content_length,
+            code_snippets,
+            script_references,
+            data_links,
+            (code_snippets + script_references + data_links) as total_actionable_content
+        ORDER BY centrality_score DESC, total_actionable_content DESC
+        LIMIT 15
+        """
+        
+        try:
+            centrality_results = self.graph.run(centrality_query).data()
+            
+            # Calculate relative importance scores
+            max_centrality = max([r["centrality_score"] for r in centrality_results]) if centrality_results else 1
+            for result in centrality_results:
+                result["relative_importance"] = (result["centrality_score"] / max_centrality) * 100
+                result["actionable_content_ratio"] = (result["total_actionable_content"] / result["total_occurrences"]) * 100 if result["total_occurrences"] > 0 else 0
+            
+            return {
+                "section_rankings": centrality_results,
+                "top_critical_sections": [r for r in centrality_results if r["relative_importance"] > 80],
+                "most_actionable_sections": sorted(centrality_results, key=lambda x: x["actionable_content_ratio"], reverse=True)[:5]
+            }
+        except Exception as e:
+            logger.warning(f"Error analyzing section centrality: {e}")
+            return {"section_rankings": [], "top_critical_sections": [], "most_actionable_sections": []}
     
     def _analyze_readme_content_connections(self) -> Dict[str, Any]:
         """Analyze how README content connects to repository structure."""
@@ -285,7 +478,7 @@ class GraphAnalyticsEngine:
         }
     
     def _find_universal_patterns(self) -> Dict[str, Any]:
-        """Find patterns that appear across ALL or most artifacts."""
+        """Find patterns that appear across ALL or most artifacts, including graph motifs."""
         # Universal file types
         universal_files_query = """
         MATCH (a:Artifact)
@@ -338,11 +531,313 @@ class GraphAnalyticsEngine:
         
         universal_docs = self.graph.run(universal_docs_query).data()
         
+        # Find README graph motifs
+        readme_motifs = self._discover_readme_motifs()
+        
         return {
             "universal_file_types": universal_files,
             "common_directory_structures": universal_dirs,
-            "universal_documentation_types": universal_docs
+            "universal_documentation_types": universal_docs,
+            "readme_motifs": readme_motifs,
+            "readme_quality_analysis": self._analyze_readme_quality()
         }
+    
+    def _analyze_readme_quality(self) -> Dict[str, Any]:
+        """Analyze and score README quality based on semantic properties."""
+        quality_analysis_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme'
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WITH a, readme,
+             COUNT(section) as total_sections,
+             COUNT(CASE WHEN section.normalized_heading = 'installation' THEN 1 END) as has_installation,
+             COUNT(CASE WHEN section.normalized_heading = 'usage' THEN 1 END) as has_usage,
+             COUNT(CASE WHEN section.normalized_heading = 'examples' THEN 1 END) as has_examples,
+             COUNT(CASE WHEN section.normalized_heading = 'results' THEN 1 END) as has_results,
+             COUNT(CASE WHEN section.normalized_heading = 'citation' THEN 1 END) as has_citation,
+             COUNT(CASE WHEN section.has_code_snippet = true THEN 1 END) as code_sections,
+             COUNT(CASE WHEN section.has_script_reference = true THEN 1 END) as script_sections,
+             COUNT(CASE WHEN section.has_data_link = true THEN 1 END) as data_sections,
+             COUNT(CASE WHEN section.has_docker_reference = true THEN 1 END) as docker_sections,
+             COUNT(CASE WHEN section.has_reproducibility_terms = true THEN 1 END) as repro_sections,
+             COUNT(CASE WHEN section.instructional_quality = 'step-by-step' THEN 1 END) as stepwise_sections,
+             COUNT(CASE WHEN section.instructional_quality = 'copy-paste-ready' THEN 1 END) as copyready_sections,
+             AVG(section.content_length) as avg_content_length,
+             SUM(section.content_length) as total_content_length
+        WITH a, readme,
+             // Calculate quality score components
+             CASE WHEN has_installation > 0 THEN 20 ELSE 0 END as install_score,
+             CASE WHEN has_usage > 0 THEN 15 ELSE 0 END as usage_score,
+             CASE WHEN has_examples > 0 THEN 10 ELSE 0 END as examples_score,
+             CASE WHEN has_results > 0 THEN 10 ELSE 0 END as results_score,
+             CASE WHEN has_citation > 0 THEN 5 ELSE 0 END as citation_score,
+             CASE WHEN code_sections > 0 THEN 15 ELSE 0 END as code_score,
+             CASE WHEN script_sections > 0 THEN 10 ELSE 0 END as script_score,
+             CASE WHEN data_sections > 0 THEN 5 ELSE 0 END as data_score,
+             CASE WHEN docker_sections > 0 THEN 5 ELSE 0 END as docker_score,
+             CASE WHEN repro_sections > 0 THEN 5 ELSE 0 END as repro_score,
+             CASE WHEN total_content_length > 1000 THEN 10 ELSE total_content_length/100 END as content_score,
+             total_sections,
+             avg_content_length,
+             stepwise_sections,
+             copyready_sections
+        WITH a, readme,
+             (install_score + usage_score + examples_score + results_score + citation_score + 
+              code_score + script_score + data_score + docker_score + repro_score + content_score) as raw_quality_score,
+             total_sections,
+             avg_content_length,
+             stepwise_sections,
+             copyready_sections
+        SET readme.quality_score = CASE WHEN raw_quality_score > 100 THEN 100 ELSE raw_quality_score END,
+            readme.quality_grade = CASE 
+                WHEN raw_quality_score >= 90 THEN 'A'
+                WHEN raw_quality_score >= 80 THEN 'B'
+                WHEN raw_quality_score >= 70 THEN 'C'
+                WHEN raw_quality_score >= 60 THEN 'D'
+                ELSE 'F'
+            END,
+            readme.instructional_quality = CASE
+                WHEN stepwise_sections > 0 OR copyready_sections > 0 THEN 'high'
+                WHEN avg_content_length > 200 THEN 'medium'
+                ELSE 'low'
+            END
+        RETURN 
+            a.name as artifact_name,
+            readme.quality_score as quality_score,
+            readme.quality_grade as quality_grade,
+            readme.instructional_quality as instructional_quality,
+            a.evaluation_score as artifact_score,
+            total_sections,
+            avg_content_length
+        ORDER BY quality_score DESC
+        """
+        
+        try:
+            quality_results = self.graph.run(quality_analysis_query).data()
+            
+            # Calculate quality statistics
+            quality_scores = [r["quality_score"] for r in quality_results if r["quality_score"] is not None]
+            artifact_scores = [r["artifact_score"] for r in quality_results if r["artifact_score"] is not None]
+            
+            quality_stats = {
+                "total_readmes_analyzed": len(quality_results),
+                "avg_quality_score": sum(quality_scores) / len(quality_scores) if quality_scores else 0,
+                "quality_distribution": {
+                    "A": len([r for r in quality_results if r["quality_grade"] == "A"]),
+                    "B": len([r for r in quality_results if r["quality_grade"] == "B"]),
+                    "C": len([r for r in quality_results if r["quality_grade"] == "C"]),
+                    "D": len([r for r in quality_results if r["quality_grade"] == "D"]),
+                    "F": len([r for r in quality_results if r["quality_grade"] == "F"])
+                },
+                "instructional_quality_distribution": {
+                    "high": len([r for r in quality_results if r["instructional_quality"] == "high"]),
+                    "medium": len([r for r in quality_results if r["instructional_quality"] == "medium"]),
+                    "low": len([r for r in quality_results if r["instructional_quality"] == "low"])
+                }
+            }
+            
+            # Calculate correlation between README quality and artifact acceptance
+            if len(quality_scores) > 1 and len(artifact_scores) > 1:
+                # Simple correlation calculation
+                n = len(quality_scores)
+                sum_x = sum(quality_scores)
+                sum_y = sum(artifact_scores)
+                sum_xy = sum(q * a for q, a in zip(quality_scores, artifact_scores))
+                sum_x2 = sum(q ** 2 for q in quality_scores)
+                sum_y2 = sum(a ** 2 for a in artifact_scores)
+                
+                correlation = (n * sum_xy - sum_x * sum_y) / ((n * sum_x2 - sum_x ** 2) * (n * sum_y2 - sum_y ** 2)) ** 0.5
+                quality_stats["readme_artifact_correlation"] = correlation
+            else:
+                quality_stats["readme_artifact_correlation"] = 0
+            
+            return {
+                "quality_results": quality_results,
+                "quality_statistics": quality_stats,
+                "top_quality_readmes": [r for r in quality_results if r["quality_score"] >= 80],
+                "improvement_candidates": [r for r in quality_results if r["quality_score"] < 60]
+            }
+            
+        except Exception as e:
+            logger.warning(f"Error analyzing README quality: {e}")
+            return {
+                "quality_results": [],
+                "quality_statistics": {"total_readmes_analyzed": 0, "avg_quality_score": 0},
+                "top_quality_readmes": [],
+                "improvement_candidates": []
+            }
+    
+    def _discover_readme_motifs(self) -> Dict[str, Any]:
+        """Discover common README graph motifs that correlate with acceptance."""
+        motifs = {}
+        
+        # Motif 1: README -> CONTAINS -> InstallationSection
+        installation_motif_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WHERE section.normalized_heading = 'installation'
+        RETURN 
+            'readme_installation' as motif_type,
+            COUNT(DISTINCT a) as successful_artifacts,
+            COUNT(section) as total_occurrences,
+            AVG(section.content_length) as avg_content_length,
+            SUM(CASE WHEN section.has_code_snippet = true THEN 1 ELSE 0 END) as code_snippets,
+            SUM(CASE WHEN section.has_script_reference = true THEN 1 ELSE 0 END) as script_references
+        """
+        
+        # Motif 2: README -> MENTIONS -> DockerFile
+        docker_motif_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WHERE section.has_docker_reference = true
+        RETURN 
+            'readme_docker' as motif_type,
+            COUNT(DISTINCT a) as successful_artifacts,
+            COUNT(section) as total_occurrences,
+            AVG(section.content_length) as avg_content_length
+        """
+        
+        # Motif 3: README -> CONTAINS -> CitationSection -> CONTAINS -> ZenodoLink
+        citation_motif_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WHERE section.normalized_heading = 'citation' AND section.has_data_link = true
+        RETURN 
+            'readme_citation_zenodo' as motif_type,
+            COUNT(DISTINCT a) as successful_artifacts,
+            COUNT(section) as total_occurrences,
+            AVG(section.content_length) as avg_content_length
+        """
+        
+        # Motif 4: README -> CONTAINS -> ResultsSection
+        results_motif_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WHERE section.normalized_heading = 'results'
+        RETURN 
+            'readme_results' as motif_type,
+            COUNT(DISTINCT a) as successful_artifacts,
+            COUNT(section) as total_occurrences,
+            AVG(section.content_length) as avg_content_length,
+            SUM(CASE WHEN section.has_data_link = true THEN 1 ELSE 0 END) as data_links
+        """
+        
+        # Motif 5: README -> CONTAINS -> ReproductionSection
+        reproduction_motif_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WHERE section.has_reproducibility_terms = true
+        RETURN 
+            'readme_reproduction' as motif_type,
+            COUNT(DISTINCT a) as successful_artifacts,
+            COUNT(section) as total_occurrences,
+            AVG(section.content_length) as avg_content_length,
+            SUM(CASE WHEN section.has_script_reference = true THEN 1 ELSE 0 END) as script_references
+        """
+        
+        # Execute motif queries
+        motif_queries = [
+            installation_motif_query,
+            docker_motif_query,
+            citation_motif_query,
+            results_motif_query,
+            reproduction_motif_query
+        ]
+        
+        try:
+            for query in motif_queries:
+                result = self.graph.run(query).data()
+                if result:
+                    motif_data = result[0]
+                    motif_type = motif_data["motif_type"]
+                    
+                    # Calculate motif strength
+                    motif_data["motif_strength"] = (motif_data["successful_artifacts"] / 20) * 100  # Assuming 20 total artifacts
+                    motif_data["is_strong_motif"] = motif_data["motif_strength"] > 50
+                    
+                    motifs[motif_type] = motif_data
+        except Exception as e:
+            logger.warning(f"Error discovering README motifs: {e}")
+        
+        # Find composite motifs (artifacts with multiple strong patterns)
+        composite_motifs = self._find_composite_motifs()
+        
+        return {
+            "individual_motifs": motifs,
+            "composite_motifs": composite_motifs,
+            "motif_summary": {
+                "total_motifs_found": len(motifs),
+                "strong_motifs": [k for k, v in motifs.items() if v.get("is_strong_motif", False)],
+                "average_motif_strength": sum(v.get("motif_strength", 0) for v in motifs.values()) / len(motifs) if motifs else 0
+            }
+        }
+    
+    def _find_composite_motifs(self) -> List[Dict[str, Any]]:
+        """Find artifacts that exhibit multiple strong README motifs."""
+        composite_query = """
+        MATCH (a:Artifact)-[:HAS_DOCUMENTATION]->(readme:Documentation)
+        WHERE toLower(readme.path) CONTAINS 'readme' AND a.evaluation_score > 0.7
+        MATCH (readme)-[:CONTAINS]->(section:DocSection)
+        WITH a, readme,
+             COUNT(CASE WHEN section.normalized_heading = 'installation' THEN 1 END) as has_installation,
+             COUNT(CASE WHEN section.has_docker_reference = true THEN 1 END) as has_docker_ref,
+             COUNT(CASE WHEN section.normalized_heading = 'citation' AND section.has_data_link = true THEN 1 END) as has_citation_zenodo,
+             COUNT(CASE WHEN section.normalized_heading = 'results' THEN 1 END) as has_results,
+             COUNT(CASE WHEN section.has_reproducibility_terms = true THEN 1 END) as has_reproduction
+        WITH a, readme,
+             (CASE WHEN has_installation > 0 THEN 1 ELSE 0 END +
+              CASE WHEN has_docker_ref > 0 THEN 1 ELSE 0 END +
+              CASE WHEN has_citation_zenodo > 0 THEN 1 ELSE 0 END +
+              CASE WHEN has_results > 0 THEN 1 ELSE 0 END +
+              CASE WHEN has_reproduction > 0 THEN 1 ELSE 0 END) as motif_count,
+             has_installation > 0 as has_install_motif,
+             has_docker_ref > 0 as has_docker_motif,
+             has_citation_zenodo > 0 as has_citation_motif,
+             has_results > 0 as has_results_motif,
+             has_reproduction > 0 as has_repro_motif
+        WHERE motif_count >= 2
+        RETURN 
+            a.name as artifact_name,
+            a.evaluation_score as score,
+            motif_count,
+            has_install_motif,
+            has_docker_motif,
+            has_citation_motif,
+            has_results_motif,
+            has_repro_motif
+        ORDER BY motif_count DESC, score DESC
+        LIMIT 10
+        """
+        
+        try:
+            composite_results = self.graph.run(composite_query).data()
+            
+            # Add motif pattern descriptions
+            for result in composite_results:
+                motif_patterns = []
+                if result["has_install_motif"]:
+                    motif_patterns.append("installation")
+                if result["has_docker_motif"]:
+                    motif_patterns.append("docker")
+                if result["has_citation_motif"]:
+                    motif_patterns.append("citation-zenodo")
+                if result["has_results_motif"]:
+                    motif_patterns.append("results")
+                if result["has_repro_motif"]:
+                    motif_patterns.append("reproduction")
+                
+                result["motif_patterns"] = motif_patterns
+                result["motif_pattern_string"] = " + ".join(motif_patterns)
+            
+            return composite_results
+        except Exception as e:
+            logger.warning(f"Error finding composite motifs: {e}")
+            return []
     
     def _find_high_degree_nodes(self) -> List[Dict[str, Any]]:
         """Find nodes with highest degree (most connections)."""
