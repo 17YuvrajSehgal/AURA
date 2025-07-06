@@ -160,6 +160,7 @@ CONFIG_FILE_PATTERNS = [
 ]
 
 EXCLUDE_DIRS = [
+    '__MACOSX',
     '.git', '.svn', '.hg', '.bzr', 'node_modules', 'bower_components', '.yarn', '.pnp', '.parcel-cache',
     '__pycache__', '.pytest_cache', '.mypy_cache', '.tox', '.coverage', '.hypothesis',
     '.venv', 'venv', 'env', '.env', '.virtualenv', '.conda', '.ipynb_checkpoints',
@@ -667,6 +668,24 @@ class IntegratedArtifactAnalyzer:
         except (OSError, IOError):
             return False
 
+    def _is_in_excluded_dir(self, file_path: str) -> bool:
+        """Check if file path is within any excluded directory."""
+        # Normalize path separators
+        normalized_path = file_path.replace('\\', '/')
+        path_parts = normalized_path.split('/')
+        
+        # Check if any part of the path matches excluded directories
+        for part in path_parts:
+            if part in EXCLUDE_DIRS:
+                return True
+            
+            # Check against patterns with wildcards
+            for exclude_pattern in EXCLUDE_DIRS:
+                if '*' in exclude_pattern and fnmatch.fnmatch(part, exclude_pattern):
+                    return True
+        
+        return False
+
     def _should_exclude_file(self, path: str) -> tuple[bool, str]:
         """
         Check if a file should be excluded from analysis.
@@ -887,6 +906,13 @@ class IntegratedArtifactAnalyzer:
         for root, dirs, files in os.walk(src_dir):
             try:
                 rel_path = Path(root).relative_to(src_dir)
+                
+                # Skip if current directory is excluded
+                if str(rel_path) != '.' and self._is_in_excluded_dir(str(rel_path)):
+                    logger.debug(f"Skipping excluded directory: {rel_path}")
+                    dirs.clear()  # Don't recurse into subdirectories
+                    continue
+                
                 if str(rel_path) != '.':
                     sanitized_rel_path = self._sanitize_path(str(rel_path), used_paths)
                     dst_subdir = dst_dir / sanitized_rel_path
@@ -984,6 +1010,12 @@ class IntegratedArtifactAnalyzer:
                             logger.warning(f"Skipping unsafe path: {filename}")
                             self.extraction_stats['files_skipped'] += 1
                             continue
+                        
+                        # Check if file is in excluded directories
+                        if self._is_in_excluded_dir(filename):
+                            logger.debug(f"Skipping excluded directory file: {filename}")
+                            self.extraction_stats['files_skipped'] += 1
+                            continue
 
                         sanitized_path = self._sanitize_path(filename, used_paths)
                         target_path = extract_dir / sanitized_path
@@ -1032,6 +1064,12 @@ class IntegratedArtifactAnalyzer:
 
                         if os.path.isabs(filename) or ".." in filename:
                             logger.warning(f"Skipping unsafe path: {filename}")
+                            self.extraction_stats['files_skipped'] += 1
+                            continue
+                        
+                        # Check if file is in excluded directories
+                        if self._is_in_excluded_dir(filename):
+                            logger.debug(f"Skipping excluded directory file: {filename}")
                             self.extraction_stats['files_skipped'] += 1
                             continue
 
