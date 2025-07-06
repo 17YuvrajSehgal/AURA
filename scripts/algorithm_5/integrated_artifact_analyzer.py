@@ -24,6 +24,7 @@ import re
 import shutil
 import tarfile
 import zipfile
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set
@@ -169,11 +170,11 @@ EXCLUDE_DIRS = [
     '.c9', '.cloud9', '.sublime-*', '.nyc_output', '.mocha', '.istanbul', '.jupyter',
     '.Rproj.user', '.Rhistory', '.RData', '.Ruserdata', '.snapshots', '.metadata', '.factorypath',
     '.tmp', '.bak', '.old', '.orig', '.save', '.crash', '.pid', '.seed', '.pid.lock',
-    '.yarn-cache', '.yarnrc', '.pnp.*', '.eslintcache', '.pyre', '.pytype'
+    '.yarn-cache', '.yarnrc', '.pnp.*', '.eslintcache', '.pyre', '.pytype', 'data', 'dataset'
 ]
 
 EXCLUDE_FILES = [
-    '.DS_Store', 'Thumbs.db', 'desktop.ini', '.Trash-*', '.AppleDouble', '.LSOverride',
+    'DS_Store','.DS_Store', 'Thumbs.db', 'desktop.ini', '.Trash-*', '.AppleDouble', '.LSOverride',
     '*.log', '*.tmp', '*.swp', '*.swo'
 ]
 
@@ -192,7 +193,7 @@ class IntegratedArtifactAnalyzer:
     """
 
     def __init__(self, temp_dir: str = "../../temp_dir_for_git", output_dir: str = "../../algo_outputs/algorithm_2_output",
-                 max_file_size: int = 5000 * 1024 * 1024, max_recursion_depth: int = 3):
+                 max_file_size: int = 5000 * 1024 * 1024, max_recursion_depth: int = 3, extraction_timeout: int = 300):
         """
         Initialize the IntegratedArtifactAnalyzer.
         
@@ -201,11 +202,13 @@ class IntegratedArtifactAnalyzer:
             output_dir: Directory for saving analysis results (default: ../../algorithm_2_output)
             max_file_size: Maximum file size to process (default: 5000MB)
             max_recursion_depth: Maximum depth for recursive archive extraction (default: 3)
+            extraction_timeout: Maximum time in seconds for nested extraction (default: 300 = 5 minutes)
         """
         self.temp_dir = Path(temp_dir)
         self.output_dir = Path(output_dir)
         self.max_file_size = max_file_size
         self.max_recursion_depth = max_recursion_depth
+        self.extraction_timeout = extraction_timeout
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1141,16 +1144,30 @@ class IntegratedArtifactAnalyzer:
         # Check single extensions
         return file_path.suffix.lower() in ['.zip', '.tar', '.7z', '.rar', '.gz', '.bz2', '.xz']
 
-    def _extract_nested_archives(self, directory: Path, depth: int = 0):
+    def _extract_nested_archives(self, directory: Path, depth: int = 0, processed_archives: set = None, start_time: float = None):
         """
         Recursively extract nested archives found in the directory.
         
         Args:
             directory: Directory to scan for nested archives
             depth: Current recursion depth
+            processed_archives: Set of already processed archive paths (by content hash)
+            start_time: Start time for timeout tracking
         """
         if depth >= self.max_recursion_depth:
             logger.warning(f"Maximum recursion depth ({self.max_recursion_depth}) reached, skipping deeper extraction")
+            return
+        
+        if processed_archives is None:
+            processed_archives = set()
+        
+        if start_time is None:
+            start_time = time.time()
+        
+        # Check timeout
+        elapsed_time = time.time() - start_time
+        if elapsed_time > self.extraction_timeout:
+            logger.warning(f"Nested extraction timeout ({self.extraction_timeout}s) reached, stopping extraction")
             return
         
         archives_found = []
@@ -1164,14 +1181,37 @@ class IntegratedArtifactAnalyzer:
                         logger.warning(f"Skipping large nested archive: {item.name} ({item.stat().st_size} bytes)")
                         continue
                     
-                    archives_found.append(item)
+                    # Create a unique identifier for this archive based on size and relative path
+                    # This helps prevent extracting the same archive multiple times
+                    archive_id = f"{item.name}_{item.stat().st_size}_{item.stat().st_mtime}"
+                    
+                    if archive_id in processed_archives:
+                        logger.debug(f"Archive already processed: {item.name}")
+                        continue
+                    
+                    archives_found.append((item, archive_id))
                 except (OSError, IOError):
                     continue
         
+        # Limit the number of archives processed at each depth to prevent infinite loops
+        max_archives_per_depth = 50
+        if len(archives_found) > max_archives_per_depth:
+            logger.warning(f"Found {len(archives_found)} archives at depth {depth}, limiting to {max_archives_per_depth}")
+            archives_found = archives_found[:max_archives_per_depth]
+        
         # Extract each found archive
-        for archive_path in archives_found:
+        for i, (archive_path, archive_id) in enumerate(archives_found):
             try:
-                logger.info(f"Found nested archive at depth {depth}: {archive_path.name}")
+                # Check timeout periodically
+                elapsed_time = time.time() - start_time
+                if elapsed_time > self.extraction_timeout:
+                    logger.warning(f"Nested extraction timeout reached during processing, stopping after {i} archives")
+                    break
+                
+                logger.info(f"Found nested archive at depth {depth}: {archive_path.name} ({i+1}/{len(archives_found)})")
+                
+                # Mark this archive as processed
+                processed_archives.add(archive_id)
                 
                 # Create extraction directory next to the archive
                 extract_name = f"{archive_path.stem}_extracted"
@@ -1179,7 +1219,14 @@ class IntegratedArtifactAnalyzer:
                 
                 # Skip if already extracted
                 if extract_dir.exists():
-                    logger.info(f"Nested archive already extracted: {archive_path.name}")
+                    logger.debug(f"Nested archive already extracted: {archive_path.name}")
+                    continue
+                
+                # Check for extraction loop (too many similar extractions)
+                similar_extractions = len([d for d in archive_path.parent.iterdir() 
+                                         if d.is_dir() and d.name.startswith(archive_path.stem)])
+                if similar_extractions >= 3:  # Reduced threshold
+                    logger.warning(f"Too many similar extractions detected for {archive_path.name} ({similar_extractions}), skipping to prevent loops")
                     continue
                 
                 # Determine extraction method
@@ -1198,7 +1245,8 @@ class IntegratedArtifactAnalyzer:
                 self.extraction_stats['nested_archives_found'] = self.extraction_stats.get('nested_archives_found', 0) + 1
                 
                 # Recursively extract any archives found in the newly extracted content
-                self._extract_nested_archives(extract_dir, depth + 1)
+                # Pass the processed_archives set to maintain state across recursive calls
+                self._extract_nested_archives(extract_dir, depth + 1, processed_archives, start_time)
                 
             except Exception as e:
                 logger.error(f"Failed to extract nested archive {archive_path.name}: {e}")
