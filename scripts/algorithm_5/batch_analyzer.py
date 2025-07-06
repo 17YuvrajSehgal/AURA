@@ -149,12 +149,12 @@ class BatchArtifactAnalyzer:
         if not directory_path.exists():
             raise ValueError(f"Directory not found: {directory}")
 
-        # Find all matching files
+        # Find all matching files directly in the directory
         artifact_files = []
         for pattern in patterns:
             artifact_files.extend(directory_path.glob(pattern))
 
-        # Also include subdirectories
+        # Also include subdirectories as potential artifacts
         for item in directory_path.iterdir():
             if item.is_dir() and not item.name.startswith('.'):
                 artifact_files.append(item)
@@ -171,6 +171,94 @@ class BatchArtifactAnalyzer:
 
         if not artifact_list:
             print("No artifacts found matching the patterns")
+            return {
+                'total_artifacts': 0,
+                'successful': 0,
+                'failed': 0,
+                'success_rate': 0,
+                'processed_at': datetime.now().isoformat(),
+                'results': [],
+                'errors': []
+            }
+
+        return self.process_artifacts(artifact_list, force_reextract, cleanup_after_processing)
+
+    def process_nested_directory(self, directory: str, patterns: List[str] = None,
+                                 force_reextract: bool = False, cleanup_after_processing: bool = True) -> Dict[str, Any]:
+        """
+        Process artifacts in a nested directory structure where each artifact is in its own subdirectory.
+        
+        Args:
+            directory: Directory containing subdirectories with artifacts
+            patterns: File patterns to match (e.g., ['*.zip', '*.tar.gz'])
+            force_reextract: Force re-extraction of all artifacts
+            cleanup_after_processing: Clean up extracted files after processing each artifact (default: True)
+            
+        Returns:
+            Summary dictionary with results and statistics
+        """
+        if patterns is None:
+            patterns = ['*.zip', '*.tar', '*.tar.gz', '*.tgz', '*.tar.bz2', '*.tar.xz']
+
+        directory_path = Path(directory)
+        if not directory_path.exists():
+            raise ValueError(f"Directory not found: {directory}")
+
+        # Find artifacts in subdirectories only
+        artifact_files = []
+        subdirs_found = 0
+        
+        print(f"Scanning nested directories in: {directory}")
+        
+        for subdir in directory_path.iterdir():
+            if subdir.is_dir() and not subdir.name.startswith('.'):
+                subdirs_found += 1
+                print(f"  Scanning subdirectory: {subdir.name}")
+                
+                # Look for artifacts within each subdirectory
+                artifacts_in_subdir = []
+                for pattern in patterns:
+                    artifacts_in_subdir.extend(list(subdir.glob(pattern)))
+                
+                if artifacts_in_subdir:
+                    artifact_files.extend(artifacts_in_subdir)
+                    print(f"    Found {len(artifacts_in_subdir)} artifact(s)")
+                else:
+                    # Check if subdirectory has any files that could be processed as directory artifact
+                    has_files = any(item.is_file() for item in subdir.iterdir())
+                    if has_files:
+                        artifact_files.append(subdir)
+                        print(f"    Will process subdirectory as artifact (contains files)")
+                    else:
+                        print(f"    No artifacts found in subdirectory")
+
+        # Convert to artifact list
+        artifact_list = []
+        for file_path in artifact_files:
+            if file_path.is_file():
+                # Use subdirectory name as prefix for artifact name
+                parent_dir = file_path.parent.name
+                artifact_name = f"{parent_dir}_{file_path.stem}"
+            else:
+                # Use directory name
+                artifact_name = file_path.name
+            
+            artifact_list.append({
+                'path': str(file_path),
+                'name': artifact_name
+            })
+
+        print(f"\nSummary:")
+        print(f"  Subdirectories scanned: {subdirs_found}")
+        print(f"  Artifacts found: {len(artifact_list)}")
+        
+        if artifact_list:
+            print("\nArtifacts to process:")
+            for artifact in artifact_list:
+                print(f"  - {artifact['name']} ({artifact['path']})")
+
+        if not artifact_list:
+            print("No artifacts found in subdirectories")
             return {
                 'total_artifacts': 0,
                 'successful': 0,
@@ -303,6 +391,8 @@ def main():
                         help='Force re-extraction of all artifacts')
     parser.add_argument('--no-cleanup', action='store_true',
                         help='Do not clean up extracted files after processing (keeps files for debugging)')
+    parser.add_argument('--nested', action='store_true',
+                        help='Search for artifacts in subdirectories (each artifact in its own folder)')
     parser.add_argument('--patterns', nargs='+',
                         default=['*.zip', '*.tar', '*.tar.gz', '*.tgz', '*.tar.bz2', '*.tar.xz'],
                         help='File patterns to match')
@@ -326,12 +416,20 @@ def main():
         
         if input_path.is_dir():
             # Process directory
-            summary = batch_analyzer.process_directory(
-                directory=str(input_path),
-                patterns=args.patterns,
-                force_reextract=args.force,
-                cleanup_after_processing=cleanup_after_processing
-            )
+            if args.nested:
+                summary = batch_analyzer.process_nested_directory(
+                    directory=str(input_path),
+                    patterns=args.patterns,
+                    force_reextract=args.force,
+                    cleanup_after_processing=cleanup_after_processing
+                )
+            else:
+                summary = batch_analyzer.process_directory(
+                    directory=str(input_path),
+                    patterns=args.patterns,
+                    force_reextract=args.force,
+                    cleanup_after_processing=cleanup_after_processing
+                )
         elif input_path.is_file() and input_path.suffix.lower() == '.json':
             # Process artifact list from JSON file
             with open(input_path, 'r', encoding='utf-8') as f:
