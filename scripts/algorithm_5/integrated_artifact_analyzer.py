@@ -23,8 +23,8 @@ import os
 import re
 import shutil
 import tarfile
-import zipfile
 import time
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Set
@@ -77,7 +77,7 @@ EXECUTABLE_EXTENSIONS = [
     # Package files
     '.whl', '.egg', '.deb', '.rpm', '.msi', '.pkg', '.dmg',
     # Machine Learning models and data
-    '.pkl', '.pickle', '.joblib', '.h5', '.hdf5', '.pt', '.pth', 
+    '.pkl', '.pickle', '.joblib', '.h5', '.hdf5', '.pt', '.pth',
     '.model', '.weights', '.ckpt', '.pb', '.onnx', '.tflite',
     '.npz', '.npy', '.mat', '.rds', '.rda',
     # Archives (handled separately but should be excluded from text analysis)
@@ -174,7 +174,7 @@ EXCLUDE_DIRS = [
 ]
 
 EXCLUDE_FILES = [
-    'DS_Store','.DS_Store', 'Thumbs.db', 'desktop.ini', '.Trash-*', '.AppleDouble', '.LSOverride',
+    'DS_Store', '.DS_Store', 'Thumbs.db', 'desktop.ini', '.Trash-*', '.AppleDouble', '.LSOverride',
     '*.log', '*.tmp', '*.swp', '*.swo'
 ]
 
@@ -192,7 +192,8 @@ class IntegratedArtifactAnalyzer:
     similar to algorithm_2, then saves results to JSON.
     """
 
-    def __init__(self, temp_dir: str = "../../temp_dir_for_git", output_dir: str = "../../algo_outputs/algorithm_2_output",
+    def __init__(self, temp_dir: str = "../../temp_dir_for_git",
+                 output_dir: str = "../../algo_outputs/algorithm_2_output",
                  max_file_size: int = 5000 * 1024 * 1024, max_recursion_depth: int = 3, extraction_timeout: int = 300):
         """
         Initialize the IntegratedArtifactAnalyzer.
@@ -248,7 +249,8 @@ class IntegratedArtifactAnalyzer:
             artifact_path: str,
             artifact_name: Optional[str] = None,
             force_reextract: bool = False,
-            skip_analysis: bool = False
+            skip_analysis: bool = False,
+            cleanup_after_processing: bool = True
     ) -> Dict[str, Any]:
         """
         Extract and analyze an artifact with comprehensive analysis.
@@ -258,6 +260,7 @@ class IntegratedArtifactAnalyzer:
             artifact_name: Optional custom name for the artifact
             force_reextract: Force re-extraction even if already extracted
             skip_analysis: Skip detailed analysis and just extract
+            cleanup_after_processing: Clean up extracted files after processing (default: True)
             
         Returns:
             Dictionary containing extraction and analysis results
@@ -299,26 +302,58 @@ class IntegratedArtifactAnalyzer:
             artifact_name = extraction_result["artifact_name"]
 
         # Perform comprehensive analysis
-        if not skip_analysis:
-            logger.info(f"Performing comprehensive analysis on: {artifact_name}")
-            analysis_result = self._analyze_repository(extracted_path)
+        cleanup_needed = cleanup_after_processing and extraction_result.get("extraction_method") not in [
+            "directory_direct", "reused_existing"]
 
-            # Merge extraction and analysis results
-            result = {
+        try:
+            if not skip_analysis:
+                logger.info(f"Performing comprehensive analysis on: {artifact_name}")
+                analysis_result = self._analyze_repository(extracted_path)
+
+                # Merge extraction and analysis results
+                result = {
+                    **extraction_result,
+                    **analysis_result,
+                    "analysis_performed": True
+                }
+
+                # Save results to JSON
+                self._save_analysis_result(result, artifact_name)
+                logger.info(f"Analysis completed and saved for: {artifact_name}")
+            else:
+                result = {
+                    **extraction_result,
+                    "analysis_performed": False
+                }
+                logger.info(f"Extraction completed (analysis skipped) for: {artifact_name}")
+
+            # Clean up extracted files if requested
+            if cleanup_needed:
+                logger.info(f"Cleaning up extracted files for: {artifact_name}")
+                self.cleanup_extracted_artifact(artifact_name)
+                result["cleanup_performed"] = True
+            else:
+                result["cleanup_performed"] = False
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error during analysis of {artifact_name}: {e}")
+
+            # Clean up extracted files even on failure if requested
+            if cleanup_needed:
+                logger.info(f"Cleaning up extracted files after error for: {artifact_name}")
+                self.cleanup_extracted_artifact(artifact_name)
+
+            # Return error result
+            error_result = {
                 **extraction_result,
-                **analysis_result,
-                "analysis_performed": True
+                "analysis_performed": False,
+                "cleanup_performed": cleanup_needed,
+                "error": str(e),
+                "success": False
             }
-
-            # Save results to JSON
-            self._save_analysis_result(result, artifact_name)
-        else:
-            result = {
-                **extraction_result,
-                "analysis_performed": False
-            }
-
-        return result
+            return error_result
 
     def _is_github_url(self, url: str) -> bool:
         """Check if the URL is a GitHub URL."""
@@ -409,7 +444,7 @@ class IntegratedArtifactAnalyzer:
                 # Copy directory with robust handling
                 self._copy_directory_robust(artifact_path, extract_dir)
                 result["extraction_method"] = "directory_copy_robust"
-                
+
                 # Perform recursive extraction of nested archives
                 self._extract_nested_archives(extract_dir, depth=0)
             elif artifact_path.is_file():
@@ -433,7 +468,7 @@ class IntegratedArtifactAnalyzer:
                 extract_dir.mkdir(parents=True, exist_ok=True)
                 extraction_method(artifact_path, extract_dir)
                 result["extraction_method"] = extraction_method.__name__
-                
+
                 # Perform recursive extraction of nested archives
                 self._extract_nested_archives(extract_dir, depth=0)
 
@@ -535,7 +570,7 @@ class IntegratedArtifactAnalyzer:
         logger.info(f"  - Config files: {len(CONFIG)}")
 
         return {
-            #"repository_structure": S,
+            # "repository_structure": S,
             "documentation_files": M,
             "code_files": C,
             "license_files": L,
@@ -661,10 +696,10 @@ class IntegratedArtifactAnalyzer:
     def _is_large_data_file(self, path: str, max_size_mb: float = 10.0) -> bool:
         """Check if file is a large data file that should be excluded or size-limited."""
         ext = os.path.splitext(path)[1].lower()
-        
+
         if ext not in LARGE_DATA_EXTENSIONS:
             return False
-            
+
         try:
             size_mb = os.path.getsize(path) / (1024 * 1024)
             return size_mb > max_size_mb
@@ -676,17 +711,17 @@ class IntegratedArtifactAnalyzer:
         # Normalize path separators
         normalized_path = file_path.replace('\\', '/')
         path_parts = normalized_path.split('/')
-        
+
         # Check if any part of the path matches excluded directories
         for part in path_parts:
             if part in EXCLUDE_DIRS:
                 return True
-            
+
             # Check against patterns with wildcards
             for exclude_pattern in EXCLUDE_DIRS:
                 if '*' in exclude_pattern and fnmatch.fnmatch(part, exclude_pattern):
                     return True
-        
+
         return False
 
     def _should_exclude_file(self, path: str) -> tuple[bool, str]:
@@ -699,11 +734,11 @@ class IntegratedArtifactAnalyzer:
         # Check if it's an executable or binary file
         if self._is_executable_or_binary_file(path):
             return True, "executable/binary file"
-        
+
         # Check if it's a large data file
         if self._is_large_data_file(path):
             return True, "large data file"
-            
+
         # Check file size (general limit)
         try:
             size_mb = os.path.getsize(path) / (1024 * 1024)
@@ -711,7 +746,7 @@ class IntegratedArtifactAnalyzer:
                 return True, f"file too large ({size_mb:.1f}MB)"
         except (OSError, IOError):
             pass
-            
+
         return False, ""
 
     # === File Processing Methods ===
@@ -755,7 +790,7 @@ class IntegratedArtifactAnalyzer:
         file_paths = []
         excluded_files_count = 0
         excluded_reasons = {}
-        
+
         for dirpath, dirnames, filenames in os.walk(root):
             # Exclude directories
             dirnames[:] = [d for d in dirnames if
@@ -909,13 +944,13 @@ class IntegratedArtifactAnalyzer:
         for root, dirs, files in os.walk(src_dir):
             try:
                 rel_path = Path(root).relative_to(src_dir)
-                
+
                 # Skip if current directory is excluded
                 if str(rel_path) != '.' and self._is_in_excluded_dir(str(rel_path)):
                     logger.debug(f"Skipping excluded directory: {rel_path}")
                     dirs.clear()  # Don't recurse into subdirectories
                     continue
-                
+
                 if str(rel_path) != '.':
                     sanitized_rel_path = self._sanitize_path(str(rel_path), used_paths)
                     dst_subdir = dst_dir / sanitized_rel_path
@@ -1013,7 +1048,7 @@ class IntegratedArtifactAnalyzer:
                             logger.warning(f"Skipping unsafe path: {filename}")
                             self.extraction_stats['files_skipped'] += 1
                             continue
-                        
+
                         # Check if file is in excluded directories
                         if self._is_in_excluded_dir(filename):
                             logger.debug(f"Skipping excluded directory file: {filename}")
@@ -1069,7 +1104,7 @@ class IntegratedArtifactAnalyzer:
                             logger.warning(f"Skipping unsafe path: {filename}")
                             self.extraction_stats['files_skipped'] += 1
                             continue
-                        
+
                         # Check if file is in excluded directories
                         if self._is_in_excluded_dir(filename):
                             logger.debug(f"Skipping excluded directory file: {filename}")
@@ -1135,16 +1170,17 @@ class IntegratedArtifactAnalyzer:
     def _is_archive_file(self, file_path: Path) -> bool:
         """Check if a file is a supported archive format."""
         file_str = str(file_path).lower()
-        
+
         # Check for compound extensions first
         for ext in ['.tar.gz', '.tar.bz2', '.tar.xz', '.tgz']:
             if file_str.endswith(ext):
                 return True
-        
+
         # Check single extensions
         return file_path.suffix.lower() in ['.zip', '.tar', '.7z', '.rar', '.gz', '.bz2', '.xz']
 
-    def _extract_nested_archives(self, directory: Path, depth: int = 0, processed_archives: set = None, start_time: float = None):
+    def _extract_nested_archives(self, directory: Path, depth: int = 0, processed_archives: set = None,
+                                 start_time: float = None):
         """
         Recursively extract nested archives found in the directory.
         
@@ -1157,21 +1193,21 @@ class IntegratedArtifactAnalyzer:
         if depth >= self.max_recursion_depth:
             logger.warning(f"Maximum recursion depth ({self.max_recursion_depth}) reached, skipping deeper extraction")
             return
-        
+
         if processed_archives is None:
             processed_archives = set()
-        
+
         if start_time is None:
             start_time = time.time()
-        
+
         # Check timeout
         elapsed_time = time.time() - start_time
         if elapsed_time > self.extraction_timeout:
             logger.warning(f"Nested extraction timeout ({self.extraction_timeout}s) reached, stopping extraction")
             return
-        
+
         archives_found = []
-        
+
         # Find all archive files in the directory
         for item in directory.rglob('*'):
             if item.is_file() and self._is_archive_file(item):
@@ -1180,25 +1216,26 @@ class IntegratedArtifactAnalyzer:
                     if item.stat().st_size > self.max_file_size:
                         logger.warning(f"Skipping large nested archive: {item.name} ({item.stat().st_size} bytes)")
                         continue
-                    
+
                     # Create a unique identifier for this archive based on size and relative path
                     # This helps prevent extracting the same archive multiple times
                     archive_id = f"{item.name}_{item.stat().st_size}_{item.stat().st_mtime}"
-                    
+
                     if archive_id in processed_archives:
                         logger.debug(f"Archive already processed: {item.name}")
                         continue
-                    
+
                     archives_found.append((item, archive_id))
                 except (OSError, IOError):
                     continue
-        
+
         # Limit the number of archives processed at each depth to prevent infinite loops
         max_archives_per_depth = 50
         if len(archives_found) > max_archives_per_depth:
-            logger.warning(f"Found {len(archives_found)} archives at depth {depth}, limiting to {max_archives_per_depth}")
+            logger.warning(
+                f"Found {len(archives_found)} archives at depth {depth}, limiting to {max_archives_per_depth}")
             archives_found = archives_found[:max_archives_per_depth]
-        
+
         # Extract each found archive
         for i, (archive_path, archive_id) in enumerate(archives_found):
             try:
@@ -1207,50 +1244,54 @@ class IntegratedArtifactAnalyzer:
                 if elapsed_time > self.extraction_timeout:
                     logger.warning(f"Nested extraction timeout reached during processing, stopping after {i} archives")
                     break
-                
-                logger.info(f"Found nested archive at depth {depth}: {archive_path.name} ({i+1}/{len(archives_found)})")
-                
+
+                logger.info(
+                    f"Found nested archive at depth {depth}: {archive_path.name} ({i + 1}/{len(archives_found)})")
+
                 # Mark this archive as processed
                 processed_archives.add(archive_id)
-                
+
                 # Create extraction directory next to the archive
                 extract_name = f"{archive_path.stem}_extracted"
                 extract_dir = archive_path.parent / extract_name
-                
+
                 # Skip if already extracted
                 if extract_dir.exists():
                     logger.debug(f"Nested archive already extracted: {archive_path.name}")
                     continue
-                
+
                 # Check for extraction loop (too many similar extractions)
-                similar_extractions = len([d for d in archive_path.parent.iterdir() 
-                                         if d.is_dir() and d.name.startswith(archive_path.stem)])
+                similar_extractions = len([d for d in archive_path.parent.iterdir()
+                                           if d.is_dir() and d.name.startswith(archive_path.stem)])
                 if similar_extractions >= 3:  # Reduced threshold
-                    logger.warning(f"Too many similar extractions detected for {archive_path.name} ({similar_extractions}), skipping to prevent loops")
+                    logger.warning(
+                        f"Too many similar extractions detected for {archive_path.name} ({similar_extractions}), skipping to prevent loops")
                     continue
-                
+
                 # Determine extraction method
                 extraction_method = self._get_extraction_method(archive_path)
                 if extraction_method is None:
                     logger.warning(f"Unsupported nested archive format: {archive_path.suffix}")
                     continue
-                
+
                 # Extract the nested archive
                 extract_dir.mkdir(parents=True, exist_ok=True)
                 extraction_method(archive_path, extract_dir)
-                
+
                 logger.info(f"Successfully extracted nested archive: {archive_path.name}")
-                
+
                 # Update extraction stats
-                self.extraction_stats['nested_archives_found'] = self.extraction_stats.get('nested_archives_found', 0) + 1
-                
+                self.extraction_stats['nested_archives_found'] = self.extraction_stats.get('nested_archives_found',
+                                                                                           0) + 1
+
                 # Recursively extract any archives found in the newly extracted content
                 # Pass the processed_archives set to maintain state across recursive calls
                 self._extract_nested_archives(extract_dir, depth + 1, processed_archives, start_time)
-                
+
             except Exception as e:
                 logger.error(f"Failed to extract nested archive {archive_path.name}: {e}")
-                self.extraction_stats['nested_extraction_failures'] = self.extraction_stats.get('nested_extraction_failures', 0) + 1
+                self.extraction_stats['nested_extraction_failures'] = self.extraction_stats.get(
+                    'nested_extraction_failures', 0) + 1
                 continue
 
     def cleanup_extracted_artifact(self, artifact_name: str):
@@ -1309,7 +1350,7 @@ def main():
     artifact_name = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith('--') else None
     force_reextract = '--force' in sys.argv
     skip_analysis = '--skip-analysis' in sys.argv
-    
+
     # Parse max depth parameter
     max_depth = 3  # default
     if '--max-depth' in sys.argv:
@@ -1336,7 +1377,7 @@ def main():
             print(f"  Artifact: {result['artifact_name']}")
             print(f"  Extracted to: {result['extracted_path']}")
             print(f"  Method: {result['extraction_method']}")
-            
+
             # Show extraction statistics including nested archives
             stats = result.get('extraction_stats', {})
             if stats.get('nested_archives_found', 0) > 0:

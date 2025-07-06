@@ -43,13 +43,14 @@ class BatchArtifactAnalyzer:
         self.errors = []
 
     def process_artifacts(self, artifact_list: List[Dict[str, str]],
-                          force_reextract: bool = False) -> Dict[str, Any]:
+                          force_reextract: bool = False, cleanup_after_processing: bool = True) -> Dict[str, Any]:
         """
         Process a list of artifacts.
         
         Args:
             artifact_list: List of dictionaries with 'path' and optional 'name' keys
             force_reextract: Force re-extraction of all artifacts
+            cleanup_after_processing: Clean up extracted files after processing each artifact (default: True)
             
         Returns:
             Summary dictionary with results and statistics
@@ -72,7 +73,8 @@ class BatchArtifactAnalyzer:
                     artifact_path=artifact_path,
                     artifact_name=artifact_name,
                     force_reextract=force_reextract,
-                    skip_analysis=False
+                    skip_analysis=False,
+                    cleanup_after_processing=cleanup_after_processing
                 )
 
                 if result["success"]:
@@ -127,7 +129,7 @@ class BatchArtifactAnalyzer:
         return summary
 
     def process_directory(self, directory: str, patterns: List[str] = None,
-                          force_reextract: bool = False) -> Dict[str, Any]:
+                          force_reextract: bool = False, cleanup_after_processing: bool = True) -> Dict[str, Any]:
         """
         Process all artifacts in a directory.
         
@@ -135,6 +137,7 @@ class BatchArtifactAnalyzer:
             directory: Directory containing artifacts
             patterns: File patterns to match (e.g., ['*.zip', '*.tar.gz'])
             force_reextract: Force re-extraction of all artifacts
+            cleanup_after_processing: Clean up extracted files after processing each artifact (default: True)
             
         Returns:
             Summary dictionary with results and statistics
@@ -178,7 +181,7 @@ class BatchArtifactAnalyzer:
                 'errors': []
             }
 
-        return self.process_artifacts(artifact_list, force_reextract)
+        return self.process_artifacts(artifact_list, force_reextract, cleanup_after_processing)
 
     def generate_report(self, summary: Dict[str, Any], output_file: str = None) -> str:
         """
@@ -298,6 +301,8 @@ def main():
                         help='Temporary directory for extractions')
     parser.add_argument('--force', action='store_true',
                         help='Force re-extraction of all artifacts')
+    parser.add_argument('--no-cleanup', action='store_true',
+                        help='Do not clean up extracted files after processing (keeps files for debugging)')
     parser.add_argument('--patterns', nargs='+',
                         default=['*.zip', '*.tar', '*.tar.gz', '*.tgz', '*.tar.bz2', '*.tar.xz'],
                         help='File patterns to match')
@@ -317,12 +322,15 @@ def main():
     try:
         input_path = Path(args.input)
 
+        cleanup_after_processing = not args.no_cleanup
+        
         if input_path.is_dir():
             # Process directory
             summary = batch_analyzer.process_directory(
                 directory=str(input_path),
                 patterns=args.patterns,
-                force_reextract=args.force
+                force_reextract=args.force,
+                cleanup_after_processing=cleanup_after_processing
             )
         elif input_path.is_file() and input_path.suffix.lower() == '.json':
             # Process artifact list from JSON file
@@ -331,7 +339,8 @@ def main():
 
             summary = batch_analyzer.process_artifacts(
                 artifact_list=artifact_list,
-                force_reextract=args.force
+                force_reextract=args.force,
+                cleanup_after_processing=cleanup_after_processing
             )
         else:
             raise ValueError(f"Invalid input: {args.input}. Must be a directory or JSON file.")
