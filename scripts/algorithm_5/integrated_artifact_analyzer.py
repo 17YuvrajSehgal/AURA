@@ -6,11 +6,13 @@ This module handles extraction of various artifact formats AND performs comprehe
 analysis similar to algorithm_2, then saves results to JSON.
 
 Features:
-- Robust extraction (ZIP, TAR, etc.) with error handling
+- Robust extraction (ZIP, TAR, etc.) with error handling and recursive nested archive extraction
 - Comprehensive repository analysis (file categorization, content analysis)
+- Smart filtering: excludes binary/executable files (.jar, .exe, .dll, ML models, etc.)
 - Directory tree generation
 - JSON output with detailed analysis results
 - Git repository cloning support
+- Configurable file size limits and exclusion rules
 """
 
 import fnmatch
@@ -59,6 +61,49 @@ CODE_EXTENSIONS = [
     '.asm', '.s',
     # Other
     '.vim', '.el'
+]
+
+# === NEW: Executable and Binary File Extensions to Exclude ===
+EXECUTABLE_EXTENSIONS = [
+    # Java executables and archives
+    '.jar', '.war', '.ear', '.class',
+    # System executables and libraries
+    '.exe', '.dll', '.so', '.dylib', '.app',
+    # Compiled objects and libraries
+    '.bin', '.obj', '.o', '.a', '.lib',
+    # Python compiled files
+    '.pyc', '.pyo', '.pyd',
+    # Package files
+    '.whl', '.egg', '.deb', '.rpm', '.msi', '.pkg', '.dmg',
+    # Machine Learning models and data
+    '.pkl', '.pickle', '.joblib', '.h5', '.hdf5', '.pt', '.pth', 
+    '.model', '.weights', '.ckpt', '.pb', '.onnx', '.tflite',
+    '.npz', '.npy', '.mat', '.rds', '.rda',
+    # Archives (handled separately but should be excluded from text analysis)
+    '.zip', '.tar', '.gz', '.7z', '.rar', '.bz2', '.xz', '.tgz',
+    # Document files (binary)
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.odt', '.ods', '.odp', '.rtf',
+    # Image files
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.ico', '.tiff',
+    '.webp', '.raw', '.psd', '.ai', '.eps',
+    # Media files
+    '.mp3', '.mp4', '.avi', '.mov', '.wav', '.flac', '.ogg', '.mkv',
+    '.webm', '.wmv', '.m4a', '.aac',
+    # Database files
+    '.db', '.sqlite', '.sqlite3', '.mdb', '.accdb',
+    # Disk images
+    '.iso', '.img', '.vhd', '.vmdk',
+    # Font files
+    '.ttf', '.otf', '.woff', '.woff2', '.eot',
+    # Other binary formats
+    '.swf', '.fla', '.unity', '.blend', '.3ds', '.max'
+]
+
+# Large data file extensions (typically contain non-textual data)
+LARGE_DATA_EXTENSIONS = [
+    '.csv', '.tsv', '.parquet', '.arrow', '.feather', '.avro',
+    '.json', '.jsonl', '.xml', '.yaml', '.yml'  # Keep these but with size limits
 ]
 
 LICENSE_PATTERNS = [
@@ -429,6 +474,12 @@ class IntegratedArtifactAnalyzer:
 
         for path in file_paths:
             try:
+                # Additional safety check for excluded files
+                should_exclude, exclude_reason = self._should_exclude_file(path)
+                if should_exclude:
+                    logger.debug(f"Skipping excluded file: {path} ({exclude_reason})")
+                    continue
+
                 file_info = {
                     "name": os.path.basename(path),
                     "path": os.path.relpath(path, repo_path),
@@ -470,7 +521,14 @@ class IntegratedArtifactAnalyzer:
             tree_lines = [f"[ERROR GENERATING TREE]: {e}"]
 
         # Log statistics
-        logger.info(f"Analysis complete: {len(S)} files, {len(M)} docs, {len(C)} code, {len(L)} license")
+        logger.info(f"Analysis complete: {len(S)} total files processed")
+        logger.info(f"  - Documentation files: {len(M)}")
+        logger.info(f"  - Code files: {len(C)}")
+        logger.info(f"  - License files: {len(L)}")
+        logger.info(f"  - Build files: {len(BUILD)}")
+        logger.info(f"  - Docker files: {len(DOCKER)}")
+        logger.info(f"  - Data files: {len(DATA)}")
+        logger.info(f"  - Config files: {len(CONFIG)}")
 
         return {
             #"repository_structure": S,
@@ -591,6 +649,49 @@ class IntegratedArtifactAnalyzer:
                 base_name in important_patterns or
                 any(pattern in name_lower for pattern in ['readme', 'license', 'licence']))
 
+    def _is_executable_or_binary_file(self, path: str) -> bool:
+        """Check if file is an executable or binary file that should be excluded."""
+        ext = os.path.splitext(path)[1].lower()
+        return ext in EXECUTABLE_EXTENSIONS
+
+    def _is_large_data_file(self, path: str, max_size_mb: float = 10.0) -> bool:
+        """Check if file is a large data file that should be excluded or size-limited."""
+        ext = os.path.splitext(path)[1].lower()
+        
+        if ext not in LARGE_DATA_EXTENSIONS:
+            return False
+            
+        try:
+            size_mb = os.path.getsize(path) / (1024 * 1024)
+            return size_mb > max_size_mb
+        except (OSError, IOError):
+            return False
+
+    def _should_exclude_file(self, path: str) -> tuple[bool, str]:
+        """
+        Check if a file should be excluded from analysis.
+        
+        Returns:
+            (should_exclude, reason)
+        """
+        # Check if it's an executable or binary file
+        if self._is_executable_or_binary_file(path):
+            return True, "executable/binary file"
+        
+        # Check if it's a large data file
+        if self._is_large_data_file(path):
+            return True, "large data file"
+            
+        # Check file size (general limit)
+        try:
+            size_mb = os.path.getsize(path) / (1024 * 1024)
+            if size_mb > 50:  # 50MB limit for any file
+                return True, f"file too large ({size_mb:.1f}MB)"
+        except (OSError, IOError):
+            pass
+            
+        return False, ""
+
     # === File Processing Methods ===
 
     def _read_file_content(self, path: str) -> List[str]:
@@ -630,6 +731,9 @@ class IntegratedArtifactAnalyzer:
     ) -> List[str]:
         """Enhanced file collection with better coverage."""
         file_paths = []
+        excluded_files_count = 0
+        excluded_reasons = {}
+        
         for dirpath, dirnames, filenames in os.walk(root):
             # Exclude directories
             dirnames[:] = [d for d in dirnames if
@@ -654,9 +758,18 @@ class IntegratedArtifactAnalyzer:
                 full_path = os.path.join(dirpath, filename)
                 ext = os.path.splitext(full_path)[1].lower()
 
+                # # Check if file should be excluded (NEW)
+                # should_exclude, exclude_reason = self._should_exclude_file(full_path)
+                # if should_exclude:
+                #     excluded_files_count += 1
+                #     excluded_reasons[exclude_reason] = excluded_reasons.get(exclude_reason, 0) + 1
+                #     continue
+
                 try:
                     size_kb = os.path.getsize(full_path) / 1024
                     if size_kb > max_file_size_kb:
+                        # excluded_files_count += 1
+                        # excluded_reasons["file too large (KB)"] = excluded_reasons.get("file too large (KB)", 0) + 1
                         continue
                 except (OSError, IOError):
                     continue
@@ -672,6 +785,12 @@ class IntegratedArtifactAnalyzer:
                     break
 
             file_paths.extend(important_files + selected[:max_files_per_dir] + sampled)
+
+        # Log exclusion statistics
+        # if excluded_files_count > 0:
+        #     logger.info(f"Excluded {excluded_files_count} files from analysis:")
+        #     for reason, count in excluded_reasons.items():
+        #         logger.info(f"  - {reason}: {count} files")
 
         return file_paths
 
@@ -1143,6 +1262,11 @@ def main():
                 print(f"  Files analyzed: {len(result.get('repository_structure', []))}")
                 print(f"  Documentation: {len(result.get('documentation_files', []))}")
                 print(f"  Code files: {len(result.get('code_files', []))}")
+                print(f"  License files: {len(result.get('license_files', []))}")
+                print(f"  Build files: {len(result.get('build_files', []))}")
+                print(f"  Docker files: {len(result.get('docker_files', []))}")
+                print(f"  Data files: {len(result.get('data_files', []))}")
+                print(f"  Config files: {len(result.get('config_files', []))}")
                 print(f"  Size: {result.get('repo_size_mb', 0)} MB")
                 print(f"  Results saved to: ./analysis_outputs/{result['artifact_name']}_analysis.json")
         else:
