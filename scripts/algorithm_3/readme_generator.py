@@ -31,7 +31,7 @@ class READMEGenerator:
     documentation from research artifact JSON files.
     """
     
-    def __init__(self, use_neo4j: bool = False):
+    def __init__(self, use_neo4j: bool = True):
         """
         Initialize the README generator
         
@@ -296,7 +296,7 @@ class READMEGenerator:
         
         try:
             # Build temporary knowledge graph
-            temp_kg_builder = KnowledgeGraphBuilder(use_neo4j=False)
+            temp_kg_builder = KnowledgeGraphBuilder(use_neo4j=self.use_neo4j)
             temp_kg_builder.build_from_artifact_json(artifact_json_path)
             
             # Initialize temporary RAG retriever
@@ -336,7 +336,7 @@ def main():
     args = parser.parse_args()
     
     # Initialize generator
-    generator = READMEGenerator(use_neo4j=args.neo4j)
+    generator = READMEGenerator(True)
     
     try:
         if args.preview:

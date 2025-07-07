@@ -58,7 +58,7 @@ class KnowledgeGraphBuilder:
                     config.knowledge_graph.uri,
                     auth=(config.knowledge_graph.username, config.knowledge_graph.password)
                 )
-                logger.info("Connected to Neo4j database")
+                logger.info(f"Connected to Neo4j database at {config.knowledge_graph.uri}, using database: {config.knowledge_graph.database}")
             except Exception as e:
                 logger.warning(f"Failed to connect to Neo4j: {e}")
                 self.use_neo4j = False
@@ -474,7 +474,7 @@ class KnowledgeGraphBuilder:
             return
         
         try:
-            with self.driver.session() as session:
+            with self.driver.session(database=config.knowledge_graph.database) as session:
                 # Clear existing data (optional - be careful in production)
                 session.run("MATCH (n) DETACH DELETE n")
                 
@@ -497,7 +497,7 @@ class KnowledgeGraphBuilder:
                     """
                     session.run(query, source_id=rel.source_id, target_id=rel.target_id)
                 
-                logger.info(f"Stored {len(self.nodes)} nodes and {len(self.relationships)} relationships in Neo4j")
+                logger.info(f"Stored {len(self.nodes)} nodes and {len(self.relationships)} relationships in Neo4j database: {config.knowledge_graph.database}")
         
         except Exception as e:
             logger.error(f"Failed to store graph in Neo4j: {e}")
