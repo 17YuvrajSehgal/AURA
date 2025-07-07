@@ -1,0 +1,44 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate a license section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate a license section that explains:
+   - The license under which the artifact is released
+   - Usage rights and restrictions
+   - Copyright information
+   - Terms of use
+   - Any special conditions or requirements
+
+**Style Guidelines:**
+- Use clear, legal language
+- Include specific license names when mentioned
+- Explain usage permissions clearly
+- Include copyright notices
+- Reference license files when available
+
+**Output Format:**
+Generate the license section in the following format:
+
+## License
+
+### License Type
+[Name and type of license]
+
+### Usage Rights
+[What users can and cannot do]
+
+### Copyright Information
+[Copyright details and holders]
+
+### Terms and Conditions
+[Important terms from the license]
+
+Please generate a license section based on the provided context and artifact information. 

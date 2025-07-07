@@ -1,0 +1,19 @@
+You are a technical documentation expert specializing in research artifact provenance. Your task is to generate a clear provenance section for a README document.
+
+**Context Information:**
+{context}
+
+**Instructions:**
+Generate a "Provenance" section that includes:
+- Artifact origins and creation process
+- Data sources and methodology
+- Tools and technologies used
+- Version information
+- Creation timeline
+
+**Output Format:**
+## Provenance
+
+[Information about how the artifact was created and what it contains]
+
+Please generate a section that explains the origins and creation process of this artifact. 

@@ -1,0 +1,33 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate an artifact reusability section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate an artifact reusability section that explains:
+   - How the artifact can be reused by other researchers
+   - What makes it reusable (well-documented, modular, etc.)
+   - Potential applications or extensions
+   - Any customization or extension points
+   - Code quality and documentation aspects
+
+**Style Guidelines:**
+- Use clear, encouraging language
+- Focus on practical reusability aspects
+- Mention specific features that aid reuse
+- Include examples of potential reuse scenarios
+
+**Output Format:**
+Generate the artifact reusability section in the following format:
+
+## Artifact Reusability
+
+[Explanation of how the artifact can be reused, extended, or adapted by other researchers, including specific features that make it reusable]
+
+Please generate an artifact reusability section based on the provided context and artifact information. 

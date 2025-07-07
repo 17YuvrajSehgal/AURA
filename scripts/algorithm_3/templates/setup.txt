@@ -1,0 +1,41 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate a setup instructions section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate a setup instructions section that explains:
+   - System requirements and dependencies
+   - Installation steps
+   - Environment setup
+   - Configuration requirements
+   - Pre-requisites and assumptions
+
+**Style Guidelines:**
+- Use clear, step-by-step instructions
+- Include specific version requirements when mentioned
+- Organize instructions logically
+- Mention both software and hardware requirements
+- Include troubleshooting tips when relevant
+
+**Output Format:**
+Generate the setup instructions section in the following format:
+
+## Setup Instructions
+
+### System Requirements
+[List of system requirements based on context]
+
+### Installation Steps
+[Step-by-step installation instructions]
+
+### Environment Setup
+[Configuration and environment setup instructions]
+
+Please generate setup instructions based on the provided context and artifact information. 

@@ -1,0 +1,44 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate an outputs section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate an outputs section that explains:
+   - What files and results the artifact produces
+   - Data formats and file types
+   - Visualization outputs
+   - Result summaries and reports
+   - Expected output locations
+
+**Style Guidelines:**
+- Use clear, descriptive language
+- Organize outputs by type or category
+- Include file formats and sizes when relevant
+- Explain the purpose of each output
+- Mention any visualization or analysis results
+
+**Output Format:**
+Generate the outputs section in the following format:
+
+## Outputs
+
+### Generated Files
+[List of files produced by the artifact]
+
+### Data Results
+[Description of data outputs and their formats]
+
+### Visualizations
+[Any plots, charts, or visual outputs]
+
+### Analysis Results
+[Summary of key findings or computed results]
+
+Please generate an outputs section based on the provided context and artifact information. 

@@ -1,0 +1,43 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate a clear, compelling title and purpose section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Create a clear, descriptive title that captures the essence of the research artifact
+2. Write a comprehensive purpose section that explains:
+   - What the artifact is and what it does
+   - The research problem it addresses
+   - Key contributions or findings
+   - Target audience (researchers, practitioners, etc.)
+   - The value it provides to the scientific community
+
+**Style Guidelines:**
+- Use clear, accessible language
+- Avoid excessive jargon
+- Be specific about the artifact's capabilities
+- Include relevant keywords for discoverability
+- Keep the tone professional but engaging
+
+**Output Format:**
+Generate the title and purpose section in the following format:
+
+# [Title]
+
+## Purpose
+
+[Purpose content explaining what the artifact is, what it does, and why it's valuable]
+
+**Example Context Usage:**
+- If the artifact contains experimental data, mention the experimental setup
+- If it's a replication package, emphasize reproducibility
+- If it's a tool or framework, highlight its functionality and use cases
+- If it contains analysis results, mention the key findings
+
+Please generate a title and purpose section that would help researchers quickly understand the value and relevance of this artifact. 

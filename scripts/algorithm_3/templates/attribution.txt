@@ -1,0 +1,44 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate an attribution section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate an attribution section that explains:
+   - Authors and contributors
+   - Associated publication or paper
+   - How to cite the artifact
+   - Institutional affiliations
+   - Acknowledgments and references
+
+**Style Guidelines:**
+- Use proper academic citation format
+- Include all necessary citation information
+- Mention institutional affiliations
+- Provide clear citation instructions
+- Include DOI or other persistent identifiers when available
+
+**Output Format:**
+Generate the attribution section in the following format:
+
+## Attribution
+
+### Authors
+[List of authors and their affiliations]
+
+### Associated Publication
+[Related paper or publication information]
+
+### Citation
+[How to cite this artifact]
+
+### Acknowledgments
+[Credits and acknowledgments]
+
+Please generate an attribution section based on the provided context and artifact information. 

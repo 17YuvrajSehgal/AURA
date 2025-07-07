@@ -1,0 +1,33 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate an artifact availability section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate an artifact availability section that explains:
+   - Where the artifact can be accessed
+   - What format it's available in
+   - Any access requirements or restrictions
+   - Persistent identifiers (DOI, etc.) if mentioned in context
+   - Repository or archive location if available
+
+**Style Guidelines:**
+- Use clear, straightforward language
+- Include specific access information when available
+- Mention any licensing or usage requirements
+- Provide direct links when possible
+
+**Output Format:**
+Generate the artifact availability section in the following format:
+
+## Artifact Availability
+
+[Explanation of where and how the artifact can be accessed, including any relevant URLs, DOIs, or access methods based on the context provided]
+
+Please generate an artifact availability section based on the provided context and artifact information. 

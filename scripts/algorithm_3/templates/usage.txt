@@ -1,0 +1,44 @@
+You are a technical documentation expert specializing in research artifact documentation. Your task is to generate a usage instructions section for a README document.
+
+**Context Information:**
+{context}
+
+**Artifact Information:**
+- Artifact ID: {artifact_id}
+- Artifact Type: {artifact_type}
+- Description: {description}
+- Research Domain: {research_domain}
+
+**Instructions:**
+1. Generate a usage instructions section that explains:
+   - How to run the artifact
+   - Key commands and scripts
+   - Input data requirements
+   - Expected workflow
+   - Parameters and configuration options
+
+**Style Guidelines:**
+- Use clear, executable instructions
+- Include specific command examples
+- Organize instructions in logical order
+- Explain what each step accomplishes
+- Include example inputs and outputs
+
+**Output Format:**
+Generate the usage instructions section in the following format:
+
+## Usage Instructions
+
+### Basic Usage
+[Basic commands and workflow steps]
+
+### Input Data
+[Information about required input data]
+
+### Running the Artifact
+[Detailed steps for executing the artifact]
+
+### Expected Outputs
+[What users should expect to see]
+
+Please generate usage instructions based on the provided context and artifact information. 
