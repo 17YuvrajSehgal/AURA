@@ -42,7 +42,7 @@ def main():
             sys.executable, "-m", "streamlit", "run", 
             str(app_file),
             "--server.address", "localhost",
-            "--server.port", "8501",
+            "--server.port", "8502",
             "--browser.gatherUsageStats", "false"
         ]
         

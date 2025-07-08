@@ -34,72 +34,103 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for modern design
+# Custom CSS for clean white design
 st.markdown("""
 <style>
-    .main-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2rem;
-        border-radius: 15px;
-        color: white;
-        text-align: center;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-    
-    .step-card {
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 4px solid #667eea;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .success-card {
-        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 4px solid #28a745;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .error-card {
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        border-left: 4px solid #dc3545;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .metric-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
-        margin: 0.5rem;
-        border-top: 3px solid #667eea;
-    }
-    
-    .progress-container {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    
-    .sidebar .stSelectbox > div > div {
-        background-color: #f0f2f6;
-    }
-    
-    .stProgress > div > div > div > div {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
+/* Universal white text override */
+body, div, p, span, label, h1, h2, h3, h4, h5, h6,
+.stMarkdown, .stTextInput, .stSelectbox, .stMultiSelect, .stFileUploader,
+.css-1v0mbdj, .css-1y4p8pa, .css-10trblm, .stApp, .e1fqkh3o2 {
+    color: white !important;
+}
+
+/* Fix text with default or faded opacity */
+div[style*="opacity"],
+p[style*="opacity"],
+span[style*="opacity"],
+label[style*="opacity"],
+.css-1v0mbdj, .css-1y4p8pa, .css-10trblm {
+    opacity: 1 !important;
+    color: white !important;
+}
+
+/* Inputs, dropdowns, multiselects */
+.stTextInput > div > div > input,
+.stSelectbox > div > div,
+.stMultiSelect > div > div > div,
+.stFileUploader > div {
+    background-color: #2c2f35 !important;
+    color: white !important;
+    border: 1px solid #555 !important;
+}
+
+/* Multiselect tags */
+.stMultiSelect div[data-baseweb="tag"] {
+    background-color: #667eea !important;
+    color: white !important;
+    font-weight: bold;
+    border-radius: 8px;
+}
+
+/* Dropdown selected text and placeholder */
+.css-1wa3eu0-placeholder,
+.css-1uccc91-singleValue,
+.css-1okebmr-indicatorSeparator,
+.css-qc6sy-singleValue {
+    color: white !important;
+}
+
+/* Sidebar section titles */
+.css-1v0mbdj, .css-1y4p8pa, .css-10trblm {
+    font-weight: 600 !important;
+    color: white !important;
+}
+
+/* Progress indicators (sidebar) */
+.css-1c7y2kd, .css-qcqlej, .css-fblp2m, .css-1n76uvr, .css-14gy7wr {
+    color: white !important;
+}
+
+/* Placeholder text in input fields */
+input::placeholder {
+    color: #ccc !important;
+}
+
+/* File uploader text */
+.stFileUploader label {
+    color: white !important;
+    font-weight: 500;
+}
+
+/* Button text */
+.stButton > button {
+    color: white !important;
+}
+
+/* Code blocks */
+.stCodeBlock {
+    background-color: #1e1e1e;
+    color: white;
+    border: 1px solid #555;
+    border-radius: 6px;
+}
+
+/* Progress bar */
+.stProgress > div > div > div > div {
+    background: #667eea !important;
+}
+
+/* Backgrounds */
+.stApp {
+    background-color: #111 !important;
+}
+.css-1d391kg {
+    background-color: #18191c !important;
+}
 </style>
+
+
+
 """, unsafe_allow_html=True)
 
 
@@ -128,10 +159,10 @@ def render_header():
     st.markdown("""
     <div class="main-header">
         <h1>🚀 AURA: Artifact Understanding and Research Assessment</h1>
-        <p style="font-size: 1.2rem; margin-top: 1rem;">
+        <p style="font-size: 1.2rem; margin-top: 1rem; color: #555;">
             AI-Powered Research Artifact Evaluation Framework
         </p>
-        <p style="font-size: 1rem; opacity: 0.9; margin-top: 0.5rem;">
+        <p style="font-size: 1rem; color: #777; margin-top: 0.5rem;">
             Conference-Specific • Multi-Dimensional • Weighted Scoring • Production-Ready
         </p>
     </div>
@@ -568,7 +599,8 @@ def run_evaluation_with_progress(json_path, conference_name, dimensions, use_rag
 
             if detail:
                 progress_details.markdown(f"""
-                <div style="background: #f8f9fa; padding: 1rem; border-radius: 5px; margin: 0.5rem 0;">
+                <div style="background: white; padding: 1rem; border-radius: 5px; margin: 0.5rem 0;
+                           border: 1px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <small><strong>{step_name}:</strong> {detail}</small>
                 </div>
                 """, unsafe_allow_html=True)
@@ -655,9 +687,10 @@ def render_overall_score_header(results):
         icon = "❌"
 
     st.markdown(f"""
-    <div style="background: linear-gradient(135deg, {color}20 0%, {color}10 100%); 
+    <div style="background: white; 
                 padding: 2rem; border-radius: 15px; text-align: center; 
-                border: 2px solid {color}; margin: 1rem 0;">
+                border: 3px solid {color}; margin: 1rem 0;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
         <h1 style="color: {color}; margin: 0;">{icon} {weighted_score:.1f}%</h1>
         <h3 style="color: #333; margin: 0.5rem 0;">Overall Evaluation Score</h3>
         <p style="font-size: 1.2rem; color: {color}; font-weight: bold; margin: 0;">
@@ -859,8 +892,9 @@ def render_detailed_recommendations(results):
         priority_icon = "🔴" if rec_data["priority"] > 3 else "🟡" if rec_data["priority"] > 2 else "🟢"
 
         st.markdown(f"""
-        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; 
-                    border-left: 4px solid #667eea;">
+        <div style="background: white; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; 
+                    border: 1px solid #e0e0e0; border-left: 4px solid #667eea;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <p><strong>{priority_icon} {rec_data['dimension'].title()}</strong></p>
             <p style="margin: 0;">{rec_data['recommendation']}</p>
         </div>
