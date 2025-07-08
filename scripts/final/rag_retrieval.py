@@ -203,10 +203,14 @@ class RAGRetriever:
 
     def _graph_search(self, section_type: str, query: str, top_k: int) -> List[RetrievalResult]:
         """Perform graph-based search using relationship traversal"""
-        if self.use_neo4j:
-            return self._neo4j_graph_search(section_type, query, top_k)
-        else:
-            return self._networkx_graph_search(section_type, query, top_k)
+        try:
+            if self.use_neo4j:
+                return self._neo4j_graph_search(section_type, query, top_k)
+            else:
+                return self._networkx_graph_search(section_type, query, top_k)
+        except Exception as e:
+            logger.error(f"Graph search failed: {e}")
+            return []
 
     def _neo4j_graph_search(self, section_type: str, query: str, top_k: int) -> List[RetrievalResult]:
         """Perform graph search using Neo4j"""
@@ -218,8 +222,8 @@ class RAGRetriever:
                 # Build Cypher query based on section type
                 cypher_query = self._build_cypher_query(section_type, top_k)
 
-                # Execute query
-                result = session.run(cypher_query, query=query)
+                # Execute query (no parameters needed as query is static)
+                result = session.run(cypher_query)
 
                 results = []
                 for record in result:
@@ -298,24 +302,22 @@ class RAGRetriever:
         focus_nodes = strategy.get('focus_nodes', [])
         focus_relationships = strategy.get('focus_relationships', [])
 
-        # Build node type filter
-        node_filters = ' OR '.join([f'n:{node_type}' for node_type in focus_nodes])
+        # Build node type filter - if no focus nodes, match all
+        if focus_nodes:
+            node_filters = ' OR '.join([f'n:{node_type}' for node_type in focus_nodes])
+            where_clause = f"WHERE {node_filters}"
+        else:
+            where_clause = ""
 
-        # Build relationship patterns
-        relationship_patterns = []
-        for rel_type in focus_relationships:
-            relationship_patterns.append(f'(n)-[:{rel_type}]-()')
-            relationship_patterns.append(f'()-[:{rel_type}]-(n)')
-
+        # Simple query that just returns nodes with optional relationship scoring
         query = f"""
         MATCH (n)
-        WHERE {node_filters}
-        OPTIONAL MATCH {' OR '.join(relationship_patterns) if relationship_patterns else '(n)'}
+        {where_clause}
         RETURN n
         LIMIT {top_k}
         """
 
-        return query
+        return query.strip()
 
     def _extract_node_content(self, node) -> str:
         """Extract meaningful content from a node"""
