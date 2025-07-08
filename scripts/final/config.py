@@ -57,6 +57,26 @@ class AuraConfig:
             ]
 
 
+# Weighted scoring system for artifact evaluation
+DIMENSION_WEIGHTS = {
+    "reproducibility": 0.2623,  # 26.23%
+    "documentation": 0.1182,   # 11.82%
+    "accessibility": 0.1586,   # 15.86%
+    "usability": 0.2967,       # 29.67%
+    "experimental": 0.0999,    # 9.99%
+    "functionality": 0.0643,   # 6.43%
+}
+
+# Acceptance probability thresholds (configurable)
+ACCEPTANCE_THRESHOLDS = {
+    "excellent": 0.85,      # 85%+ - Very High Chance
+    "good": 0.70,          # 70-85% - Good Chance  
+    "acceptable": 0.55,    # 55-70% - Moderate Chance
+    "needs_improvement": 0.40,  # 40-55% - Low Chance
+    # Below 40% - Very Low Chance
+}
+
+
 @dataclass
 class SystemConfig:
     """Main system configuration"""

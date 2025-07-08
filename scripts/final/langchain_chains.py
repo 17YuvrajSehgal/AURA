@@ -19,7 +19,7 @@ try:
 except ImportError:
     from langchain.chat_models import ChatOpenAI
 
-from config import config, PROMPT_TEMPLATES, AuraConfig
+from config import config, PROMPT_TEMPLATES, AuraConfig, DIMENSION_WEIGHTS, ACCEPTANCE_THRESHOLDS
 from rag_retrieval import RAGRetriever
 from knowledge_graph_builder import KnowledgeGraphBuilder
 from conference_guidelines_loader import conference_loader
@@ -664,11 +664,17 @@ class ArtifactEvaluationOrchestrator:
     
     def generate_comprehensive_report(self, evaluation_results: Dict[str, EvaluationResult],
                                     artifact_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Generate a comprehensive evaluation report"""
+        """Generate a comprehensive evaluation report with weighted scoring"""
         
-        # Calculate overall metrics
+        # Calculate simple average (unweighted)
         overall_scores = [result.overall_rating for result in evaluation_results.values()]
-        overall_rating = sum(overall_scores) / len(overall_scores) if overall_scores else 0.0
+        simple_average_rating = sum(overall_scores) / len(overall_scores) if overall_scores else 0.0
+        
+        # Calculate weighted scores
+        weighted_scores = self._calculate_weighted_scores(evaluation_results)
+        weighted_overall_rating = weighted_scores["weighted_overall_score"]
+        dimension_percentages = weighted_scores["dimension_percentages"]
+        dimension_weighted_scores = weighted_scores["dimension_weighted_scores"]
         
         # Collect all strengths and weaknesses
         all_strengths = []
@@ -688,10 +694,19 @@ class ArtifactEvaluationOrchestrator:
                 "size_mb": artifact_data.get("repo_size_mb", 0),
                 "extraction_method": artifact_data.get("extraction_method", "")
             },
-            "overall_rating": overall_rating,
+            "overall_rating": weighted_overall_rating,  # Weighted overall score
+            "simple_average_rating": simple_average_rating,  # Unweighted average for comparison
             "dimension_scores": {
                 dimension: result.overall_rating 
                 for dimension, result in evaluation_results.items()
+            },
+            "weighted_scoring": {
+                "weighted_overall_score": weighted_overall_rating,
+                "weighted_overall_percentage": weighted_overall_rating * 20,  # Convert 5-point scale to percentage
+                "dimension_percentages": dimension_percentages,
+                "dimension_weighted_scores": dimension_weighted_scores,
+                "dimension_weights": DIMENSION_WEIGHTS,
+                "acceptance_probability": self._calculate_acceptance_probability(weighted_overall_rating)
             },
             "detailed_evaluations": {
                 dimension: {
@@ -717,6 +732,90 @@ class ArtifactEvaluationOrchestrator:
         }
         
         return report
+    
+    def _calculate_weighted_scores(self, evaluation_results: Dict[str, EvaluationResult]) -> Dict[str, Any]:
+        """Calculate weighted scores based on dimension importance"""
+        
+        # Initialize results
+        dimension_percentages = {}
+        dimension_weighted_scores = {}
+        total_weighted_score = 0.0
+        total_weight_used = 0.0
+        
+        # Calculate weighted scores for each dimension
+        for dimension, result in evaluation_results.items():
+            if dimension in DIMENSION_WEIGHTS:
+                weight = DIMENSION_WEIGHTS[dimension]
+                raw_score = result.overall_rating  # Score out of 5
+                
+                # Convert to percentage (5-point scale to 100%)
+                dimension_percentage = (raw_score / 5.0) * 100
+                dimension_percentages[dimension] = dimension_percentage
+                
+                # Calculate weighted contribution
+                weighted_contribution = (raw_score / 5.0) * weight
+                dimension_weighted_scores[dimension] = weighted_contribution
+                
+                total_weighted_score += weighted_contribution
+                total_weight_used += weight
+                
+                logger.debug(f"{dimension}: {raw_score:.2f}/5 ({dimension_percentage:.1f}%) × {weight:.3f} = {weighted_contribution:.3f}")
+            else:
+                logger.warning(f"No weight defined for dimension: {dimension}")
+                # Default weight for unknown dimensions
+                dimension_percentages[dimension] = (result.overall_rating / 5.0) * 100
+                dimension_weighted_scores[dimension] = 0.0
+        
+        # Normalize if weights don't sum to 1.0
+        if total_weight_used > 0 and abs(total_weight_used - 1.0) > 0.001:
+            logger.warning(f"Weights sum to {total_weight_used:.3f}, normalizing...")
+            total_weighted_score = total_weighted_score / total_weight_used
+        
+        # Convert back to 5-point scale for consistency
+        weighted_overall_score = total_weighted_score * 5.0
+        
+        return {
+            "weighted_overall_score": weighted_overall_score,
+            "dimension_percentages": dimension_percentages,
+            "dimension_weighted_scores": dimension_weighted_scores,
+            "total_weight_used": total_weight_used
+        }
+    
+    def _calculate_acceptance_probability(self, weighted_score: float) -> Dict[str, Any]:
+        """Calculate acceptance probability based on weighted score"""
+        
+        # Convert 5-point scale to percentage
+        score_percentage = (weighted_score / 5.0)
+        
+        # Determine acceptance category
+        if score_percentage >= ACCEPTANCE_THRESHOLDS["excellent"]:
+            category = "excellent"
+            probability_text = "Very High Chance"
+            probability_range = "85-100%"
+        elif score_percentage >= ACCEPTANCE_THRESHOLDS["good"]:
+            category = "good"
+            probability_text = "Good Chance"
+            probability_range = "70-85%"
+        elif score_percentage >= ACCEPTANCE_THRESHOLDS["acceptable"]:
+            category = "acceptable"
+            probability_text = "Moderate Chance"
+            probability_range = "55-70%"
+        elif score_percentage >= ACCEPTANCE_THRESHOLDS["needs_improvement"]:
+            category = "needs_improvement"
+            probability_text = "Low Chance"
+            probability_range = "40-55%"
+        else:
+            category = "poor"
+            probability_text = "Very Low Chance"
+            probability_range = "0-40%"
+        
+        return {
+            "category": category,
+            "probability_text": probability_text,
+            "probability_range": probability_range,
+            "score_percentage": score_percentage * 100,
+            "weighted_score": weighted_score
+        }
     
     def close(self):
         """Clean up resources"""

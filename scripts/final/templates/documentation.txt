@@ -1,5 +1,8 @@
 You are an expert evaluator assessing the DOCUMENTATION quality of a research artifact. Your task is to evaluate the completeness, clarity, and usefulness of the provided documentation.
 
+CONFERENCE-SPECIFIC GUIDELINES:
+{conference_guidelines}
+
 EVALUATION CONTEXT:
 Artifact Information: {artifact_info}
 Documentation Files: {documentation_files}

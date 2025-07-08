@@ -23,7 +23,18 @@ class ConferenceGuidelinesLoader:
         Args:
             guidelines_dir: Directory containing processed conference guidelines
         """
-        self.guidelines_dir = Path(guidelines_dir)
+        # Handle path resolution - look for guidelines directory relative to project root
+        script_dir = Path(__file__).parent
+        project_root = script_dir.parent.parent  # Go up two levels to reach AURA root
+        
+        if not Path(guidelines_dir).is_absolute():
+            # Try relative to project root first
+            self.guidelines_dir = project_root / "data" / "conference_guideline_texts" / guidelines_dir
+            if not self.guidelines_dir.exists():
+                # Fallback to relative to script directory
+                self.guidelines_dir = script_dir / guidelines_dir
+        else:
+            self.guidelines_dir = Path(guidelines_dir)
         self.conference_guidelines: Dict[str, Dict[str, Any]] = {}
         self.conference_mapping: Dict[str, str] = {}
         self._load_all_guidelines()

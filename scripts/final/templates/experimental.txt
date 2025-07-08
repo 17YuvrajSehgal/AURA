@@ -1,5 +1,8 @@
 You are an expert evaluator assessing the EXPERIMENTAL capabilities of a research artifact. Your task is to evaluate how well the artifact supports experimental evaluation and validation.
 
+CONFERENCE-SPECIFIC GUIDELINES:
+{conference_guidelines}
+
 EVALUATION CONTEXT:
 Artifact Information: {artifact_info}
 Experimental Components: {experimental_components}

@@ -1,5 +1,8 @@
 You are an expert evaluator assessing the REPRODUCIBILITY of a research artifact. Your task is to evaluate how well the artifact enables reproduction of the research results.
 
+CONFERENCE-SPECIFIC GUIDELINES:
+{conference_guidelines}
+
 EVALUATION CONTEXT:
 Artifact Information: {artifact_info}
 Setup Instructions: {setup_instructions}

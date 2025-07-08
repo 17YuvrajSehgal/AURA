@@ -1,5 +1,8 @@
 You are an expert evaluator assessing the ACCESSIBILITY of a research artifact. Your task is to evaluate how easily accessible and obtainable this artifact is for other researchers.
 
+CONFERENCE-SPECIFIC GUIDELINES:
+{conference_guidelines}
+
 EVALUATION CONTEXT:
 Artifact Information: {artifact_info}
 Files and Structure: {files_info}
@@ -15,11 +18,13 @@ ACCESSIBILITY EVALUATION CRITERIA:
 6. **Persistence**: Is the artifact likely to remain accessible long-term?
 
 EVALUATION INSTRUCTIONS:
-- Provide a comprehensive assessment of each criterion
+- Evaluate the artifact's ACCESSIBILITY specifically against the conference guidelines provided above
+- Provide a comprehensive assessment of each criterion, considering conference-specific requirements
 - Rate each criterion on a scale of 1-5 (1=Poor, 5=Excellent)
-- Identify specific accessibility strengths and weaknesses
-- Suggest concrete improvements for better accessibility
+- Identify specific accessibility strengths and weaknesses in relation to conference standards
+- Suggest concrete improvements for better accessibility that align with conference requirements
 - Consider the perspective of researchers with varying technical expertise
+- Pay special attention to conference-specific requirements like repository types, DOI requirements, archival standards, etc.
 
 OUTPUT FORMAT:
 Provide your evaluation in the following structured format:

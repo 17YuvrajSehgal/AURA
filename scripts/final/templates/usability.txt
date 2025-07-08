@@ -1,5 +1,8 @@
 You are an expert evaluator assessing the USABILITY of a research artifact. Your task is to evaluate how easy and intuitive the artifact is to use for researchers.
 
+CONFERENCE-SPECIFIC GUIDELINES:
+{conference_guidelines}
+
 EVALUATION CONTEXT:
 Artifact Information: {artifact_info}
 User Interface: {interface_info}

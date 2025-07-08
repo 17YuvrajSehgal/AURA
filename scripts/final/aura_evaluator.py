@@ -116,6 +116,9 @@ class AURAEvaluator:
             if save_results:
                 self._save_evaluation_results(report, artifact_data)
             
+            # Log weighted scoring summary
+            self._log_scoring_summary(report)
+            
             logger.info(f"Evaluation completed in {report['evaluation_metadata']['duration_seconds']} seconds")
             return report
             
@@ -197,6 +200,9 @@ class AURAEvaluator:
             
             # Clean up temporary file
             temp_json_path.unlink()
+            
+            # Log weighted scoring summary
+            self._log_scoring_summary(report)
             
             logger.info(f"Evaluation completed in {report['evaluation_metadata']['duration_seconds']} seconds")
             return report
@@ -358,6 +364,36 @@ class AURAEvaluator:
         except Exception as e:
             logger.warning(f"Failed to save batch summary: {e}")
     
+    def _log_scoring_summary(self, report: Dict[str, Any]):
+        """Log a summary of the weighted scoring results"""
+        try:
+            weighted_info = report.get("weighted_scoring", {})
+            if not weighted_info:
+                return
+            
+            logger.info("=== WEIGHTED SCORING SUMMARY ===")
+            logger.info(f"Overall Weighted Score: {weighted_info['weighted_overall_score']:.2f}/5.0 ({weighted_info['weighted_overall_percentage']:.1f}%)")
+            
+            # Acceptance probability
+            acceptance = weighted_info.get("acceptance_probability", {})
+            if acceptance:
+                logger.info(f"Acceptance Probability: {acceptance['probability_text']} ({acceptance['probability_range']})")
+            
+            logger.info("\nDimension Breakdown:")
+            dimension_percentages = weighted_info.get("dimension_percentages", {})
+            dimension_weights = weighted_info.get("dimension_weights", {})
+            
+            for dimension in ["reproducibility", "usability", "accessibility", "documentation", "experimental", "functionality"]:
+                if dimension in dimension_percentages and dimension in dimension_weights:
+                    percentage = dimension_percentages[dimension]
+                    weight = dimension_weights[dimension] * 100
+                    logger.info(f"  {dimension.title():15}: {percentage:5.1f}% (Weight: {weight:5.1f}%)")
+            
+            logger.info("=" * 35)
+            
+        except Exception as e:
+            logger.warning(f"Failed to log scoring summary: {e}")
+    
     def _cleanup(self):
         """Clean up resources"""
         if self.orchestrator:
@@ -508,10 +544,23 @@ def demo_evaluation():
         
         # Print summary
         logger.info("=== Evaluation Summary ===")
-        logger.info(f"Overall Rating: {report['overall_rating']:.2f}/5.0")
+        logger.info(f"Overall Weighted Rating: {report['overall_rating']:.2f}/5.0")
+        
+        # Show weighted scoring info if available
+        weighted_info = report.get("weighted_scoring", {})
+        if weighted_info:
+            logger.info(f"Overall Percentage: {weighted_info['weighted_overall_percentage']:.1f}%")
+            acceptance = weighted_info.get("acceptance_probability", {})
+            if acceptance:
+                logger.info(f"Acceptance Probability: {acceptance['probability_text']}")
+        
         logger.info("Dimension Scores:")
         for dimension, score in report["dimension_scores"].items():
-            logger.info(f"  {dimension.title()}: {score:.2f}/5.0")
+            if weighted_info and dimension in weighted_info.get("dimension_percentages", {}):
+                percentage = weighted_info["dimension_percentages"][dimension]
+                logger.info(f"  {dimension.title()}: {score:.2f}/5.0 ({percentage:.1f}%)")
+            else:
+                logger.info(f"  {dimension.title()}: {score:.2f}/5.0")
         
         return report
         

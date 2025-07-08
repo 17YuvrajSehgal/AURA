@@ -6,6 +6,7 @@ with conference-specific guidelines and criteria.
 """
 
 import logging
+
 from aura_evaluator import AURAEvaluator, quick_evaluate
 from conference_guidelines_loader import conference_loader
 
@@ -17,20 +18,20 @@ logger = logging.getLogger(__name__)
 def demo_available_conferences():
     """Demonstrate listing available conferences"""
     logger.info("=== Available Conference Guidelines ===")
-    
+
     conferences = conference_loader.get_available_conferences()
     logger.info(f"Found {len(conferences)} conference guidelines:")
-    
+
     for conference in conferences[:10]:  # Show first 10
         summary = conference_loader.get_conference_summary(conference)
         logger.info(f"- {conference}: {summary.get('total_criteria', 0)} criteria")
-    
+
     return conferences
 
 
 def demo_conference_specific_evaluation():
     """Demonstrate conference-specific artifact evaluation"""
-    
+
     # Demo artifact data
     demo_artifact_data = {
         "artifact_name": "sample_ml_artifact",
@@ -101,17 +102,17 @@ def demo_conference_specific_evaluation():
             }
         ]
     }
-    
+
     # Test different conferences
-    test_conferences = ["ICSE", "ASE", "FSE", "ASPLOS"]
-    
+    test_conferences = ["ICSE"]
+
     logger.info("=== Conference-Specific Evaluations ===")
-    
+
     results = {}
-    
+
     for conference in test_conferences:
         logger.info(f"\n--- Evaluating for {conference} Conference ---")
-        
+
         try:
             # Initialize evaluator with conference-specific settings
             evaluator = AURAEvaluator(
@@ -119,66 +120,162 @@ def demo_conference_specific_evaluation():
                 use_rag=True,
                 conference_name=conference
             )
-            
+
             # Run evaluation
             report = evaluator.evaluate_artifact_from_data(
                 artifact_data=demo_artifact_data,
-                dimensions=["accessibility", "documentation", "functionality"],  # Limited for demo
-                save_results=False
+                dimensions=["accessibility", "documentation", "experimental", "functionality", "reproducibility",
+                            "usability"],
+                save_results=True
             )
-            
+
             # Store results
             results[conference] = {
                 "overall_rating": report["overall_rating"],
                 "dimension_scores": report["dimension_scores"],
                 "conference_info": conference_loader.get_conference_summary(conference)
             }
-            
-            # Print summary
-            logger.info(f"Overall Rating for {conference}: {report['overall_rating']:.2f}/5.0")
+
+            # Print summary including weighted scoring
+            weighted_info = report.get("weighted_scoring", {})
+            logger.info(
+                f"Overall Weighted Score for {conference}: {report['overall_rating']:.2f}/5.0 ({weighted_info.get('weighted_overall_percentage', 0):.1f}%)")
+
+            # Show acceptance probability
+            acceptance = weighted_info.get("acceptance_probability", {})
+            if acceptance:
+                logger.info(f"Acceptance Probability: {acceptance['probability_text']}")
+
+            logger.info("Dimension Scores:")
             for dimension, score in report["dimension_scores"].items():
-                logger.info(f"  {dimension.title()}: {score:.2f}/5.0")
-            
+                percentage = weighted_info.get("dimension_percentages", {}).get(dimension, 0)
+                logger.info(f"  {dimension.title()}: {score:.2f}/5.0 ({percentage:.1f}%)")
+
             evaluator.close()
-            
+
         except Exception as e:
             logger.error(f"Failed to evaluate for {conference}: {e}")
             results[conference] = {"error": str(e)}
-    
+
     return results
 
 
 def demo_conference_guidelines_injection():
     """Demonstrate how conference guidelines are injected into prompts"""
-    
+
     logger.info("=== Conference Guidelines Injection Demo ===")
-    
+
     conferences_to_test = ["ICSE", "ASE"]
     dimension = "accessibility"
-    
+
     for conference in conferences_to_test:
         logger.info(f"\n--- {conference} Guidelines for {dimension.upper()} ---")
-        
+
         try:
             guidelines_text = conference_loader.format_conference_guidelines_for_prompt(
                 conference_name=conference,
                 dimension=dimension
             )
-            
+
             logger.info("Guidelines that would be injected into prompt:")
             logger.info("-" * 60)
             logger.info(guidelines_text[:500] + "..." if len(guidelines_text) > 500 else guidelines_text)
             logger.info("-" * 60)
-            
+
         except Exception as e:
             logger.error(f"Failed to get guidelines for {conference}: {e}")
 
 
+def demo_weighted_scoring_system():
+    """Demonstrate the weighted scoring system"""
+
+    logger.info("=== Weighted Scoring System Demo ===")
+
+    # Simple demo artifact for scoring
+    scoring_artifact = {
+        "artifact_name": "scoring_demo_artifact",
+        "artifact_path": "/path/to/scoring/demo",
+        "repo_size_mb": 8.5,
+        "documentation_files": [
+            {
+                "path": "README.md",
+                "content": [
+                    "# Scoring Demo Artifact",
+                    "This artifact demonstrates the weighted scoring system.",
+                    "## Installation",
+                    "docker run scoring-demo",
+                    "## Usage",
+                    "Follow the examples in /examples directory"
+                ]
+            },
+            {
+                "path": "LICENSE",
+                "content": ["MIT License"]
+            }
+        ],
+        "code_files": [
+            {
+                "path": "main.py",
+                "content": ["#!/usr/bin/env python3", "# Main application code"]
+            },
+            {
+                "path": "Dockerfile",
+                "content": ["FROM python:3.9", "# Docker setup"]
+            }
+        ]
+    }
+
+    logger.info("Testing weighted scoring system...")
+
+    # Evaluate with ICSE (should emphasize reproducibility and documentation)
+    try:
+        evaluator = AURAEvaluator(
+            use_neo4j=False,
+            use_rag=False,  # Simplified for demo
+            conference_name="ICSE"
+        )
+
+        report = evaluator.evaluate_artifact_from_data(
+            artifact_data=scoring_artifact,
+            save_results=False
+        )
+
+        # Display weighted scoring breakdown
+        weighted_info = report.get("weighted_scoring", {})
+        if weighted_info:
+            logger.info("\n📊 WEIGHTED SCORING BREAKDOWN:")
+            logger.info(
+                f"Overall Score: {weighted_info['weighted_overall_score']:.2f}/5.0 ({weighted_info['weighted_overall_percentage']:.1f}%)")
+
+            acceptance = weighted_info.get("acceptance_probability", {})
+            logger.info(f"Acceptance Category: {acceptance.get('category', 'unknown').title()}")
+            logger.info(f"Acceptance Probability: {acceptance.get('probability_text', 'Unknown')}")
+
+            logger.info("\nDimension Breakdown (sorted by weight):")
+
+            # Sort dimensions by weight (highest first)
+            weights = weighted_info.get("dimension_weights", {})
+            percentages = weighted_info.get("dimension_percentages", {})
+
+            sorted_dimensions = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+
+            for dimension, weight in sorted_dimensions:
+                if dimension in percentages:
+                    score_pct = percentages[dimension]
+                    weight_pct = weight * 100
+                    logger.info(f"  {dimension.title():15}: {score_pct:5.1f}% × {weight_pct:5.1f}% weight")
+
+        evaluator.close()
+
+    except Exception as e:
+        logger.error(f"Weighted scoring demo failed: {e}")
+
+
 def demo_comparison_across_conferences():
     """Compare how the same artifact scores across different conferences"""
-    
+
     logger.info("=== Cross-Conference Comparison ===")
-    
+
     # Simple artifact for comparison
     simple_artifact = {
         "artifact_name": "simple_python_tool",
@@ -197,10 +294,10 @@ def demo_comparison_across_conferences():
             }
         ]
     }
-    
+
     conferences = ["ICSE", "ASE", "FSE"]
     comparison_results = {}
-    
+
     for conference in conferences:
         try:
             # Quick evaluation for comparison
@@ -211,62 +308,68 @@ def demo_comparison_across_conferences():
                 use_neo4j=False,
                 use_rag=False  # Simplified for demo
             )
-            
+
             comparison_results[conference] = {
                 "overall": report.get("overall_rating", 0.0),
                 "accessibility": report.get("dimension_scores", {}).get("accessibility", 0.0),
                 "documentation": report.get("dimension_scores", {}).get("documentation", 0.0)
             }
-            
+
         except Exception as e:
             logger.warning(f"Skipping {conference} due to error: {e}")
             comparison_results[conference] = {"error": str(e)}
-    
+
     # Display comparison
     logger.info("\nConference Comparison Results:")
     logger.info("Conference | Overall | Accessibility | Documentation")
     logger.info("-" * 55)
-    
+
     for conference, scores in comparison_results.items():
         if "error" not in scores:
-            logger.info(f"{conference:10} | {scores['overall']:7.2f} | {scores['accessibility']:13.2f} | {scores['documentation']:13.2f}")
+            logger.info(
+                f"{conference:10} | {scores['overall']:7.2f} | {scores['accessibility']:13.2f} | {scores['documentation']:13.2f}")
         else:
             logger.info(f"{conference:10} | ERROR   | ERROR         | ERROR")
-    
+
     return comparison_results
 
 
 def main():
     """Run all conference-aware evaluation demos"""
-    
+
     logger.info("🎯 AURA Conference-Aware Evaluation Demo")
     logger.info("=" * 50)
-    
+
     try:
         # Demo 1: Show available conferences
         conferences = demo_available_conferences()
-        
+
         # Demo 2: Show guidelines injection
         demo_conference_guidelines_injection()
-        
-        # Demo 3: Conference-specific evaluation
+
+        # Demo 3: Weighted scoring system
+        demo_weighted_scoring_system()
+
+        # Demo 4: Conference-specific evaluation
         if conferences:
             evaluation_results = demo_conference_specific_evaluation()
-            
-            # Demo 4: Cross-conference comparison
+
+            # Demo 5: Cross-conference comparison
             # comparison_results = demo_comparison_across_conferences()
-        
+
         logger.info("\n✅ All demos completed successfully!")
         logger.info("\nKey features demonstrated:")
         logger.info("- Conference guidelines loading and parsing")
         logger.info("- Guidelines injection into evaluation prompts")
+        logger.info("- Weighted scoring system with dimension importance")
+        logger.info("- Acceptance probability estimation")
         logger.info("- Conference-specific artifact evaluation")
         logger.info("- Cross-conference comparison capabilities")
-        
+
     except Exception as e:
         logger.error(f"Demo failed: {e}")
         raise
 
 
 if __name__ == "__main__":
-    main() 
+    main()
