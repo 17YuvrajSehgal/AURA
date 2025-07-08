@@ -39,25 +39,21 @@ class VectorConfig:
 
 
 @dataclass
-class READMEConfig:
-    """Configuration for README generation"""
+class AuraConfig:
+    """Configuration for Aura report generation"""
     sections: List[str] = None
     template_dir: str = "templates"
-    output_dir: str = "generated_readmes"
+    output_dir: str = "generated_evaluation"
 
     def __post_init__(self):
         if self.sections is None:
             self.sections = [
-                "title_and_purpose",
-                "artifact_available",
-                "artifact_reusable",
-                "provenance",
-                "setup",
-                "usage",
-                "outputs",
-                "structure",
-                "license",
-                "attribution"
+                "accessibility",
+                "documentation",
+                "experimental",
+                "functionality",
+                "reproducibility",
+                "usability"
             ]
 
 
@@ -67,7 +63,6 @@ class SystemConfig:
     llm: LLMConfig = LLMConfig()
     knowledge_graph: KnowledgeGraphConfig = KnowledgeGraphConfig()
     vector: VectorConfig = VectorConfig()
-    readme: READMEConfig = READMEConfig()
 
     # File processing settings
     max_file_size_mb: int = 10
@@ -114,28 +109,10 @@ RELATIONSHIP_TYPES = {
 
 # Prompt templates directory structure
 PROMPT_TEMPLATES = {
-    "title_and_purpose": "title_purpose.txt",
-    "artifact_available": "artifact_available.txt",
-    "artifact_reusable": "artifact_reusable.txt",
-    "provenance": "provenance.txt",
-    "setup": "setup.txt",
-    "usage": "usage.txt",
-    "outputs": "outputs.txt",
-    "structure": "structure.txt",
-    "license": "license.txt",
-    "attribution": "attribution.txt"
-}
-
-# Section priorities for README generation
-SECTION_PRIORITIES = {
-    "title_and_purpose": 1,
-    "artifact_available": 2,
-    "artifact_reusable": 3,
-    "provenance": 4,
-    "setup": 5,
-    "usage": 6,
-    "outputs": 7,
-    "structure": 8,
-    "license": 9,
-    "attribution": 10
+    "accessibility": "accessibility.txt",
+    "documentation": "documentation.txt",
+    "experimental": "experimental.txt",
+    "functionality": "functionality.txt",
+    "reproducibility": "reproducibility.txt",
+    "usability": "usability.txt",
 }
