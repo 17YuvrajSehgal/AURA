@@ -22,6 +22,7 @@ except ImportError:
 from config import config, PROMPT_TEMPLATES, AuraConfig
 from rag_retrieval import RAGRetriever
 from knowledge_graph_builder import KnowledgeGraphBuilder
+from conference_guidelines_loader import conference_loader
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -195,9 +196,11 @@ class EvaluationChain:
     """Individual evaluation chain for a specific dimension"""
     
     def __init__(self, dimension: str, template_loader: PromptTemplateLoader, 
-                 llm: ChatOpenAI, rag_retriever: Optional[RAGRetriever] = None):
+                 llm: ChatOpenAI, rag_retriever: Optional[RAGRetriever] = None,
+                 conference_name: Optional[str] = None):
         self.dimension = dimension
         self.template_loader = template_loader
+        self.conference_name = conference_name
         self.llm = llm
         self.rag_retriever = rag_retriever
         
@@ -304,6 +307,9 @@ class EvaluationChain:
         # Add additional context if provided
         if additional_context:
             context["context"] = self._format_additional_context(additional_context)
+        
+        # Add conference-specific guidelines
+        context["conference_guidelines"] = self._format_conference_guidelines()
         
         return context
     
@@ -543,13 +549,30 @@ class EvaluationChain:
                 context_parts.append(f"{key}: {json.dumps(value, indent=2)}")
         
         return "\n".join(context_parts)
+    
+    def _format_conference_guidelines(self) -> str:
+        """Format conference-specific guidelines for this dimension"""
+        if not self.conference_name:
+            return "No specific conference guidelines provided. Using general evaluation criteria."
+        
+        try:
+            guidelines_text = conference_loader.format_conference_guidelines_for_prompt(
+                conference_name=self.conference_name,
+                dimension=self.dimension
+            )
+            return guidelines_text
+        except Exception as e:
+            logger.warning(f"Failed to load conference guidelines for {self.conference_name}: {e}")
+            return f"Failed to load guidelines for {self.conference_name}. Using general evaluation criteria."
 
 
 class ArtifactEvaluationOrchestrator:
     """Main orchestrator for running all evaluation dimensions"""
     
     def __init__(self, knowledge_graph_builder: Optional[KnowledgeGraphBuilder] = None,
-                 use_rag: bool = True):
+                 use_rag: bool = True, conference_name: Optional[str] = None):
+        
+        self.conference_name = conference_name
         
         # Initialize LLM
         self.llm = ChatOpenAI(
@@ -580,7 +603,8 @@ class ArtifactEvaluationOrchestrator:
                 dimension=dimension,
                 template_loader=self.template_loader,
                 llm=self.llm,
-                rag_retriever=self.rag_retriever
+                rag_retriever=self.rag_retriever,
+                conference_name=self.conference_name
             )
         
         logger.info(f"Initialized orchestrator with {len(self.evaluation_chains)} evaluation dimensions")

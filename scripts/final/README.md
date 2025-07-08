@@ -126,6 +126,75 @@ for artifact_name, report in results.items():
         print(f"{artifact_name}: FAILED - {report['error']}")
 ```
 
+### 4. Conference-Specific Evaluation
+
+AURA supports conference-specific evaluation using guidelines from 20+ major computer science venues including ICSE, ASE, FSE, ASPLOS, and more.
+
+```python
+from aura_evaluator import AURAEvaluator
+from conference_guidelines_loader import conference_loader
+
+# List available conferences
+conferences = conference_loader.get_available_conferences()
+print(f"Available conferences: {conferences}")
+
+# Evaluate for ICSE 2025 requirements
+evaluator = AURAEvaluator(
+    use_neo4j=False,
+    use_rag=True,
+    conference_name="ICSE"  # Conference-specific guidelines
+)
+
+report = evaluator.evaluate_artifact_from_json(
+    artifact_json_path="path/to/artifact.json"
+)
+
+# The evaluation will now consider ICSE-specific requirements such as:
+# - DOI/archival repository requirements for accessibility
+# - Specific documentation standards
+# - Expected functionality levels
+# - Reproducibility requirements
+print(f"ICSE Evaluation Rating: {report['overall_rating']:.2f}/5.0")
+
+evaluator.close()
+```
+
+#### Comparing Across Conferences
+
+```python
+# Compare how the same artifact performs across different venues
+conferences_to_test = ["ICSE", "ASE", "FSE", "ASPLOS"]
+comparison_results = {}
+
+for conference in conferences_to_test:
+    report = quick_evaluate(
+        artifact_json_path="path/to/artifact.json",
+        conference_name=conference,
+        use_neo4j=False
+    )
+    comparison_results[conference] = report["overall_rating"]
+
+# Print comparison
+for conf, rating in comparison_results.items():
+    print(f"{conf}: {rating:.2f}/5.0")
+```
+
+#### Supported Conferences
+
+Currently supported conferences include:
+- **Software Engineering**: ICSE, ASE, FSE, ISSTA
+- **Systems**: ASPLOS, ISCA, MICRO, MOBISYS, MOBICOM
+- **Programming Languages**: PLDI, ICFP, CGO, PPOPP
+- **Human-Computer Interaction**: CHI
+- **Security**: Asia CCS
+- **And more**: SIGMOD, KDD, ConEXT, Middleware, etc.
+
+Each conference has specific requirements for:
+- Repository types (GitHub vs. archival repositories like Zenodo)
+- Documentation standards (README requirements, license specifications)
+- Reproducibility expectations (Docker, installation packages)
+- Experimental validation requirements
+
 ## Artifact JSON Format
 
 The framework expects artifact data in a specific JSON format:

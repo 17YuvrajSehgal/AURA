@@ -27,7 +27,7 @@ class AURAEvaluator:
     """
     
     def __init__(self, use_neo4j: bool = True, use_rag: bool = True, 
-                 output_dir: str = "evaluation_results"):
+                 output_dir: str = "evaluation_results", conference_name: Optional[str] = None):
         """
         Initialize the AURA Evaluator
         
@@ -35,9 +35,11 @@ class AURAEvaluator:
             use_neo4j: Whether to use Neo4j for knowledge graph storage
             use_rag: Whether to use RAG for contextual evaluation
             output_dir: Directory to save evaluation results
+            conference_name: Name of conference for conference-specific evaluation
         """
         self.use_neo4j = use_neo4j
         self.use_rag = use_rag
+        self.conference_name = conference_name
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         
@@ -45,7 +47,7 @@ class AURAEvaluator:
         self.kg_builder = None
         self.orchestrator = None
         
-        logger.info(f"AURA Evaluator initialized (Neo4j: {use_neo4j}, RAG: {use_rag})")
+        logger.info(f"AURA Evaluator initialized (Neo4j: {use_neo4j}, RAG: {use_rag}, Conference: {conference_name or 'General'})")
     
     def evaluate_artifact_from_json(self, artifact_json_path: str, 
                                    dimensions: Optional[List[str]] = None,
@@ -79,7 +81,8 @@ class AURAEvaluator:
             logger.info("Initializing evaluation orchestrator...")
             self.orchestrator = ArtifactEvaluationOrchestrator(
                 knowledge_graph_builder=self.kg_builder,
-                use_rag=self.use_rag
+                use_rag=self.use_rag,
+                conference_name=self.conference_name
             )
             
             # Run evaluation
@@ -104,6 +107,7 @@ class AURAEvaluator:
                 "evaluator_version": "1.0.0",
                 "use_neo4j": self.use_neo4j,
                 "use_rag": self.use_rag,
+                "conference_name": self.conference_name,
                 "knowledge_graph_stats": kg_stats,
                 "source_file": artifact_json_path
             }
@@ -156,7 +160,8 @@ class AURAEvaluator:
             logger.info("Initializing evaluation orchestrator...")
             self.orchestrator = ArtifactEvaluationOrchestrator(
                 knowledge_graph_builder=self.kg_builder,
-                use_rag=self.use_rag
+                use_rag=self.use_rag,
+                conference_name=self.conference_name
             )
             
             # Run evaluation
@@ -181,6 +186,7 @@ class AURAEvaluator:
                 "evaluator_version": "1.0.0",
                 "use_neo4j": self.use_neo4j,
                 "use_rag": self.use_rag,
+                "conference_name": self.conference_name,
                 "knowledge_graph_stats": kg_stats,
                 "source_type": "data_dictionary"
             }
@@ -369,7 +375,8 @@ class AURAEvaluator:
 def quick_evaluate(artifact_json_path: str, 
                   dimensions: Optional[List[str]] = None,
                   use_neo4j: bool = False,
-                  use_rag: bool = True) -> Dict[str, Any]:
+                  use_rag: bool = True,
+                  conference_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Quick evaluation function for single artifacts
     
@@ -383,7 +390,7 @@ def quick_evaluate(artifact_json_path: str,
         Evaluation report
     """
     
-    evaluator = AURAEvaluator(use_neo4j=use_neo4j, use_rag=use_rag)
+    evaluator = AURAEvaluator(use_neo4j=use_neo4j, use_rag=use_rag, conference_name=conference_name)
     
     try:
         return evaluator.evaluate_artifact_from_json(
@@ -397,7 +404,8 @@ def quick_evaluate(artifact_json_path: str,
 def batch_evaluate(artifact_paths: List[str],
                   dimensions: Optional[List[str]] = None,
                   use_neo4j: bool = False,
-                  use_rag: bool = True) -> Dict[str, Dict[str, Any]]:
+                  use_rag: bool = True,
+                  conference_name: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
     """
     Batch evaluation function for multiple artifacts
     
@@ -411,7 +419,7 @@ def batch_evaluate(artifact_paths: List[str],
         Dictionary of evaluation reports
     """
     
-    evaluator = AURAEvaluator(use_neo4j=use_neo4j, use_rag=use_rag)
+    evaluator = AURAEvaluator(use_neo4j=use_neo4j, use_rag=use_rag, conference_name=conference_name)
     
     try:
         return evaluator.batch_evaluate_artifacts(
