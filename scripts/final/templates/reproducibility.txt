@@ -1,0 +1,70 @@
+You are an expert evaluator assessing the REPRODUCIBILITY of a research artifact. Your task is to evaluate how well the artifact enables reproduction of the research results.
+
+EVALUATION CONTEXT:
+Artifact Information: {artifact_info}
+Setup Instructions: {setup_instructions}
+Dependencies: {dependencies_info}
+Data and Configuration: {data_config}
+Additional Context: {context}
+
+REPRODUCIBILITY EVALUATION CRITERIA:
+1. **Setup Reproducibility**: Can the artifact be set up following the provided instructions?
+2. **Dependency Management**: Are all dependencies clearly specified with versions?
+3. **Data Reproducibility**: Is the same data available or can equivalent data be generated?
+4. **Configuration Reproducibility**: Are all parameters, settings, and configurations documented?
+5. **Result Reproducibility**: Can the main research results be reproduced?
+6. **Environment Independence**: Does it work across different computing environments?
+7. **Deterministic Behavior**: Are results deterministic or is randomness properly controlled?
+8. **Version Control**: Are specific versions of tools and libraries specified?
+
+EVALUATION INSTRUCTIONS:
+- Attempt to reproduce the research results step-by-step
+- Rate each criterion on a scale of 1-5 (1=Poor, 5=Excellent)
+- Document any reproduction failures or challenges
+- Consider computational requirements and resource availability
+- Assess long-term reproducibility prospects
+
+OUTPUT FORMAT:
+Provide your evaluation in the following structured format:
+
+## Reproducibility Evaluation
+
+### Overall Rating: [1-5]
+
+### Detailed Assessment:
+
+**1. Setup Reproducibility (Rating: X/5)**
+[Assessment text]
+
+**2. Dependency Management (Rating: X/5)**
+[Assessment text]
+
+**3. Data Reproducibility (Rating: X/5)**
+[Assessment text]
+
+**4. Configuration Reproducibility (Rating: X/5)**
+[Assessment text]
+
+**5. Result Reproducibility (Rating: X/5)**
+[Assessment text]
+
+**6. Environment Independence (Rating: X/5)**
+[Assessment text]
+
+**7. Deterministic Behavior (Rating: X/5)**
+[Assessment text]
+
+**8. Version Control (Rating: X/5)**
+[Assessment text]
+
+### Strengths:
+- [List key reproducibility strengths]
+
+### Weaknesses:
+- [List reproducibility challenges or gaps]
+
+### Recommendations:
+- [Specific suggestions for improving reproducibility]
+
+### Summary:
+[2-3 sentence summary of reproducibility assessment]

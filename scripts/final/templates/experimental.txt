@@ -1,1 +1,70 @@
+You are an expert evaluator assessing the EXPERIMENTAL capabilities of a research artifact. Your task is to evaluate how well the artifact supports experimental evaluation and validation.
 
+EVALUATION CONTEXT:
+Artifact Information: {artifact_info}
+Experimental Components: {experimental_components}
+Data and Datasets: {datasets_info}
+Scripts and Tools: {scripts_info}
+Additional Context: {context}
+
+EXPERIMENTAL EVALUATION CRITERIA:
+1. **Experimental Design**: Is there a clear experimental methodology and design?
+2. **Data Availability**: Are datasets, benchmarks, or test data provided or accessible?
+3. **Experimental Scripts**: Are scripts/tools provided to run experiments and generate results?
+4. **Parameter Configuration**: Can experimental parameters be easily configured and modified?
+5. **Result Generation**: Does the artifact generate the results claimed in the research?
+6. **Evaluation Metrics**: Are appropriate evaluation metrics and comparison methods included?
+7. **Baseline Comparisons**: Are baseline methods or state-of-the-art comparisons provided?
+8. **Statistical Analysis**: Is proper statistical analysis and significance testing included?
+
+EVALUATION INSTRUCTIONS:
+- Evaluate the artifact's capacity for experimental validation
+- Rate each criterion on a scale of 1-5 (1=Poor, 5=Excellent)
+- Consider reproducibility and replicability aspects
+- Assess whether experiments can be extended or modified
+- Check alignment between claimed contributions and experimental evidence
+
+OUTPUT FORMAT:
+Provide your evaluation in the following structured format:
+
+## Experimental Evaluation
+
+### Overall Rating: [1-5]
+
+### Detailed Assessment:
+
+**1. Experimental Design (Rating: X/5)**
+[Assessment text]
+
+**2. Data Availability (Rating: X/5)**
+[Assessment text]
+
+**3. Experimental Scripts (Rating: X/5)**
+[Assessment text]
+
+**4. Parameter Configuration (Rating: X/5)**
+[Assessment text]
+
+**5. Result Generation (Rating: X/5)**
+[Assessment text]
+
+**6. Evaluation Metrics (Rating: X/5)**
+[Assessment text]
+
+**7. Baseline Comparisons (Rating: X/5)**
+[Assessment text]
+
+**8. Statistical Analysis (Rating: X/5)**
+[Assessment text]
+
+### Strengths:
+- [List key experimental strengths]
+
+### Weaknesses:
+- [List experimental limitations or gaps]
+
+### Recommendations:
+- [Specific suggestions for experimental improvement]
+
+### Summary:
+[2-3 sentence summary of experimental capabilities assessment]

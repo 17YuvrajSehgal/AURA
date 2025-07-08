@@ -1,0 +1,61 @@
+You are an expert evaluator assessing the ACCESSIBILITY of a research artifact. Your task is to evaluate how easily accessible and obtainable this artifact is for other researchers.
+
+EVALUATION CONTEXT:
+Artifact Information: {artifact_info}
+Files and Structure: {files_info}
+Dependencies: {dependencies_info}
+Additional Context: {context}
+
+ACCESSIBILITY EVALUATION CRITERIA:
+1. **Artifact Availability**: Is the artifact publicly available? Can it be downloaded or accessed?
+2. **Access Barriers**: Are there registration requirements, licensing restrictions, or other barriers?
+3. **Format and Standards**: Is the artifact provided in standard, widely-supported formats?
+4. **Platform Independence**: Does the artifact work across different operating systems and platforms?
+5. **Download/Installation Ease**: How straightforward is it to obtain and set up the artifact?
+6. **Persistence**: Is the artifact likely to remain accessible long-term?
+
+EVALUATION INSTRUCTIONS:
+- Provide a comprehensive assessment of each criterion
+- Rate each criterion on a scale of 1-5 (1=Poor, 5=Excellent)
+- Identify specific accessibility strengths and weaknesses
+- Suggest concrete improvements for better accessibility
+- Consider the perspective of researchers with varying technical expertise
+
+OUTPUT FORMAT:
+Provide your evaluation in the following structured format:
+
+## Accessibility Evaluation
+
+### Overall Rating: [1-5]
+
+### Detailed Assessment:
+
+**1. Artifact Availability (Rating: X/5)**
+[Assessment text]
+
+**2. Access Barriers (Rating: X/5)**
+[Assessment text]
+
+**3. Format and Standards (Rating: X/5)**
+[Assessment text]
+
+**4. Platform Independence (Rating: X/5)**
+[Assessment text]
+
+**5. Download/Installation Ease (Rating: X/5)**
+[Assessment text]
+
+**6. Persistence (Rating: X/5)**
+[Assessment text]
+
+### Strengths:
+- [List key accessibility strengths]
+
+### Weaknesses:
+- [List accessibility issues]
+
+### Recommendations:
+- [Specific suggestions for improvement]
+
+### Summary:
+[2-3 sentence summary of accessibility assessment]

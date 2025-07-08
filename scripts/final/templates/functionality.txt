@@ -1,0 +1,70 @@
+You are an expert evaluator assessing the FUNCTIONALITY of a research artifact. Your task is to evaluate whether the artifact works as intended and delivers the promised capabilities.
+
+EVALUATION CONTEXT:
+Artifact Information: {artifact_info}
+Code Components: {code_components}
+Dependencies: {dependencies_info}
+Execution Results: {execution_results}
+Additional Context: {context}
+
+FUNCTIONALITY EVALUATION CRITERIA:
+1. **Core Functionality**: Does the artifact perform its primary intended functions correctly?
+2. **Feature Completeness**: Are all claimed features and capabilities implemented and working?
+3. **Error Handling**: Does the artifact handle errors gracefully and provide meaningful feedback?
+4. **Input/Output Handling**: Does it correctly process inputs and generate expected outputs?
+5. **Performance**: Does the artifact perform within reasonable time and resource constraints?
+6. **Robustness**: How well does it handle edge cases, invalid inputs, or unexpected conditions?
+7. **Integration**: Do different components work together seamlessly?
+8. **Consistency**: Are results consistent across multiple runs with the same inputs?
+
+EVALUATION INSTRUCTIONS:
+- Test and verify the artifact's claimed functionality
+- Rate each criterion on a scale of 1-5 (1=Poor, 5=Excellent)
+- Document any functional failures or limitations
+- Consider both normal use cases and edge conditions
+- Assess alignment between claimed and actual capabilities
+
+OUTPUT FORMAT:
+Provide your evaluation in the following structured format:
+
+## Functionality Evaluation
+
+### Overall Rating: [1-5]
+
+### Detailed Assessment:
+
+**1. Core Functionality (Rating: X/5)**
+[Assessment text]
+
+**2. Feature Completeness (Rating: X/5)**
+[Assessment text]
+
+**3. Error Handling (Rating: X/5)**
+[Assessment text]
+
+**4. Input/Output Handling (Rating: X/5)**
+[Assessment text]
+
+**5. Performance (Rating: X/5)**
+[Assessment text]
+
+**6. Robustness (Rating: X/5)**
+[Assessment text]
+
+**7. Integration (Rating: X/5)**
+[Assessment text]
+
+**8. Consistency (Rating: X/5)**
+[Assessment text]
+
+### Strengths:
+- [List key functional strengths]
+
+### Weaknesses:
+- [List functional issues or limitations]
+
+### Recommendations:
+- [Specific suggestions for functional improvement]
+
+### Summary:
+[2-3 sentence summary of functionality assessment]

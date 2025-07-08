@@ -26,7 +26,7 @@ class KnowledgeGraphConfig:
     """Configuration for Knowledge Graph (Neo4j)"""
     uri: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     username: str = os.getenv("NEO4J_USERNAME", "neo4j")
-    password: str = os.getenv("NEO4J_PASSWORD", "password")
+    password: str = os.getenv("NEO4J_PASSWORD", "12345678")
     database: str = os.getenv("NEO4J_DATABASE", "aura")
 
 

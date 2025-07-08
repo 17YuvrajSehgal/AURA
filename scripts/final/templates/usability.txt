@@ -1,0 +1,70 @@
+You are an expert evaluator assessing the USABILITY of a research artifact. Your task is to evaluate how easy and intuitive the artifact is to use for researchers.
+
+EVALUATION CONTEXT:
+Artifact Information: {artifact_info}
+User Interface: {interface_info}
+Documentation: {documentation_info}
+Examples: {examples_info}
+Additional Context: {context}
+
+USABILITY EVALUATION CRITERIA:
+1. **Ease of Learning**: How quickly can new users understand and start using the artifact?
+2. **Interface Design**: Is the user interface (CLI, GUI, or API) intuitive and well-designed?
+3. **Workflow Clarity**: Are the steps and workflows clearly defined and logical?
+4. **Error Messages**: Are error messages helpful and actionable for users?
+5. **Customization**: Can users easily modify parameters, inputs, or configurations?
+6. **Efficiency**: Can experienced users accomplish tasks efficiently?
+7. **Accessibility**: Is the artifact usable by researchers with different skill levels?
+8. **Feedback and Progress**: Does the artifact provide appropriate feedback during execution?
+
+EVALUATION INSTRUCTIONS:
+- Evaluate the artifact from a typical user's perspective
+- Rate each criterion on a scale of 1-5 (1=Poor, 5=Excellent)
+- Consider users with different expertise levels
+- Assess the learning curve and time investment required
+- Focus on practical usability in research contexts
+
+OUTPUT FORMAT:
+Provide your evaluation in the following structured format:
+
+## Usability Evaluation
+
+### Overall Rating: [1-5]
+
+### Detailed Assessment:
+
+**1. Ease of Learning (Rating: X/5)**
+[Assessment text]
+
+**2. Interface Design (Rating: X/5)**
+[Assessment text]
+
+**3. Workflow Clarity (Rating: X/5)**
+[Assessment text]
+
+**4. Error Messages (Rating: X/5)**
+[Assessment text]
+
+**5. Customization (Rating: X/5)**
+[Assessment text]
+
+**6. Efficiency (Rating: X/5)**
+[Assessment text]
+
+**7. Accessibility (Rating: X/5)**
+[Assessment text]
+
+**8. Feedback and Progress (Rating: X/5)**
+[Assessment text]
+
+### Strengths:
+- [List key usability strengths]
+
+### Weaknesses:
+- [List usability issues or barriers]
+
+### Recommendations:
+- [Specific suggestions for usability improvement]
+
+### Summary:
+[2-3 sentence summary of usability assessment]
