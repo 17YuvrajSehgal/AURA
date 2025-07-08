@@ -14,7 +14,7 @@ from typing import Dict, List, Any, Optional
 from config import config, AuraConfig
 from knowledge_graph_builder import KnowledgeGraphBuilder
 from rag_retrieval import RAGRetriever
-from langchain_chains import ArtifactEvaluationOrchestrator, evaluate_artifact
+from langchain_chains import ArtifactEvaluationOrchestrator
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -488,7 +488,7 @@ def demo_evaluation():
     }
     
     # Initialize evaluator
-    evaluator = AURAEvaluator(use_neo4j=True, use_rag=True)
+    evaluator = AURAEvaluator(use_neo4j=False, use_rag=True)
     
     try:
         # Run evaluation

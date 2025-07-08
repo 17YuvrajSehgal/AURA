@@ -12,9 +12,12 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 
 from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
-from langchain.schema import BaseOutputParser
+
+try:
+    from langchain_community.chat_models import ChatOpenAI
+except ImportError:
+    from langchain.chat_models import ChatOpenAI
 
 from config import config, PROMPT_TEMPLATES, AuraConfig
 from rag_retrieval import RAGRetriever
@@ -38,7 +41,7 @@ class EvaluationResult:
     raw_output: str
 
 
-class EvaluationOutputParser(BaseOutputParser):
+class EvaluationOutputParser:
     """Custom output parser for evaluation results"""
     
     def __init__(self, dimension: str):
@@ -56,21 +59,27 @@ class EvaluationOutputParser(BaseOutputParser):
         summary = ""
         
         try:
+            import re
+            
             # Extract overall rating
             if "Overall Rating:" in text:
-                rating_line = [line for line in text.split('\n') if 'Overall Rating:' in line][0]
-                rating_str = rating_line.split('Overall Rating:')[1].strip()
-                # Extract number from rating string (e.g., "[1-5]" or "3/5" or "3")
-                import re
-                rating_match = re.search(r'(\d+(?:\.\d+)?)', rating_str)
-                if rating_match:
-                    overall_rating = float(rating_match.group(1))
+                rating_lines = [line for line in text.split('\n') if 'Overall Rating:' in line]
+                if rating_lines:
+                    rating_line = rating_lines[0]
+                    rating_str = rating_line.split('Overall Rating:')[1].strip()
+                    # Extract number from rating string (e.g., "[1-5]" or "3/5" or "3")
+                    rating_match = re.search(r'(\d+(?:\.\d+)?)', rating_str)
+                    if rating_match:
+                        overall_rating = min(5.0, max(1.0, float(rating_match.group(1))))  # Clamp between 1-5
             
             # Extract detailed ratings
             rating_pattern = r'\*\*\d+\.\s*(.+?)\s*\(Rating:\s*(\d+(?:\.\d+)?)/5\)\*\*'
             ratings = re.findall(rating_pattern, text)
             for criterion, score in ratings:
-                detailed_assessment[criterion.strip()] = float(score)
+                try:
+                    detailed_assessment[criterion.strip()] = min(5.0, max(1.0, float(score)))  # Clamp between 1-5
+                except ValueError:
+                    logger.warning(f"Could not parse score '{score}' for criterion '{criterion}'")
             
             # Extract strengths
             if "### Strengths:" in text:
@@ -93,10 +102,14 @@ class EvaluationOutputParser(BaseOutputParser):
             # Extract summary
             if "### Summary:" in text:
                 summary_section = text.split("### Summary:")[1]
-                summary = summary_section.strip()
+                # Clean up summary (remove extra whitespace, handle multi-line)
+                summary_lines = [line.strip() for line in summary_section.split('\n') if line.strip()]
+                if summary_lines:
+                    summary = ' '.join(summary_lines[:3])  # Take first 3 non-empty lines
                 
         except Exception as e:
             logger.warning(f"Error parsing evaluation output for {self.dimension}: {e}")
+            logger.debug(f"Raw text that failed to parse: {text[:500]}...")
         
         return EvaluationResult(
             dimension=self.dimension,
@@ -114,7 +127,14 @@ class PromptTemplateLoader:
     """Loads and manages prompt templates for evaluation dimensions"""
     
     def __init__(self, templates_dir: str = "templates"):
-        self.templates_dir = Path(templates_dir)
+        # Handle both absolute and relative paths
+        if not Path(templates_dir).is_absolute():
+            # If relative path, make it relative to this script's directory
+            script_dir = Path(__file__).parent
+            self.templates_dir = script_dir / templates_dir
+        else:
+            self.templates_dir = Path(templates_dir)
+        
         self.templates: Dict[str, str] = {}
         self._load_templates()
     
@@ -188,9 +208,11 @@ class EvaluationChain:
         # Create the chain
         self.chain = LLMChain(
             llm=llm,
-            prompt=self.prompt,
-            output_parser=EvaluationOutputParser(dimension)
+            prompt=self.prompt
         )
+        
+        # Create output parser separately
+        self.output_parser = EvaluationOutputParser(dimension)
         
         logger.info(f"Created evaluation chain for {dimension}")
     
@@ -208,7 +230,10 @@ class EvaluationChain:
         
         try:
             # Run the chain
-            result = self.chain.run(**context_data)
+            raw_output = self.chain.run(**context_data)
+            
+            # Parse the output
+            result = self.output_parser.parse(raw_output)
             logger.info(f"Completed {self.dimension} evaluation")
             return result
         

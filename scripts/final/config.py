@@ -63,6 +63,7 @@ class SystemConfig:
     llm: LLMConfig = LLMConfig()
     knowledge_graph: KnowledgeGraphConfig = KnowledgeGraphConfig()
     vector: VectorConfig = VectorConfig()
+    aura: AuraConfig = AuraConfig()
 
     # File processing settings
     max_file_size_mb: int = 10
