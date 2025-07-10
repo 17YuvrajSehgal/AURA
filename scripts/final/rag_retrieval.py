@@ -54,35 +54,45 @@ class RAGRetriever:
             logger.warning("No nodes available for vector index")
             return
 
-        # Collect embeddings and build mapping
+        # Collect embeddings and build ID ↔ index mapping
         embeddings = []
         node_ids = []
 
         for idx, (node_id, node) in enumerate(self.kg_builder.nodes.items()):
-            if 'embedding' in node.properties:
-                embeddings.append(node.properties['embedding'])
-                node_ids.append(node_id)
-                self.node_id_to_idx[node_id] = idx
-                self.idx_to_node_id[idx] = node_id
+            embedding = node.properties.get('embedding')
+            if embedding and isinstance(embedding, (list, np.ndarray)):
+                emb_array = np.array(embedding, dtype=np.float32)
+                if emb_array.ndim == 1 and emb_array.size > 0:
+                    embeddings.append(emb_array)
+                    node_ids.append(node_id)
+                    self.node_id_to_idx[node_id] = len(node_ids) - 1
+                    self.idx_to_node_id[len(node_ids) - 1] = node_id
+
 
         if not embeddings:
-            logger.warning("No embeddings found in nodes")
+            logger.warning("No valid embeddings found in nodes")
             return
 
-        # Create FAISS index
-        embeddings_array = np.array(embeddings, dtype=np.float32)
+        embeddings_array = np.stack(embeddings).astype(np.float32)
         dimension = embeddings_array.shape[1]
 
-        # Use IndexFlatIP for inner product similarity
-        self.vector_index = faiss.IndexFlatIP(dimension)
-
-        # Normalize embeddings for cosine similarity
+        # Normalize for cosine similarity
         faiss.normalize_L2(embeddings_array)
 
-        # Add embeddings to index
+        # Create FAISS index (Inner Product after L2 norm = cosine)
+        self.vector_index = faiss.IndexFlatIP(dimension)
         self.vector_index.add(embeddings_array)
 
-        logger.info(f"Built vector index with {len(embeddings)} embeddings")
+        logger.info(f"Built FAISS index with {len(embeddings)} embeddings of dimension {dimension}")
+
+        if len(embeddings_array) >= 2:
+            sim_test = np.dot(embeddings_array[0], embeddings_array[1])
+            logger.info(f"Cosine similarity between first two embeddings: {sim_test:.4f}")
+
+        # Debug sample
+        for i in range(min(3, len(node_ids))):
+            nid = node_ids[i]
+            logger.debug(f"Sample embedding for {nid[:8]}...: {embeddings_array[i][:5]}")  # print first 5 dims
 
     def retrieve_for_section(self, section_type: str, query: str, top_k: int = 10) -> List[RetrievalResult]:
         """
@@ -162,35 +172,38 @@ class RAGRetriever:
             logger.warning("Vector index not available")
             return []
 
-        # Encode query
-        query_embedding = self.embedding_model.encode([query])
+        # Encode and normalize query embedding
+        query_embedding = self.embedding_model.encode([query], normalize_embeddings=True)
+
         query_embedding = query_embedding.astype(np.float32)
 
-        # Normalize for cosine similarity
-        faiss.normalize_L2(query_embedding)
+        logger.debug(f"🔍 Query embedding sample: {query_embedding[0][:5]}")  # Print first 5 dims
 
-        # Search
+        # Search in FAISS index
         scores, indices = self.vector_index.search(query_embedding, top_k)
+
+        logger.info(f"🔢 Similarity Scores for query '{query}': {scores[0]}")
 
         results = []
         for score, idx in zip(scores[0], indices[0]):
-            if idx == -1:  # Invalid index
-                continue
+            node_id = self.idx_to_node_id.get(idx)
+            if node_id:
+                node = self.kg_builder.nodes[node_id]
+                logger.info(
+                    f"[{score:.4f}] Node ID: {node_id}, Type: {node.type}, Content: {node.properties.get('title') or node.properties.get('command') or ''}")
 
             node_id = self.idx_to_node_id[idx]
             node = self.kg_builder.nodes[node_id]
 
-            # Extract content based on node type
             content = self._extract_node_content(node)
 
-            result = RetrievalResult(
+            results.append(RetrievalResult(
                 content=content,
                 node_type=node.type,
                 relevance_score=float(score),
                 metadata=node.properties,
                 source_path=node.properties.get('path', '')
-            )
-            results.append(result)
+            ))
 
         return results
 
@@ -240,8 +253,22 @@ class RAGRetriever:
             return []
 
     def _networkx_graph_search(self, section_type: str, query: str, top_k: int) -> List[RetrievalResult]:
-        """Perform graph search using NetworkX"""
+        """Perform graph-based search using NetworkX with weighted relationship scoring and edge tracing."""
+
+        RELATIONSHIP_SCORES = {
+            RELATIONSHIP_TYPES['DEPENDS_ON']: 1.0,
+            RELATIONSHIP_TYPES['PART_OF']: 0.5,
+            RELATIONSHIP_TYPES['CONTAINS']: 0.8,
+            RELATIONSHIP_TYPES['DESCRIBES']: 1.0,
+            RELATIONSHIP_TYPES['MENTIONS']: 0.7,
+            RELATIONSHIP_TYPES['REFERENCES']: 0.6,
+            RELATIONSHIP_TYPES['REQUIRES']: 0.9,
+            RELATIONSHIP_TYPES['GENERATES']: 0.9,
+            RELATIONSHIP_TYPES['PRODUCES']: 0.9
+        }
+
         if not hasattr(self, 'nx_graph'):
+            logger.warning("NetworkX graph not available.")
             return []
 
         strategy = self._get_retrieval_strategy(section_type)
@@ -251,26 +278,34 @@ class RAGRetriever:
         results = []
 
         # Find relevant nodes by type
-        relevant_nodes = []
-        for node_id, node_data in self.nx_graph.nodes(data=True):
-            if node_data.get('node_type') in focus_nodes:
-                relevant_nodes.append((node_id, node_data))
+        relevant_nodes = [
+            (node_id, node_data)
+            for node_id, node_data in self.nx_graph.nodes(data=True)
+            if node_data.get('node_type') in focus_nodes
+        ]
 
         # Score nodes based on relationships
         for node_id, node_data in relevant_nodes:
             score = 0.0
+            matched_edges = []
 
-            # Check incoming relationships
+            # Incoming edges
             for pred in self.nx_graph.predecessors(node_id):
                 edge_data = self.nx_graph.get_edge_data(pred, node_id)
-                if edge_data and edge_data.get('relationship_type') in focus_relationships:
-                    score += 1.0
+                if edge_data:
+                    rel_type = edge_data.get('relationship_type')
+                    if rel_type in focus_relationships:
+                        score += RELATIONSHIP_SCORES.get(rel_type, 0.1)
+                        matched_edges.append((pred, rel_type, node_id))
 
-            # Check outgoing relationships
+            # Outgoing edges
             for succ in self.nx_graph.successors(node_id):
                 edge_data = self.nx_graph.get_edge_data(node_id, succ)
-                if edge_data and edge_data.get('relationship_type') in focus_relationships:
-                    score += 1.0
+                if edge_data:
+                    rel_type = edge_data.get('relationship_type')
+                    if rel_type in focus_relationships:
+                        score += RELATIONSHIP_SCORES.get(rel_type, 0.1)
+                        matched_edges.append((node_id, rel_type, succ))
 
             if score > 0:
                 content = self._extract_content_from_networkx_node(node_data)
@@ -279,30 +314,38 @@ class RAGRetriever:
                     content=content,
                     node_type=node_data.get('node_type', 'Unknown'),
                     relevance_score=score,
-                    metadata=node_data,
+                    metadata={**node_data, 'matched_edges': matched_edges},
                     source_path=node_data.get('path', '')
                 )
                 results.append(result)
 
-        # Sort by relevance score
+        # Sort by score
         results.sort(key=lambda x: x.relevance_score, reverse=True)
+
+        logger.debug(f"Graph search ({section_type}) returned {len(results)} results.")
 
         return results[:top_k]
 
     def _build_cypher_query(self, section_type: str, top_k: int) -> str:
-        """Build Cypher query for Neo4j graph search"""
+        """Build Cypher query for Neo4j graph search, only using known labels to prevent DB warnings."""
+
+        # Safely get known labels from Neo4j
+        with self.driver.session() as session:
+            result = session.run("CALL db.labels()")
+            known_labels = {record[0] for record in result}  # Extract label strings into a set
+
         strategy = self._get_retrieval_strategy(section_type)
         focus_nodes = strategy.get('focus_nodes', [])
-        focus_relationships = strategy.get('focus_relationships', [])
 
-        # Build node type filter - if no focus nodes, match all
-        if focus_nodes:
-            node_filters = ' OR '.join([f'n:{node_type}' for node_type in focus_nodes])
+        # Filter out any labels not present in Neo4j
+        filtered_nodes = [node for node in focus_nodes if node in known_labels]
+
+        if filtered_nodes:
+            node_filters = ' OR '.join([f'n:{node}' for node in filtered_nodes])
             where_clause = f"WHERE {node_filters}"
         else:
             where_clause = ""
 
-        # Simple query that just returns nodes with optional relationship scoring
         query = f"""
         MATCH (n)
         {where_clause}
@@ -393,7 +436,7 @@ class RAGRetriever:
             key = result.metadata.get('id', result.content[:50])
             if key not in all_results:
                 all_results[key] = result
-                all_results[key].relevance_score *= weight_graph
+                all_results[key].relevance_score = result.relevance_score * weight_vector
             else:
                 all_results[key].relevance_score += result.relevance_score * weight_graph
 
@@ -422,7 +465,8 @@ class RAGRetriever:
             'commands': [],
             'files': [],
             'structure': [],
-            'outputs': []
+            'outputs': [],
+            'builds': [],
         }
 
         # Get artifact information
@@ -458,6 +502,17 @@ class RAGRetriever:
                 'command': cmd_node.properties.get('command', ''),
                 'type': cmd_node.properties.get('type', ''),
                 'description': cmd_node.properties.get('description', '')
+            })
+
+        # Add build files
+        build_nodes = [node for node in self.kg_builder.nodes.values()
+                       if node.type == NODE_TYPES.get('BUILD', 'Build')]
+
+        for build_node in build_nodes:
+            context.setdefault('builds', []).append({
+                'name': build_node.properties.get('name', ''),
+                'path': build_node.properties.get('path', ''),
+                'content': build_node.properties.get('content', '')
             })
 
         # Get files
@@ -497,7 +552,22 @@ class RAGRetriever:
                 'description': output_node.properties.get('description', '')
             })
 
-        return context
+        return
+
+    def retrieve_from_section_node(self, section_type: str, top_k: int = 5) -> List[RetrievalResult]:
+        """
+        Run RAG using the content of a section node as the query itself.
+        """
+        section_nodes = [node for node in self.kg_builder.nodes.values()
+                         if node.type == NODE_TYPES['SECTION']
+                         and node.properties.get('section_type') == section_type]
+
+        if not section_nodes:
+            logger.warning(f"No section node found for type: {section_type}")
+            return []
+
+        content = section_nodes[0].properties.get('content', '')
+        return self.retrieve_for_section(section_type, content, top_k=top_k)
 
     def close(self):
         """Close connections and clean up resources"""

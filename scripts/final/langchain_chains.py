@@ -578,8 +578,7 @@ class ArtifactEvaluationOrchestrator:
         self.llm = ChatOpenAI(
             model=config.llm.model_name,
             temperature=config.llm.temperature,
-            max_tokens=config.llm.max_tokens,
-            openai_api_key=config.llm.api_key
+            max_tokens=config.llm.max_tokens
         )
         
         # Initialize template loader
@@ -589,11 +588,13 @@ class ArtifactEvaluationOrchestrator:
         self.rag_retriever = None
         if use_rag and knowledge_graph_builder:
             try:
+                knowledge_graph_builder.enrich_section_links_with_similarity(threshold=0.6)
+
                 self.rag_retriever = RAGRetriever(knowledge_graph_builder)
                 logger.info("RAG retriever initialized successfully")
             except Exception as e:
                 logger.warning(f"Failed to initialize RAG retriever: {e}")
-        
+
         # Create evaluation chains for each dimension
         self.evaluation_chains = {}
         aura_config = AuraConfig()

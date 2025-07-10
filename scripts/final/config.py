@@ -3,6 +3,7 @@ Configuration file for the README Documentation Generator
 """
 
 import os
+import re
 from dataclasses import dataclass
 from typing import List
 
@@ -26,8 +27,8 @@ class KnowledgeGraphConfig:
     """Configuration for Knowledge Graph (Neo4j)"""
     uri: str = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     username: str = os.getenv("NEO4J_USERNAME", "neo4j")
-    password: str = os.getenv("NEO4J_PASSWORD", "12345678")
-    database: str = os.getenv("NEO4J_DATABASE", "aura")
+    password: str = os.getenv("NEO4J_PASSWORD", "password")
+    database: str = os.getenv("NEO4J_DATABASE_AURA", "aura")
 
 
 @dataclass
@@ -113,8 +114,13 @@ NODE_TYPES = {
     "DATASET": "Dataset",
     "OUTPUT": "Output",
     "SECTION": "Section",
-    "DEPENDENCY": "Dependency"
+    "DEPENDENCY": "Dependency",
+    "LICENSE": "License",
+    "BUILD": "Build",
+    "STRUCTURE": "Structure"
+
 }
+
 
 # Relationship types for knowledge graph
 RELATIONSHIP_TYPES = {
@@ -125,6 +131,7 @@ RELATIONSHIP_TYPES = {
     "REQUIRES": "REQUIRES",
     "PRODUCES": "PRODUCES",
     "PART_OF": "PART_OF",
+    'MENTIONS': 'MENTIONS',
     "REFERENCES": "REFERENCES"
 }
 
@@ -136,4 +143,32 @@ PROMPT_TEMPLATES = {
     "functionality": "functionality.txt",
     "reproducibility": "reproducibility.txt",
     "usability": "usability.txt",
+}
+
+LANGUAGE_DEPENDENCY_PATTERNS = {
+    'python': [r'^\s*(?:from\s+([\w\.]+)\s+import|import\s+([\w\.]+))'],
+    'java': [r'import\s+([\w\.]+);'],
+    'javascript': [r'import\s+.*?\s+from\s+[\'"]([^\'"]+)[\'"]', r'require\([\'"]([^\'"]+)[\'"]\)'],
+    'c_cpp': [r'#include\s+[<"]([\w\.\/]+)[">]'],
+    'r': [r'library\(["\']?(\w+)["\']?\)', r'require\(["\']?(\w+)["\']?\)'],
+    'bash': [r'^\s*(\w+)=.*', r'\b(\w+)\s+.*'],  # Crude, useful for scripts
+    'go': [r'import\s+\(?\s*"([\w\/]+)"'],
+    'ruby': [r'require\s+[\'"]([^\'"]+)[\'"]'],
+    'php': [r'use\s+([\w\\]+);'],
+}
+
+LICENSE_PATTERNS = {
+    "MIT": re.compile(r'\bmit\b.*license|\bpermission\s+is\s+hereby\s+granted\b', re.IGNORECASE),
+    "Apache-2.0": re.compile(r'\bapache\s+license\b.*(version\s+2\.0)?', re.IGNORECASE),
+    "GPL-3.0": re.compile(r'\bgnu\s+(general\s+public\s+license|gpl)\b.*(version\s*3)', re.IGNORECASE),
+    "GPL-2.0": re.compile(r'\bgnu\s+(general\s+public\s+license|gpl)\b.*(version\s*2)', re.IGNORECASE),
+    "AGPL-3.0": re.compile(r'\bgnu\s+affero\s+general\s+public\s+license\b.*(version\s*3)', re.IGNORECASE),
+    "LGPL": re.compile(r'\bgnu\s+(lesser|library)\s+general\s+public\s+license\b', re.IGNORECASE),
+    "BSD-2-Clause": re.compile(r'\bbsd\s+2[- ]clause\b|\bredistribution\s+and\s+use\s+in\s+source\s+and\s+binary\s+forms\b.*with\s+or\s+without\s+modification', re.IGNORECASE),
+    "BSD-3-Clause": re.compile(r'\bbsd\s+3[- ]clause\b|\bneither\s+the\s+name\s+of\b.*\bendorse\b', re.IGNORECASE),
+    "MPL-2.0": re.compile(r'\bmozilla\s+public\s+license\b.*(version\s*2\.0)?', re.IGNORECASE),
+    "EPL-2.0": re.compile(r'\beclipse\s+public\s+license\b.*(version\s*2\.0)?', re.IGNORECASE),
+    "Unlicense": re.compile(r'\bthis\s+is\s+free\s+and\s+unencumbered\s+software\s+released\s+into\s+the\s+public\s+domain\b', re.IGNORECASE),
+    "CC0": re.compile(r'\bcreative\s+commons\s+zero\b.*\bcc0\b', re.IGNORECASE),
+    "Proprietary": re.compile(r'\bproprietary\b.*(rights\s+reserved|not\s+redistributable)', re.IGNORECASE),
 }
