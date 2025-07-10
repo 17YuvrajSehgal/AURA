@@ -298,12 +298,45 @@ class KnowledgeGraphBuilder:
         for docker_file in docker_files:
             file_path = docker_file.get('path', '')
             file_content = docker_file.get('content', [])
+            content_text = self._extract_text_content(file_content)
 
-            # Create file node
+            # Create file node (for syntax analysis, RAG, etc.)
             file_node_id = self._create_file_node(file_path, file_content, 'docker', artifact_id)
+
+            # Create separate Docker metadata node
+            docker_node_id = self._generate_node_id('Docker', file_path)
+
+            docker_node = Node(
+                id=docker_node_id,
+                type='Docker',
+                properties={
+                    'name': Path(file_path).name,
+                    'path': file_path,
+                    'description': f"Dockerfile metadata for {file_path}",
+                    'content': content_text,
+                    'embedding': self.embedding_model.encode(content_text[:10000]).tolist()
+                }
+            )
+            self.nodes[docker_node.id] = docker_node
+
+            # Link docker node to artifact
+            artifact_node_id = self._generate_node_id(NODE_TYPES['ARTIFACT'], artifact_id)
+            self.relationships.append(Relationship(
+                source_id=artifact_node_id,
+                target_id=docker_node_id,
+                type=RELATIONSHIP_TYPES['CONTAINS']
+            ))
+
+            # Link docker node to file
+            self.relationships.append(Relationship(
+                source_id=docker_node_id,
+                target_id=file_node_id,
+                type=RELATIONSHIP_TYPES['DESCRIBES']
+            ))
 
             # Extract Docker dependencies
             self._extract_docker_dependencies(file_content, file_node_id)
+
 
     def _process_data_files(self, data_files: List[Dict], artifact_id: str):
         """Process data files"""

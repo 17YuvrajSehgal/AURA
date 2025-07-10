@@ -202,7 +202,7 @@ def render_sidebar():
         st.markdown("#### Advanced Options")
         use_rag = st.checkbox("Enable RAG Enhancement", value=True,
                               help="Use Retrieval-Augmented Generation for contextual evaluation")
-        use_neo4j = st.checkbox("Use Neo4j (if available)", value=False,
+        use_neo4j = st.checkbox("Use Neo4j (if available)", value=True,
                                 help="Use Neo4j for knowledge graph storage")
 
         # Progress indicator

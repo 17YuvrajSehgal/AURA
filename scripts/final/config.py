@@ -117,8 +117,8 @@ NODE_TYPES = {
     "DEPENDENCY": "Dependency",
     "LICENSE": "License",
     "BUILD": "Build",
-    "STRUCTURE": "Structure"
-
+    "STRUCTURE": "Structure",
+    "DOCKER": "Docker"
 }
 
 
