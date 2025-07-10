@@ -10,9 +10,11 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Any, Optional
+from datetime import datetime
 
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
+from langchain_community.callbacks.manager import get_openai_callback
 
 try:
     from langchain_community.chat_models import ChatOpenAI
@@ -40,6 +42,7 @@ class EvaluationResult:
     recommendations: List[str]
     summary: str
     raw_output: str
+    cost_info: Optional[Dict[str, Any]] = None
 
 
 class EvaluationOutputParser:
@@ -232,12 +235,52 @@ class EvaluationChain:
             context_data.update(rag_context)
         
         try:
-            # Run the chain
-            raw_output = self.chain.run(**context_data)
+            # Log the filled prompt template for debugging
+            filled_prompt = self.prompt.format(**context_data)
+            logger.info(f"=== {self.dimension.upper()} EVALUATION PROMPT ===")
+            logger.info(f"Prompt length: {len(filled_prompt)} characters")
+            
+            # Log full prompt at INFO level (not just DEBUG) for better visibility
+            logger.info(f"Full prompt for {self.dimension}:")
+            logger.info("--- PROMPT START ---")
+            logger.info(filled_prompt)
+            logger.info("--- PROMPT END ---")
+            logger.info(f"=== END {self.dimension.upper()} PROMPT ===")
+            
+            # Run the chain with cost tracking
+            with get_openai_callback() as cb:
+                raw_output = self.chain.run(**context_data)
+                
+                # Log the raw LLM response
+                logger.info(f"=== {self.dimension.upper()} LLM RESPONSE ===")
+                logger.info(f"Response length: {len(raw_output)} characters")
+                
+                # Log full response at INFO level for better visibility
+                logger.info(f"Full LLM response for {self.dimension}:")
+                logger.info("--- RESPONSE START ---")
+                logger.info(raw_output)
+                logger.info("--- RESPONSE END ---")
+                logger.info(f"=== END {self.dimension.upper()} RESPONSE ===")
+                
+                logger.info(f"=== {self.dimension.upper()} EVALUATION COST ===")
+                logger.info(f"Total tokens: {cb.total_tokens}")
+                logger.info(f"Prompt tokens: {cb.prompt_tokens}")
+                logger.info(f"Completion tokens: {cb.completion_tokens}")
+                logger.info(f"Total cost: ${cb.total_cost:.4f}")
+                logger.info(f"=== END {self.dimension.upper()} COST ===")
             
             # Parse the output
             result = self.output_parser.parse(raw_output)
-            logger.info(f"Completed {self.dimension} evaluation")
+            
+            # Add cost information to the result
+            result.cost_info = {
+                "total_tokens": cb.total_tokens,
+                "prompt_tokens": cb.prompt_tokens,
+                "completion_tokens": cb.completion_tokens,
+                "total_cost": cb.total_cost
+            }
+            
+            logger.info(f"Completed {self.dimension} evaluation (Rating: {result.overall_rating}/5, Cost: ${cb.total_cost:.4f})")
             return result
         
         except Exception as e:
@@ -570,9 +613,22 @@ class ArtifactEvaluationOrchestrator:
     """Main orchestrator for running all evaluation dimensions"""
     
     def __init__(self, knowledge_graph_builder: Optional[KnowledgeGraphBuilder] = None,
-                 use_rag: bool = True, conference_name: Optional[str] = None):
+                 use_rag: bool = True, conference_name: Optional[str] = None,
+                 enable_logging: bool = True, log_level: str = "INFO", 
+                 log_file: Optional[str] = None, log_dir: str = "logs"):
         
         self.conference_name = conference_name
+        self.log_file_path = None
+        
+        # Configure logging if enabled
+        if enable_logging:
+            self.log_file_path = configure_evaluation_logging(
+                level=log_level,
+                enable_prompt_logging=(log_level.upper() in ["DEBUG", "INFO"]),
+                enable_response_logging=(log_level.upper() in ["DEBUG", "INFO"]),
+                log_file=log_file,
+                log_dir=log_dir
+            )
         
         # Initialize LLM
         self.llm = ChatOpenAI(
@@ -629,8 +685,13 @@ class ArtifactEvaluationOrchestrator:
             dimensions = list(self.evaluation_chains.keys())
         
         logger.info(f"Starting evaluation for dimensions: {dimensions}")
+        logger.info(f"=== ARTIFACT EVALUATION SESSION START ===")
+        logger.info(f"Artifact: {artifact_data.get('artifact_name', 'Unknown')}")
+        logger.info(f"Conference: {self.conference_name or 'General'}")
         
         results = {}
+        total_cost = 0.0
+        total_tokens = 0
         
         for dimension in dimensions:
             if dimension not in self.evaluation_chains:
@@ -645,6 +706,12 @@ class ArtifactEvaluationOrchestrator:
                     additional_context=additional_context
                 )
                 results[dimension] = result
+                
+                # Aggregate cost information
+                if result.cost_info:
+                    total_cost += result.cost_info.get("total_cost", 0)
+                    total_tokens += result.cost_info.get("total_tokens", 0)
+                
                 logger.info(f"Completed {dimension} evaluation (Rating: {result.overall_rating}/5)")
                 
             except Exception as e:
@@ -660,7 +727,14 @@ class ArtifactEvaluationOrchestrator:
                     raw_output=""
                 )
         
-        logger.info("Completed all evaluations")
+        # Log total session cost
+        logger.info(f"=== ARTIFACT EVALUATION SESSION COMPLETE ===")
+        logger.info(f"Total dimensions evaluated: {len(results)}")
+        logger.info(f"Total tokens used: {total_tokens}")
+        logger.info(f"Total session cost: ${total_cost:.4f}")
+        logger.info(f"Average cost per dimension: ${total_cost/len(results):.4f}" if results else "No results")
+        logger.info(f"=== END EVALUATION SESSION ===")
+        
         return results
     
     def generate_comprehensive_report(self, evaluation_results: Dict[str, EvaluationResult],
@@ -687,6 +761,9 @@ class ArtifactEvaluationOrchestrator:
             all_weaknesses.extend(result.weaknesses)
             all_recommendations.extend(result.recommendations)
         
+        # Calculate cost summary
+        cost_summary = self._calculate_cost_summary(evaluation_results)
+        
         # Create comprehensive report
         report = {
             "artifact_info": {
@@ -701,6 +778,7 @@ class ArtifactEvaluationOrchestrator:
                 dimension: result.overall_rating 
                 for dimension, result in evaluation_results.items()
             },
+            "cost_summary": cost_summary,
             "weighted_scoring": {
                 "weighted_overall_score": weighted_overall_rating,
                 "weighted_overall_percentage": weighted_overall_rating * 20,  # Convert 5-point scale to percentage
@@ -733,6 +811,54 @@ class ArtifactEvaluationOrchestrator:
         }
         
         return report
+    
+    def _calculate_cost_summary(self, evaluation_results: Dict[str, EvaluationResult]) -> Dict[str, Any]:
+        """Calculate cost summary from evaluation results"""
+        
+        total_cost = 0.0
+        total_tokens = 0
+        total_prompt_tokens = 0
+        total_completion_tokens = 0
+        dimension_costs = {}
+        
+        for dimension, result in evaluation_results.items():
+            if result.cost_info:
+                cost_info = result.cost_info
+                dimension_cost = cost_info.get("total_cost", 0)
+                dimension_tokens = cost_info.get("total_tokens", 0)
+                
+                total_cost += dimension_cost
+                total_tokens += dimension_tokens
+                total_prompt_tokens += cost_info.get("prompt_tokens", 0)
+                total_completion_tokens += cost_info.get("completion_tokens", 0)
+                
+                dimension_costs[dimension] = {
+                    "cost": dimension_cost,
+                    "tokens": dimension_tokens,
+                    "prompt_tokens": cost_info.get("prompt_tokens", 0),
+                    "completion_tokens": cost_info.get("completion_tokens", 0)
+                }
+            else:
+                dimension_costs[dimension] = {
+                    "cost": 0.0,
+                    "tokens": 0,
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0
+                }
+        
+        return {
+            "total_cost": total_cost,
+            "total_tokens": total_tokens,
+            "total_prompt_tokens": total_prompt_tokens,
+            "total_completion_tokens": total_completion_tokens,
+            "average_cost_per_dimension": total_cost / len(evaluation_results) if evaluation_results else 0.0,
+            "dimension_costs": dimension_costs,
+            "cost_breakdown": {
+                "most_expensive_dimension": max(dimension_costs.items(), key=lambda x: x[1]["cost"])[0] if dimension_costs else None,
+                "least_expensive_dimension": min(dimension_costs.items(), key=lambda x: x[1]["cost"])[0] if dimension_costs else None,
+                "total_dimensions": len(evaluation_results)
+            }
+        }
     
     def _calculate_weighted_scores(self, evaluation_results: Dict[str, EvaluationResult]) -> Dict[str, Any]:
         """Calculate weighted scores based on dimension importance"""
@@ -818,10 +944,18 @@ class ArtifactEvaluationOrchestrator:
             "weighted_score": weighted_score
         }
     
+    def get_log_file_path(self) -> Optional[str]:
+        """Get the path to the current log file"""
+        return self.log_file_path
+    
     def close(self):
         """Clean up resources"""
         if self.rag_retriever:
             self.rag_retriever.close()
+        
+        if self.log_file_path:
+            logger.info(f"Evaluation session complete. Logs saved to: {self.log_file_path}")
+        
         logger.info("Evaluation orchestrator closed")
 
 
@@ -829,7 +963,10 @@ class ArtifactEvaluationOrchestrator:
 def evaluate_artifact(artifact_data: Dict[str, Any], 
                      knowledge_graph_builder: Optional[KnowledgeGraphBuilder] = None,
                      dimensions: Optional[List[str]] = None,
-                     use_rag: bool = True) -> Dict[str, Any]:
+                     use_rag: bool = True,
+                     log_level: str = "INFO",
+                     log_file: Optional[str] = None,
+                     log_dir: str = "logs") -> Dict[str, Any]:
     """
     Convenience function to quickly evaluate an artifact
     
@@ -838,28 +975,140 @@ def evaluate_artifact(artifact_data: Dict[str, Any],
         knowledge_graph_builder: Optional knowledge graph builder for RAG
         dimensions: List of dimensions to evaluate (None for all)
         use_rag: Whether to use RAG for context retrieval
+        log_level: Logging level ("DEBUG", "INFO", "WARNING", "ERROR")
+        log_file: Custom log file path. If None, auto-generates based on timestamp
+        log_dir: Directory to store log files (default: "logs")
         
     Returns:
-        Comprehensive evaluation report
+        Comprehensive evaluation report with cost information
     """
+    
+    logger.info("=== QUICK ARTIFACT EVALUATION START ===")
     
     orchestrator = ArtifactEvaluationOrchestrator(
         knowledge_graph_builder=knowledge_graph_builder,
-        use_rag=use_rag
+        use_rag=use_rag,
+        log_level=log_level,
+        log_file=log_file,
+        log_dir=log_dir
     )
     
     try:
-        evaluation_results = orchestrator.evaluate_artifact(
-            artifact_data=artifact_data,
-            dimensions=dimensions
-        )
-        
-        report = orchestrator.generate_comprehensive_report(
-            evaluation_results=evaluation_results,
-            artifact_data=artifact_data
-        )
-        
-        return report
+        with get_openai_callback() as cb:
+            evaluation_results = orchestrator.evaluate_artifact(
+                artifact_data=artifact_data,
+                dimensions=dimensions
+            )
+            
+            report = orchestrator.generate_comprehensive_report(
+                evaluation_results=evaluation_results,
+                artifact_data=artifact_data
+            )
+            
+            # Add session-level cost tracking to the report
+            if "cost_summary" not in report:
+                report["cost_summary"] = {}
+            
+            report["cost_summary"]["session_total_cost"] = cb.total_cost
+            report["cost_summary"]["session_total_tokens"] = cb.total_tokens
+            
+            # Add log file information to the report
+            if orchestrator.get_log_file_path():
+                report["session_info"] = {
+                    "log_file": orchestrator.get_log_file_path(),
+                    "timestamp": datetime.now().isoformat(),
+                    "conference_name": orchestrator.conference_name
+                }
+            
+            logger.info(f"=== QUICK EVALUATION COMPLETE ===")
+            logger.info(f"Session total cost: ${cb.total_cost:.4f}")
+            logger.info(f"Session total tokens: {cb.total_tokens}")
+            if orchestrator.get_log_file_path():
+                logger.info(f"Session logs saved to: {orchestrator.get_log_file_path()}")
+            logger.info(f"=== END QUICK EVALUATION ===")
+            
+            return report
     
     finally:
         orchestrator.close()
+
+
+def configure_evaluation_logging(level: str = "INFO", enable_prompt_logging: bool = False,
+                               enable_response_logging: bool = False, log_file: Optional[str] = None,
+                               log_dir: str = "logs"):
+    """
+    Configure logging for evaluation chains with both console and file output
+    
+    Args:
+        level: Logging level ("DEBUG", "INFO", "WARNING", "ERROR")
+        enable_prompt_logging: Whether to log full prompts (requires DEBUG level)
+        enable_response_logging: Whether to log full LLM responses (requires DEBUG level)
+        log_file: Custom log file path. If None, auto-generates based on timestamp
+        log_dir: Directory to store log files (default: "logs")
+    """
+    
+    # Set logging level
+    numeric_level = getattr(logging, level.upper(), logging.INFO)
+    logger.setLevel(numeric_level)
+    
+    # Create log directory if it doesn't exist
+    log_path = Path(log_dir)
+    log_path.mkdir(exist_ok=True)
+    
+    # Generate log file name if not provided
+    if log_file is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_file = log_path / f"aura_evaluation_{timestamp}.log"
+    else:
+        log_file = Path(log_file)
+        if not log_file.is_absolute():
+            log_file = log_path / log_file
+    
+    # Create formatter
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # Clear existing handlers
+    logger.handlers.clear()
+    
+    # Add console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(numeric_level)
+    logger.addHandler(console_handler)
+    
+    # Add file handler
+    try:
+        file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
+        file_handler.setFormatter(formatter)
+        file_handler.setLevel(numeric_level)
+        logger.addHandler(file_handler)
+        
+        # Log configuration
+        logger.info(f"=== LOGGING CONFIGURATION ===")
+        logger.info(f"Evaluation logging configured: level={level}")
+        logger.info(f"Log file: {log_file}")
+        logger.info(f"Log directory: {log_path.absolute()}")
+        
+        # Note: Prompt and response logging now work at INFO level and above
+        if enable_prompt_logging and numeric_level <= logging.INFO:
+            logger.info("Full prompt logging enabled (will show actual prompts)")
+        else:
+            logger.info("Full prompt logging disabled")
+        
+        if enable_response_logging and numeric_level <= logging.INFO:
+            logger.info("Full response logging enabled (will show LLM responses)")
+        else:
+            logger.info("Full response logging disabled")
+        
+        logger.info(f"=== END LOGGING CONFIGURATION ===")
+        
+        return str(log_file)  # Return the log file path for reference
+        
+    except Exception as e:
+        # If file logging fails, continue with console only
+        logger.error(f"Failed to setup file logging: {e}")
+        logger.info("Continuing with console logging only")
+        return None
