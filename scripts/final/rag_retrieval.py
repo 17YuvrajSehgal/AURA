@@ -1,10 +1,3 @@
-"""
-RAG (Retrieval Augmented Generation) System for README Documentation Generator
-
-This module implements a hybrid retrieval system that combines vector similarity
-search with knowledge graph traversal to find relevant context for README generation.
-"""
-
 import logging
 from dataclasses import dataclass
 from typing import Dict, List, Any
@@ -442,7 +435,6 @@ class RAGRetriever:
                 'id': artifact.properties.get('name', ''),
                 'path': artifact.properties.get('path', ''),
                 'size_mb': artifact.properties.get('repo_size_mb', 0),
-                'extraction_method': artifact.properties.get('extraction_method', ''),
                 'description': artifact.properties.get('description', '')
             }
 
