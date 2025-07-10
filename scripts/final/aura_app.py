@@ -599,7 +599,7 @@ def run_evaluation_with_progress(json_path, conference_name, dimensions, use_rag
 
             if detail:
                 progress_details.markdown(f"""
-                <div style="background: white; padding: 1rem; border-radius: 5px; margin: 0.5rem 0;
+                <div style="background: black; padding: 1rem; border-radius: 5px; margin: 0.5rem 0;
                            border: 1px solid #e0e0e0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <small><strong>{step_name}:</strong> {detail}</small>
                 </div>
@@ -687,7 +687,7 @@ def render_overall_score_header(results):
         icon = "❌"
 
     st.markdown(f"""
-    <div style="background: white; 
+    <div style="background: black; 
                 padding: 2rem; border-radius: 15px; text-align: center; 
                 border: 3px solid {color}; margin: 1rem 0;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
@@ -892,7 +892,7 @@ def render_detailed_recommendations(results):
         priority_icon = "🔴" if rec_data["priority"] > 3 else "🟡" if rec_data["priority"] > 2 else "🟢"
 
         st.markdown(f"""
-        <div style="background: white; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; 
+        <div style="background: black; padding: 1rem; border-radius: 8px; margin: 0.5rem 0; 
                     border: 1px solid #e0e0e0; border-left: 4px solid #667eea;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <p><strong>{priority_icon} {rec_data['dimension'].title()}</strong></p>

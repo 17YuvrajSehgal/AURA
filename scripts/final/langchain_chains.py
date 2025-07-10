@@ -348,9 +348,15 @@ class EvaluationChain:
             })
         
         # Add additional context if provided
+        # Add dynamic additional context from KG
+        context["context"] = self._get_additional_context_for_dimension()
+
+        # Optional: merge with external context
         if additional_context:
-            context["context"] = self._format_additional_context(additional_context)
-        
+            formatted = self._format_additional_context(additional_context)
+            if formatted:
+                context["context"] += f"\n\nUser-provided context:\n{formatted}"
+
         # Add conference-specific guidelines
         context["conference_guidelines"] = self._format_conference_guidelines()
         
@@ -607,6 +613,26 @@ class EvaluationChain:
         except Exception as e:
             logger.warning(f"Failed to load conference guidelines for {self.conference_name}: {e}")
             return f"Failed to load guidelines for {self.conference_name}. Using general evaluation criteria."
+
+    def _get_additional_context_for_dimension(self) -> str:
+        """
+        Dynamically extract relevant information from the KG based on the evaluation dimension.
+        """
+        if not self.rag_retriever:
+            return "No additional context available."
+
+        results = self.rag_retriever.retrieve_for_section(
+            section_type=self.dimension,
+            query=f"Relevant information for {self.dimension} evaluation.",
+            top_k=5
+        )
+
+        if not results:
+            return "No additional context retrieved from knowledge graph."
+
+        return "\n\n".join([
+            f"Source: {r.source_path or 'N/A'}\n{r.content}" for r in results
+        ])
 
 
 class ArtifactEvaluationOrchestrator:
