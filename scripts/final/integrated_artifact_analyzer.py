@@ -81,7 +81,7 @@ EXECUTABLE_EXTENSIONS = [
     '.model', '.weights', '.ckpt', '.pb', '.onnx', '.tflite',
     '.npz', '.npy', '.mat', '.rds', '.rda',
     # Archives (handled separately but should be excluded from text analysis)
-    '.zip', '.tar', '.gz', '.7z', '.rar', '.bz2', '.xz', '.tgz',
+    #    '.zip', '.tar', '.gz', '.7z', '.rar', '.bz2', '.xz', '.tgz',
     # Document files (binary)
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
     '.odt', '.ods', '.odp', '.rtf',
@@ -118,28 +118,10 @@ LICENSE_PATTERNS = [
     'credits', 'credits.txt', 'credits.md'
 ]
 
-DOCUMENTATION_PATTERNS = [
-    'readme', 'read_me', 'read-me',
-    'contributing', 'contribute', 'contribution',
-    'changelog', 'changes', 'history', 'news', 'releases',
-    'install', 'installation', 'setup', 'getting-started',
-    'getting_started', 'quickstart', 'quick-start',
-    'tutorial', 'guide', 'manual', 'documentation', 'docs',
-    'todo', 'roadmap', 'milestones', 'development',
-    'architecture', 'design', 'overview', 'summary',
-    'faq', 'troubleshooting', 'debugging', 'testing',
-    'security', 'code_of_conduct', 'code-of-conduct',
-    'maintainers', 'governance', 'support', 'contact',
-    'api', 'reference', 'specification', 'spec',
-    'requirements', 'dependencies', 'constraints',
-    'building', 'build', 'compile', 'deployment',
-    'configuration', 'config', 'settings'
-]
 
 CONFIG_BUILD_EXTENSIONS = [
     '.gradle', '.maven', '.sbt', '.ant',
     '.json', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
-    '.dockerfile',
     '.travis.yml', '.appveyor.yml', '.gitlab-ci.yml',
     '.requirements', '.pip',
     '.npmrc', '.yarnrc',
@@ -175,30 +157,47 @@ EXCLUDE_FILES = [
     '*.log', '*.tmp', '*.swp', '*.swo'
 ]
 
-BUILD_FILES = ['Makefile', 'CMakeLists.txt', 'build.gradle', 'pom.xml', 'package.json', 'requirements.txt']
-DOCKER_FILES = ['Dockerfile', 'docker-compose.yml', 'docker-compose.yaml']
 DATA_EXTENSIONS = ['.csv', '.json', '.xml', '.sql', '.db', '.sqlite']
 CONFIG_EXTENSIONS = ['.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf', 'requirements.txt', 'package.json', 'pom.xml']
+DOCKER_FILENAME_PATTERNS = [
+    r'^dockerfile(\..+)?$',  # Dockerfile, Dockerfile.dev, Dockerfile.prod, etc.
+    r'^docker-compose(\..+)?\.ya?ml$',  # docker-compose.yml, docker-compose.dev.yaml, etc.
+    r'^\.?docker(ignore|config)?$',  # .dockerignore, .dockerconfig
+]
+
+DOCKER_PATH_KEYWORDS = [
+    'docker', 'containers', 'compose', 'infrastructure', 'deployment'
+]
+
+BUILD_FILE_NAMES = {
+    'Makefile', 'CMakeLists.txt', 'build.gradle', 'settings.gradle', 'pom.xml',
+    'package.json', 'requirements.txt', 'setup.py', 'pyproject.toml', 'Pipfile',
+    'build.xml', 'go.mod', 'go.sum', 'Cargo.toml', 'Gemfile', 'composer.json',
+    'build.sbt', 'stack.yaml', 'cabal.project', 'pubspec.yaml', 'Package.swift',
+    'DESCRIPTION', 'NAMESPACE'
+}
+
+BUILD_FILE_EXTENSIONS = {'.sln', '.csproj'}
 
 
 class IntegratedArtifactAnalyzer:
     """
     Integrated artifact analyzer that combines robust extraction with comprehensive analysis.
-    
+
     This class extracts artifacts (ZIP, TAR, directories) and performs detailed analysis
     similar to algorithm_2, then saves results to JSON.
     """
 
     def __init__(self, temp_dir: str = "../../temp_dir_for_git",
                  output_dir: str = "../../algo_outputs/algorithm_2_output_2",
-                 max_file_size: int = 5000 * 1024 * 1024, max_recursion_depth: int = 3, extraction_timeout: int = 300):
+                 max_file_size: int = 25000 * 1024 * 1024, max_recursion_depth: int = 3, extraction_timeout: int = 300):
         """
         Initialize the IntegratedArtifactAnalyzer.
-        
+
         Args:
             temp_dir: Temporary directory for extractions (default: ../../temp_dir_for_git)
             output_dir: Directory for saving analysis results (default: ../../algorithm_2_output)
-            max_file_size: Maximum file size to process (default: 5000MB)
+            max_file_size: Maximum file size to process (default: 25000MB)
             max_recursion_depth: Maximum depth for recursive archive extraction (default: 3)
             extraction_timeout: Maximum time in seconds for nested extraction (default: 300 = 5 minutes)
         """
@@ -251,14 +250,14 @@ class IntegratedArtifactAnalyzer:
     ) -> Dict[str, Any]:
         """
         Extract and analyze an artifact with comprehensive analysis.
-        
+
         Args:
             artifact_path: Path to the artifact (file, directory, or URL)
             artifact_name: Optional custom name for the artifact
             force_reextract: Force re-extraction even if already extracted
             skip_analysis: Skip detailed analysis and just extract
             cleanup_after_processing: Clean up extracted files after processing (default: True)
-            
+
         Returns:
             Dictionary containing extraction and analysis results
         """
@@ -644,22 +643,28 @@ class IntegratedArtifactAnalyzer:
         return False
 
     def _is_build_file(self, path: str) -> bool:
-        """Check if file is a build file."""
+        """Check if file is a recognized build/configuration file."""
         name = os.path.basename(path)
-        return name in BUILD_FILES
+        ext = os.path.splitext(name)[1].lower()
+
+        return name in BUILD_FILE_NAMES or ext in BUILD_FILE_EXTENSIONS
 
     def _is_docker_file(self, path: str) -> bool:
-        """Detect Docker-related files."""
+        """Detect Docker-related files using regex and path heuristics."""
         name = os.path.basename(path).lower()
+        path_lower = path.lower()
 
-        if name == '.dockerignore':
-            return True
-        if name.startswith('docker-compose'):
-            return True
-        if name.startswith('dockerfile'):
-            return True
-        if name.startswith('docker') and name != 'docker':
-            return True
+        # Match common Docker filenames using regex
+        for pattern in DOCKER_FILENAME_PATTERNS:
+            if re.match(pattern, name):
+                return True
+
+        # Check if path is located in a typical Docker-related directory
+        if any(keyword in path_lower for keyword in DOCKER_PATH_KEYWORDS):
+            # Further ensure it's not a false positive (e.g., a text file in docker/)
+            if name.endswith(('.yaml', '.yml', '', '.sh', '.conf', '.env')):
+                return True
+
         return False
 
     def _is_data_file(self, path: str) -> bool:
@@ -724,7 +729,7 @@ class IntegratedArtifactAnalyzer:
     def _should_exclude_file(self, path: str) -> tuple[bool, str]:
         """
         Check if a file should be excluded from analysis.
-        
+
         Returns:
             (should_exclude, reason)
         """
@@ -1180,7 +1185,7 @@ class IntegratedArtifactAnalyzer:
                                  start_time: float = None):
         """
         Recursively extract nested archives found in the directory.
-        
+
         Args:
             directory: Directory to scan for nested archives
             depth: Current recursion depth
