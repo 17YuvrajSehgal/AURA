@@ -303,7 +303,7 @@ from scripts.algorithm_4.aura_framework import AURA
 
 aura = AURA(
     guideline_path="data/conference_guideline_texts/processed/13_icse_2025.md",
-    artifact_json_path="algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json",
+    artifact_json_path="algo_outputs/ml-image-classifier_analysis.json",
     criteria_csv_path="algo_outputs/algorithm_1_output/algorithm_1_artifact_evaluation_criteria.csv"
 )
 
