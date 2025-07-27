@@ -7,7 +7,9 @@ EVALUATION CONTEXT:
 Artifact Information: {artifact_info}
 Documentation Files: {documentation_files}
 Code Structure: {code_structure}
-Additional Context: {context}
+Additional Context:
+
+{context}
 
 DOCUMENTATION EVALUATION CRITERIA:
 1. **Completeness**: Does documentation cover all essential aspects (purpose, setup, usage, outputs)?

@@ -8,7 +8,9 @@ Artifact Information: {artifact_info}
 Code Components: {code_components}
 Dependencies: {dependencies_info}
 Execution Results: {execution_results}
-Additional Context: {context}
+Additional Context:
+
+{context}
 
 FUNCTIONALITY EVALUATION CRITERIA:
 1. **Core Functionality**: Does the artifact perform its primary intended functions correctly?

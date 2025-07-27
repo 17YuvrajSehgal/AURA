@@ -8,7 +8,9 @@ Artifact Information: {artifact_info}
 User Interface: {interface_info}
 Documentation: {documentation_info}
 Examples: {examples_info}
-Additional Context: {context}
+Additional Context:
+
+{context}
 
 USABILITY EVALUATION CRITERIA:
 1. **Ease of Learning**: How quickly can new users understand and start using the artifact?

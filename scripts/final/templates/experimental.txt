@@ -8,7 +8,9 @@ Artifact Information: {artifact_info}
 Experimental Components: {experimental_components}
 Data and Datasets: {datasets_info}
 Scripts and Tools: {scripts_info}
-Additional Context: {context}
+Additional Context:
+
+{context}
 
 EXPERIMENTAL EVALUATION CRITERIA:
 1. **Experimental Design**: Is there a clear experimental methodology and design?

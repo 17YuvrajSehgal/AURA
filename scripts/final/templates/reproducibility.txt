@@ -8,7 +8,9 @@ Artifact Information: {artifact_info}
 Setup Instructions: {setup_instructions}
 Dependencies: {dependencies_info}
 Data and Configuration: {data_config}
-Additional Context: {context}
+Additional Context:
+
+{context}
 
 REPRODUCIBILITY EVALUATION CRITERIA:
 1. **Setup Reproducibility**: Can the artifact be set up following the provided instructions?
