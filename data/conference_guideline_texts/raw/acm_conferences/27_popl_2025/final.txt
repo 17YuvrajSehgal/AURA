@@ -1,0 +1,20 @@
+Purpose
+Paper artifacts are the software, mechanized proofs, test suites, and benchmarks that support a research paper and evaluate its claims. POPL has run an artifact evaluation process since 2015, and invites artifact submissions from all authors of accepted papers.
+
+Submit your Artifact
+Artifact evaluation is optional, but highly encouraged. We solicit artifacts from authors of all accepted papers. Artifacts can be software, mechanical proofs, test suites, benchmarks, or anything else that bolsters the claims of the paper, except paper proofs, which the AEC lacks the time and expertise to carefully review.
+
+Log in to the Artifact Evaluation HotCRP to register and submit your artifact here. Please register and submit your artifact by the following dates:
+
+Artifact registration deadline: Friday, 11 October 2024 (AoE)
+Artifact submission deadline: Tuesday, 15 October 2024 (AoE)
+Artifact evaluation phase 1: Friday, 25 October 2024 (AoE)
+Artifact acceptance decisions: Thursday, 7 November 2024 Monday, 11 November (AoE) – concurrent with final acceptance notifications for POPL papers
+Acceptance Criteria
+Our goal is to work with the authors to identify issues early on, improve the artifact, and get it accepted wherever possible. Typically, almost all artifacts are accepted for at least one badge. Artifacts are evaluated against the criteria of:
+
+Consistency with the claims of the paper and the results it presents
+Completeness insofar as possible, supporting all evaluated claims of the paper
+Documentation to allow easy reproduction by other researchers
+Reusability, facilitating further research
+Installing, configuring, and testing unknown software of research quality is difficult. Please carefully review our “Author Recommendations” tab on packaging and documenting your artifact in a way that is easier for the AEC to evaluate.

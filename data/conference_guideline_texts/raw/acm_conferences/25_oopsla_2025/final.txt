@@ -1,0 +1,41 @@
+OOPSLA ArtifactsSPLASH 2025
+
+Authors of Accepted and Conditionally Accepted papers are invited to submit an artifact that supports the claims in their papers. Authors of papers requiring Major or Minor revisions may submit an artifact once their revisions reach Accepted or Conditionally Accepted status. Thus, for instance, a paper accepted after revisions in R1 can submit to the AEC for R2, and get its badges then. Per the ACM guidelines for Artifact Review and Badging, OOPSLA now provides three types of validation for artifacts as badges that appear on the first page of the paper:
+
+
+
+Artifact Available: This badge is for artifacts that are published in a permanent location (with a DOI). Artifacts do not need to be evaluated to receive this badge.
+
+Artifact Evaluated: This badge is for artifacts that have been approved by the OOPSLA Artifact Evaluation Committee (AEC). There are two levels for the badge; papers can receive at most one of them:
+
+
+
+Functional, for artifacts which are found to be documented, consistent, complete, exercisable, and include appropriate evidence of verification and validation
+
+
+
+Reusable, for artifacts that are Functional and facilitate reuse through careful documentation and clear organization.
+
+
+
+Results Validated: Results Reproduced, for artifacts that can be used to replicate the main scientific claims of the paper.
+
+Submission is voluntary. Artifact Evaluation is a service provided by the community to help authors of accepted papers extend the reach of their work and encourage future researchers to build on it.
+
+See the Call for Artifacts tab for more information.
+
+FAQ
+Q. My artifact requires hundreds of GB of RAM / hundreds of CPU hours / a specialized GPU / etc., that the AEC members may not have access to. How can we submit an artifact?
+If the tool can run on an average modern machine, but may run extremely slow in comparison to the hardware used for the paper's evaluation, document the expected running time and point to examples the AEC may be able to replicate in less time. If your system will simply not work at all without hundreds of GB or RAM, or other hardware requirements that typical machines will not satisfy, please contact the AEC chairs in advance to make arrangements. One option is to get suitable hardware from a cloud provider (for example, Cloudlab), and give reviewers anonymous access. (The AEC chairs will coordinate with reviewers to decide when the cloud reservation needs to be active.) Submissions using cloud instances or similar that are not cleared with the AEC Chairs in advance will be summarily rejected
+Q. Can my artifact be accepted if some of the paper’s claims are not supported by the artifact, for example if some benchmarks are omitted or the artifact does not include tools we experimentally compare against in the paper?
+It depends. As a general principle, the artifact should follow the Data-Availability Statement presented in the paper. For example, if good explanations are not provided (as explained above) in the Data-Availability Statement, but if such claims are essential to the overall results of the paper, the artifact will be rejected. As an extreme example, an artifact with a working tool but no benchmarks (because they are closed-source) would be rejected. In this case, alternate benchmarks should be provided.
+Q. Why do we need a DOI for the Available badge? Why not a Github or institutional URL?
+A DOI is a strong assurance that the artifact will remain available indefinitely. By contrast, Github URLs are not permanent: it is possible to rewrite git commit history in a public repository (using rebase and --force, for example), users can delete public repositories, and Github itself might disappear like Google Code did (2015). Institutional URLs may also move and change over time.
+Q. Reviewers identified things to fix in documentation or scripts for our artifact, and we'd prefer to publish the fixed version. Can we submit the improved version for the Available badge?
+Yes.
+Q. Can I get the Available badge without submitting an artifact? I'm still making the thing available!
+No. The AEC needs to verify the artifact exists and mark it available.
+Q. Can I get the Available badge for an artifact that was not judged to be Functional? I'm still making the thing available!
+Yes.
+Q: Does the AEC accept paper proofs?
+The AEC process is not well-equipped to judge paper proofs. Therefore, most paper proofs will not be evaluated. Authors can still submit a paper proof for an Available badge, but should not expect any badges beyond that.
