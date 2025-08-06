@@ -616,23 +616,59 @@ class EvaluationChain:
 
     def _get_additional_context_for_dimension(self) -> str:
         """
-        Dynamically extract relevant information from the KG based on the evaluation dimension.
+        Retrieve relevant context from the knowledge graph, or fall back to documentation files.
         """
+        fallback_context = self._get_fallback_documentation_context()
+
         if not self.rag_retriever:
-            return "No additional context available."
+            return fallback_context
+
+        DIMENSION_NODE_FILTER = {
+            "reproducibility": ["Command", "Dependency", "Dataset", "License"],
+            "documentation": ["Section", "File", "License"],
+            "experimental": ["Command", "Output", "Dataset"],
+            "usability": ["Section", "Tool", "File"],
+            "accessibility": ["License", "Dataset", "File"],
+            "functionality": ["Command", "File", "Output"]
+        }
 
         results = self.rag_retriever.retrieve_for_section(
             section_type=self.dimension,
             query=f"Relevant information for {self.dimension} evaluation.",
-            top_k=5
+            top_k=10
         )
 
-        if not results:
-            return "No additional context retrieved from knowledge graph."
+        allowed_types = DIMENSION_NODE_FILTER.get(self.dimension, [])
+        filtered = [r for r in results if r.node_type in allowed_types]
 
-        return "\n\n".join([
-            f"Source: {r.source_path or 'N/A'}\n{r.content}" for r in results
-        ])
+        if not filtered:
+            return fallback_context
+
+        context_chunks = []
+        for r in filtered:
+            label = r.node_type
+            path = r.source_path or ""
+            content = r.content.strip().replace("\n", " ")[:500]
+            context_chunks.append(f"{label} {path}\n{content}")
+
+        return "\n\n".join(context_chunks[:5])
+
+    def _get_fallback_documentation_context(self) -> str:
+        """Fallback context based on documentation files when RAG has no results."""
+        if self.dimension != "documentation":
+            return "No relevant context found for this dimension."
+
+        lines = []
+        doc_files = getattr(self, "artifact_data", {}).get("documentation_files", [])
+        if not doc_files:
+            return "No documentation files available."
+
+        for doc in doc_files:  # Limit to 3 files
+            path = doc.get("path", "Unknown path")
+            content = "\n".join(doc.get("content", [])[:200])  # First 20 lines
+            lines.append(f"File: {path}\n{content.strip()}\n")
+
+        return "\n\n".join(lines)
 
 
 class ArtifactEvaluationOrchestrator:
