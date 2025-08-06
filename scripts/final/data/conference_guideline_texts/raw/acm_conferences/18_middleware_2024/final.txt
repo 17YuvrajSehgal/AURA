@@ -1,0 +1,14 @@
+Call for Artifacts
+The authors of accepted papers are invited to submit supporting materials to be made publicly available as "source materials" in the ACM Digital Library. The materials will be vetted by the Artifact Availability Evaluation process run by the artifact evaluation committee, chaired by Baochun Li. This submission is voluntary but encouraged and will not influence the final decision regarding the papers. Papers that go through the Artifact Availability Evaluation process successfully and are made available in the ACM Digital Library will receive a badge printed on the papers themselves.
+
+There are two different types of badges: Artifacts Available, and Artifacts Evaluated - Functional.
+
+To qualify for the first badge, your submission will need to meet the following requirements:
+
+It contains a valid URL pointing to the artifacts, including source code, datasets, and other relevant material to reproduce your work. It is strongly recommended that you use GitHub for this purpose, but other repository URLs are accepted as well.
+The artifacts contains a README.md file that documents more details about the artifacts, in Markdown format.
+To qualify for Artifacts Evaluated - Functional, you need to submit the above, and explicitly request that your artifacts be manually evaluated by the committee. A member of the committee will just follow the steps you provided in your README.md without modifications. If the steps can be reproduced in a reasonable computing environment such as a cloud VM or a Mac without additional hardware needed, the submission directly qualifies for this badge. There is an opportunity for authors to provide further clarifications to the committee when issues arise, but due to time constraints the window of opportunity is limited to one week after the evaluation process starts. If any additional hardware is necessary, please let the artifact evaluation committee know in advance and the committee will arrange a virtual demo meeting.
+
+The deadline for the submission is October 5, 2024. There will be no extensions so please plan accordingly. The evaluation process starts on October 6, and will conclude on October 12. You will be notified of our decisions on or before October 12.
+
+Please simply send your submission to: Baochun Li (bli at ece.toronto.edu)

@@ -1,0 +1,97 @@
+Artifact EvaluationICSE 2025
+Call for Artifact Submissions
+The artifact evaluation track aims to review, promote, share, and catalog the research artifacts of accepted software engineering papers. Authors of papers accepted to the Research, SEIP, NIER, SEIS, Doctoral Symposium, and Demonstrations tracks can submit an artifact for the Artifacts Available and Artifacts Reusable badges. Authors of any prior SE work (published at ICSE or elsewhere) are also invited to submit their work for the Results Validated (replicated or reproduced) badges.
+
+Our primary goal will be to help authors make their artifacts available and reusable. To this end, we both strongly encourage authors to provide a clean image (Docker or similar) as part of their artifacts for any software components (see the preparation instructions), and will prioritize awarding the corresponding two badges, described below. To ensure that all submitted artifacts can be brought up to the standard of reusable, which requires high-quality documentation and structure, we will enable PC/Author discussions for the entire review period.
+
+We will follow the ACM definition of badges, details of which are available here: ACM Badge Definitons
+
+available_badge
+
+Available: Author-created artifacts relevant to their paper have been placed on a publicly accessible archival repository. A DOI or link to this repository along with a unique identifier for the object is provided.
+
+This badge is applied to papers in which associated artifacts have been made permanently available for retrieval. Note that GitHub is not an archival source. We recommend using an archival source like Zenodo or FigShare.
+
+Artifacts do not need to have been formally evaluated in order for an article to receive this badge. In addition, they need not be complete. They simply need to be relevant to the study and add value beyond the text in the article. Such artifacts could be something as simple as the data from which the figures are drawn or as complex as a complete software system under study.
+
+functional_badge
+
+Functional: The artifacts associated with the research are found to be documented, consistent, complete, exercisable, and include appropriate evidence of verification and validation.
+
+Documented (basic): At a minimum, an inventory of artifacts is included, and sufficient description is provided to enable the artifacts to be exercised.
+
+Consistent: The artifacts are relevant to the associated paper and contribute in some inherent way to generating its main results.
+
+Complete: To the extent possible, all components relevant to the paper in question are included. (Proprietary artifacts need not be included. If they are required to exercise the package, then this should be documented, along with instructions on how to obtain them. Proxies for proprietary data should be included so as to demonstrate the analysis. Similarly, for qualitative studies, to comply with ethical and privacy requirements, not all participant data needs to be included (e.g., raw interview transcripts are not needed. Only anonymized data should be shared.)
+
+Exercisable: Included scripts and / or software used to generate the results in the associated paper can be successfully executed. Authors are strongly encouraged to target their artifact submissions for Reusable as the purpose of artifact badges is, among other things, to facilitate reuse and repurposing, which may not be achieved at the Functional level.
+
+reusable_badge
+
+Reusable: The artifacts associated with the paper are of a quality that significantly exceeds minimal functionality. That is, they have all the qualities of the Functional level described above, but, in addition they are:
+
+Documented (carefully): Artifacts are very carefully documented and well-structured to the extent that reuse and repurposing is facilitated.
+Important Dates
+Jan 17, 2025: Artifact registration deadline.
+Jan 24, 2025: Artifact submissions deadline.
+Jan 25 - Feb 21, 2025: review period (PC/authors discussion).
+Feb 27, 2025: Notifications.
+Important Notes for Authors
+Between Jan 18 - Feb 15, the review cycle will be iterative and authors should be responsive to requests from reviewers within 3 working days of requests for information.
+
+Best Artifact Awards
+There will be two ICSE 2025 Best Artifact Awards to recognize the effort of authors creating and sharing outstanding research artifacts.
+
+Submission for Reusable and Available Badges
+Only authors of papers accepted to the 2025 Research/SEIP/NIER//SEIS tracks can submit candidate reusable or available artifacts.
+
+By the submission deadline, register your research artifact at the HotCRP site by submitting a 2 pages (max) abstract in PDF format describing your artifact.
+
+For the reusable and available badges, authors must offer “download information” showing how reviewers can access and execute (if appropriate) their artifact.
+
+Authors must perform the following steps to submit an artifact:
+
+Prepare the artifact
+Make the artifact available
+Document the artifact
+Submit the artifact
+1. Prepare the artifact
+Both executable and non-executable artifacts may be submitted.
+
+Executable artifacts consist of a tool or software system. For these artifacts, authors should prepare an installation package so that the tool can be installed and run in the evaluator’s environment. Following the instructions below, provide enough associated instruction, code, and data such that an average CS professional could build, install, and run the code within a reasonable time-frame. If installation and configuration requires more than 30 minutes, the artifact is unlikely to be accepted on practical grounds, simply because the PC will not have sufficient time to evaluate it.
+
+When preparing executable packages for submission, we recommend vetting the artifact on a clean machine to confirm that it can be setup in a reasonable time frame. We strongly encourage authors to consider using a Docker (or VirtualBox VM) image for this process. Besides providing a clean environment to assess the installation instructions, the resulting image can be submitted as part of the artifact to allow quick replication. In particular, if the artifact contains or requires the use of a special tool or any other non-trivial piece of software, the authors must provide a VirtualBox VM image or a Docker container image with a working environment containing the artifact and all the necessary tools.
+
+Non-executable artifacts only contain data and documents that can be used with a simple text editor, a PDF viewer, or some other common tool (e.g., a spreadsheet program in its basic configuration). These artifacts can be submitted as a single, optionally compressed package file (e.g., a tar, zip, or tar.gz file).
+
+2. Make the artifact available
+The authors need to make the packaged artifact available so that the PC can access it.
+
+Artifacts must be made available via an archival repository, such as Software Heritage (see their submission guide), which provides long-term availability of software source code. Other often used solutions, more focused on long-term data archival, include Figshare and Zenodo. Please note that platforms that do not guarantee long-term archival, which presently includes GitHub, generally do not qualify. However open source software on Github that has a history of regular updates over at least 5 years, that have formal releases that generate a DOI on a tool like Zenodo will be considered.
+
+3. Document the artifact
+The authors need to write and submit documentation explaining how to obtain, unpack, and use their artifact in detail. The artifact submission must only describe the technicalities of the artifacts and uses of the artifact that are not already described in the paper. The submission should include the three documents described below in a single archive file. Note: a key change compared to prior years is that we are consolidating all files describing the artifact except for the LICENSE into one README. There is no need to submit separate README/INSTALL/STATUS/REQUIREMENTS files. Please provide:
+
+A copy of the accepted paper in pdf format including the link to the archival repository.
+A LICENSE file describing the distribution rights. For submissions aiming for the Available badge, the license needs to ensure public availability. In the spirit of the ICSE Open Science Policy, we recommend adopting an open source license for executable artifacts and open data license for non-executable artifacts.
+A README file (in Markdown, plain text, or PDF format) that describes the artifact with all appropriate sections from the following:
+Purpose: a brief description of what the artifact does.
+Include a list of badge(s) the authors are applying for as well as the reasons why the authors believe that the artifact deserves that badge(s).
+Provenance: where the artifact can be obtained, preferably with a link to the paper’s preprint if publicly available.
+Data (for artifacts which focus on data or include a nontrivial dataset): cover aspects related to understanding the context, data provenance, ethical and legal statements (as long as relevant), and storage requirements.
+Setup (for executable artifacts): provide clear instructions for how to prepare the artifact for execution. This includes:
+Hardware: performance, storage, and device-type (e.g. GPUs) requirements.
+Software: Docker or VM requirements, or operating system & package dependencies if not provided as a container or VM. Providing a Dockerfile or image, or at least confirming the tool’s installation in a container is strongly encouraged. Any deviation from standard environments needs to be reasonably justified.
+Usage (for executable artifacts): provide clear instructions for how to repeat/replicate/reproduce the main results presented in the paper. Include both:
+A basic usage example or a method to test the installation. For instance, it may describe what command to run and what output to expect to confirm that the code is installed and operational.
+Detailed commands to replicate the major results from the paper.
+4. Submit the artifact
+HotCrp submission link: https://icse2025-artifact.hotcrp.com/
+
+By the abstract submission deadline (see important dates), register your research artifact at the HotCRP site by submitting an abstract describing your artifact. The abstract should include the paper title, the purpose of the research artifact, the badge(s) you are claiming, and the technology skills assumed by the reviewer evaluating the artifact. Please also mention if running your artifact requires any specific Operating Systems or other, unusual environments.
+
+The PC may contact the authors, via the submission system, during the entire review period to request clarifications on the basic installation and start-up procedures or to resolve simple installation problems. Reviewers will be encouraged to attempt to execute submitted software artifacts early on, to minimize the time spent iterating on making the artifact functional and in turn provide enough time to ensure that all artifacts can be made reusable. Given the short review time available, the authors are expected to respond within a 72-hour period. Authors may update their research artifact after submission only for changes requested by reviewers during this time. Information on this phase is provided in the Submission and Reviewing Guidelines.
+
+Further information will be constantly made available on the website https://conf.researchr.org/track/icse-2025/icse-2025-artifact-evaluation.
+
+Please do not hesitate to contact the chairs for any questions.

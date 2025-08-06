@@ -1,0 +1,65 @@
+Artifact Evaluation
+SLE’25 implements a two-rounds review process that also evaluates the quality of the artifacts supporting accepted research papers. This is the Artifact Evaluation track.
+
+Authors of research and tools paper accepted for SLE 2025 will be invited to submit artifacts.
+In the context of the SLE community, an artifact refers to any digital object that supports, complements, or is a result of research in the field of software language engineering.
+This includes, but it is not limited to, tools, language grammars, metamodels, codebases, transformation scripts, formal proofs, benchmarks, datasets, statistical analyses, and surveys.
+
+The submitted artifacts will be reviewed by a dedicated Artifact Evaluation Committee. The approved artifacts will then be made first-class bibliographic objects, easy to find and cite.
+Depending on the quality of the artifact, the artifact might be awarded with different kinds of “badges” that are visible on the final paper.
+
+The submission is optional and it is additional to your already accepted paper at SLE’25. It will not have a negative impact.
+
+Artifacts provide tangible evidence of results, enable reproducibility, and encourage reuse and extension by the community.
+
+Artifact Review Process:
+Submitted artifacts will go through a two-phase evaluation.
+
+Kick-the-tires:
+Reviewers check the artifact integrity and look for any possible setup problems that may prevent it from being properly evaluated
+(e.g., corrupted or missing files, VM won’t start, immediate crashes on the simplest example, etc.).
+Authors are informed of the outcome and will be given a 5-day period to read and respond to the kick-the-tires reports of their artifacts.
+During the author response period, interactive discussions between reviewers and authors will be possible through HotCRP.
+
+Artifact assessment:
+Reviewers evaluate the artifacts, checking if they live up to the claims the authors make in the accompanying documentation.
+
+Artifact Preparation Guidelines
+At a high level, we are interested in artifacts that:
+
+Have no dependencies. Use of docker images is strongly recommended. Virtual machine images in OVF/OVA format containing the artifact can also be provided.
+Have a minimal number of setup steps. Ideally, it should just be importing the docker/VM image.
+Have a short run, so that reviewers can try first before carrying the full review (kick-the-tire).
+Have a push-button evaluation. Ideally, the evaluation can be run through a single script, which performs the computation and generates the relevant figures/experimental data presented in the paper.
+The evaluation should either display progress messages or expected duration should be provided.
+This fully automated approach may be a bit more costly to set up, but you won’t have any copy/pasting issues for your paper, and regenerating data is heavily simplified.
+Include some documentation on the code and layout of the artifact.
+Use widely supported open formats for documents, preferably CSV or JSON for data.
+Document which outputs are associated with which parts of your paper, if possible, please specify table, figure, or sub-sections.
+The artifact evaluated by the AEC and linked in the paper must be precisely the same.
+AEC Chairs will assure that DOIs point to the specific version evaluated. To create a DOI, you can use platforms like Zenodo, FigShare or OSF, which offer free DOI creation.
+
+PDF and artifact should NOT be anonymized anymore.
+
+Authors are strongly discouraged from:
+Downloading content over the internet during experiments or tests;
+Using closed-source software libraries, frameworks, operating systems, and container formats; and
+Providing experiments or tests that run for multiple days. If the artifact takes several days to run, we ask that you provide us with the full artifact and a reduced input set
+(in addition to the full set) to only partially reproduce your results in a shorter time.
+If the artifact requires special hardware, please get in touch with the AEC chairs, let us know of the issue, and provide us with (preferably SSH) access to a self-hosted platform for accessing the artifact.
+Artifact Submission Guidelines:
+Every submission must include the following.
+Authors must submit a single artifact for a paper (1-to-1 mapping, paper-to-artifact).
+
+A DOI for downloading the artifact.
+A PDF version of the accepted paper for evaluating the artifact-paper consistency.
+A Markdown-formatted file providing an overview of the artifact. PLEASE USE THE AUTHORS TEMPLATE:
+https://doi.org/10.5281/zenodo.14975264
+Artifact submissions will be handled through the HotCRP submission system at the following link:
+https://sle25ae.hotcrp.com/
+
+NOTE: The artifact can be associated with a different set of authors (different from the accepted paper).
+
+Quality Criteria
+Submitted artifacts will be evaluated by the AEC concerning the following criteria.
+Depending on the criteria, different Badges are assigned (we limit ourselves to the ‘Evaluated’ and ‘Available’ badges).

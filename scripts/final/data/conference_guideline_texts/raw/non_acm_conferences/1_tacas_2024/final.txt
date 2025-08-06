@@ -1,0 +1,75 @@
+Artifact Evaluation for TACAS 2025
+TACAS 2025 will include an artifact evaluation (AE).
+
+For regular tool papers and tool demonstration papers, AE is compulsory and artifacts must be submitted by the end of October 24th, 2024, "anywhere on Earth" (UTC-12).
+For research and case study papers, AE is optional and artifacts may be submitted by the end of January 9th, 2025, "anywhere on Earth" (UTC-12).
+In either case, authors must indicate at paper submission whether an artifact will be submitted. Authors who did not indicate that they intend to submit an artifact will not have their artifact evaluated.
+
+Important Dates
+Tool and Tool Demonstration Papers:
+Oct 24 - Artifact Submission
+Nov 10 - Smoke-Test Deadline
+Nov 22 - Main Review Phase starts
+Dec 20 - Paper notification
+Research and Case Study Papers:
+Jan 9 - Artifact Submission
+Jan 18 - Smoke-Test Deadline
+Jan 25 - Main Review Phase starts
+Feb 13 - Paper notification
+Artifacts and Evaluation Criteria
+An artifact is any additional material (software, data sets, machine-checkable proofs, etc.) that substantiates claims made in the paper and ideally renders them fully replicable. For example, an artifact might consist of a tool and its documentation, input files used for tool evaluation in the paper, and configuration files or documents describing parameters used in the experiments. The Artifact Evaluation Committee (AEC) will read the corresponding paper and evaluate the artifact according to the following criteria:
+
+consistency with and replicability of results presented in the paper
+completeness
+documentation and ease of use
+availability in a permanent online repository
+The evaluation will be based on the EAPLS guidelines, and the AEC will decide which of the badges — among Functional, Reusable, and Available — will be assigned to a given artifact and added to the title page of the paper in case of acceptance.
+
+Compulsory AE for Tool and Tool Demonstration Papers
+Regular tool papers and tool demonstration papers are required to submit an artifact for evaluation by October 24th, 2024. These artifacts will be expected to satisfy the requirements for the "Functional" and "Available" badges. Results of AE will be taken into consideration in the paper reviewing and rebuttal phase of TACAS 2025. Exemption from some aspects of AE is possible in exceptional circumstances, see Exemption.
+
+Optional AE for Research and Case Study Papers
+Authors of research and case study papers are invited to submit an artifact no later than January 9th 2025, anywhere on Earth. Artifact submission is optional, and the artifact will be reviewed only after paper acceptance.
+
+Artifact Submission
+Artifact submission is handled via EasyChair. After the paper submission deadline, the paper submission will be copied by us from the main track to the artifact evaluation track. In this track, you should supply your submission's artifact abstract and upload a ZIP archive as supplementary material. Do not attempt to create a new submission, nor change your submission's other details such as authors or title. Because of this copying process, you can upload or update your artifact either in the main track before the paper submission deadline, or in the AE track during a window before the deadline. The TACAS PC or AEC chairs will inform authors when the AE track is open for different paper categories.
+
+An artifact submission must contain:
+
+an abstract summarizing the artifact and its relation to the paper (entered in EasyChair)
+a copy of the paper (already copied from the main track)
+a ZIP archive (uploaded to EasyChair) containing:
+a license document (LICENSE) for the artifact — it is required that the license at least allows the AEC to evaluate the artifact
+instructions (README) including:
+a hyperlink to the artifact
+additional requirements for the artifact, such as installation of proprietary software or particular hardware resources
+detailed instruction for an early light review that allows reviewers to: (1) verify that the artifact can properly run; and (2) perform a short evaluation of the artifact before the full evaluation and detect any difficulties (see Rebuttal)
+detailed instructions for use of the artifact and replication of results in the paper, including estimated resource use if non-trivial
+The artifact hyperlink should point to a self-contained archive that allows the AEC to evaluate the artifact on the TACAS virtual machine OR docker image (see below for more information). Authors should test their artifact prior to the submission and include all relevant instructions. Instructions should be clear and specify every step required to build and run the artifact, assuming no specific knowledge and including steps that the authors might consider trivial. Ideally, there will be a single command to build the tool and a single command to run the experiments.
+
+Guidelines for Artifacts
+We expect artifact authors to package their artifact and write instructions such that AEC members can evaluate the artifact using the TACAS 2023 Artifact Evaluation Virtual Machine (hereafter VM) for VirtualBox. Note that this is not a misprint: we use the TACAS 2023 VM as the AEC chairs consider it serviceable for TACAS 2025. The virtual machine is based on an Ubuntu 22.04 LTS image with the following additional packages: build-essential, cmake, clang, mono-complete, openjdk-8-jdk, python3.10, pip3, ruby, and a 32-bit libc. VirtualBox guest additions are installed on the VM; it is therefore possible to connect a shared folder from the host computer.
+
+NEW: Instead of the VM, authors may also provide a Docker image that can be run on the AEC's machine. Do not assume that all reviewers are familiar with Docker. Please provide explicit instructions on how to run the Docker image, including every complete command line arguments.
+
+Your artifact is allowed reasonable network access, following a wider trend for software builds requiring network access. Authors can therefore decide whether to supply a completely self-contained artifact, rely on network access for external resources, or combine both. However, the main artifact described in the paper must be included in the archive, and use of external resources is at the author's own risk. If you are using external resources, please ensure that they are version pinned to ensure long-term replicability. We anticipate typical usage of this relaxation to be for the installation of third-party dependencies. The AEC chairs welcome feedback on this aspect, in particular questions about atypical artifacts. All the same, if the artifact requires additional software or libraries that are not part of the virtual machine, the instructions must include all necessary steps for their installation and setup on a "clean" VM. In particular, authors should not rely on instructions provided by external tools. Again, the ideal setup is a single command to install the tool and all dependencies and a single command to run the experiments.
+
+It is to the advantage of authors to prepare an artifact that is easy to evaluate by the AEC. Some guidelines:
+
+Your artifact need not be anonymized, in contrast to your paper which must be anonymized. In particular, you need not rename your tool in both paper and artifact, even if it yields a potential loss of anonymity. For instance, if you submit a paper/artifact on a new tool called XYZ5 which has a clear connection to a tool called XYZ4 (and the authors of XYZ4 are publicly known) then you should keep calling your tool XYZ5 and do not hide a relationship with XYZ4. Your paper/artifact will not be rejected because of this.
+Keep the evaluation process simple (e.g. through the use of scripts), and provide detailed documentation assuming minimum user expertise.
+Document in detail how to replicate most, or ideally all, of the experimental results of the paper using the artifact.
+State resource requirements and/or the environment in which you successfully tested the artifact.
+For experiments requiring a large amount of resources, we strongly recommend providing a way to replicate a representative subset of results such that results can be reproduced on various hardware platforms in reasonable time. Do include the full set of experiments for those reviewers with sufficient hardware or time.
+Do not submit a virtual machine; only submit your files, which AEC members will copy into the provided virtual machine.
+For the "Available" badge, you must upload your artifact to a permanent repository (e.g. Zenodo, figshare, or Dryad) that provides a Digital Object Identifier (DOI), and use that link in your submission. This excludes other repositories such as an institutional or personal website, source code hosting services, or cloud storage.
+Please indicate which badges you are applying for in your submission. In particular, if you are not applying for the "Reusable" badge, please include a note to this end in your README file.
+Members of the AEC will use the submitted artifact for the sole purpose of AE. We do, however, encourage authors to make their artifacts publicly and permanently available.
+
+Please note that the reviewers will only have limited time to reproduce the experiments and they will likely use a machine that is different to yours. Again, if your experiments need a significant amount of time (more than a few hours), please prepare a representative subset of experiments that could be run in a shorter amount of time. It may be wise to test your artifact in the virtual machine running on other platforms available to you.
+
+Exemption
+Under particular conditions tool papers and tool demonstration papers may be exempted from submitting the artifact, using the provided VM, or acquiring both the "Functional" and "Available" badges. Possible reasons for such exemptions include the need for special hardware (GPUs, compute clusters, robots, etc.), extreme resource requirements, or licensing issues. Artifacts should nonetheless be as complete as possible. Contact the AEC chairs as soon as possible if you anticipate the need for exemption.
+
+Rebuttal
+There will be no formal rebuttal procedure for AE. However, there will be an early light review of artifacts to ensure basic functionality: in case of technical issues at this stage and at the discretion of the AEC chairs, a single round of rebuttal may be applied to some artifacts shortly after submission. A single set of questions from reviewers will be put to artifact authors, who may reply with a single set of answers to address issues and facilitate further evaluation. Update of the submitted files or further communication will not be allowed.
