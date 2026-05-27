@@ -1,0 +1,19 @@
+Call for Artifacts
+We invite the authors of accepted HPCA 2025 papers to submit their artifacts to be assessed based on the Reproducibility Badging at IEEE. Papers that successfully go through the Artifact Evaluation process will receive a set of badges of approval that will appear on the final version of the published manuscript. These papers MUST include an Artifact Appendix to the camera-ready version (maximum 2 pages), which will be free of charge. The Artifact Evaluation committee will also select a submission for the ‘Distinguished Artifact Award’. Please note that artifact submission is voluntary and will not influence the final decision regarding the paper publication.
+
+Submission Information
+Please submit your artifact to the above submission site according to the submission guidelines. When you submit, please provide details about the artifact’s software and hardware requirements. This will be extremely helpful for the Artifact Evaluation Committee to find suitable reviewers. Your submission will be then reviewed according to the reviewing guidelines. Committee members evaluating your artifact might reach out to you using AE HotCRP portal to get help/clarifications for evaluating your submitted artifact.
+
+Artifact Submission
+An artifact submission consists of two parts:
+
+The paper and a two-page appendix. Please prepare your appendix using the provided template. The appendix is expected to contain the following main sections:
+an abstract
+an itemized meta information list
+access to the artifact
+system requirements and dependencies
+experiment workflow
+steps for evaluation
+results
+The artifact. Please make sure that the artifact evaluation committee can access your artifact. We do not limit the way of code delivery. However, if you would like to apply for the “Open Research Objects (ORO)” badge, you will need to have your artifact available at a public archival repository (for more details, see see reviewing guide).
+Note:  the paper version submitted for AE does not need to be the final version, as the main goal of this submission is to let artifact reviewers reproduce your experiments.

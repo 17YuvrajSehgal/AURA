@@ -1,0 +1,91 @@
+The 32nd IEEE International Requirements Engineering Conference (RE’24) will have an artifact evaluation track (AE). The AE track aims to foster reusability in the requirements engineering field. Through the AE track, researchers can actively contribute to open science in software engineering research.
+
+An artifact includes (but is not limited to) any dataset, tool, script, experimental protocol, codebook, or other executable or non-executable object produced by or used in the research.
+
+Call for Artifacts
+Gain more visibility, and get acknowledged for your contribution to the RE community!
+
+Authors of accepted papers in RE’24 (Research, RE@Next!, and Industrial Innovation tracks) are encouraged to submit their artifact for evaluation. Research papers with accepted artifacts WILL receive a “Badge” on the front page of their paper in the proceedings.
+
+We (re-)implement existing solutions for various reasons all the time! Get credit for your invested time and effort. The AE track also encourages a “revamp of existing artifacts” from the RE literature. Irrespective of having an accepted paper in RE’24, artifacts can be submitted for evaluation as long as they are derived from papers published previously in past editions of RE-related venues (e.g., IEEE RE conference, REFSQ conference, Requirements Engineering Journal) or any other Software Engineering conference/journal with high relevance for the RE community. The submitted artifact can be an implementation/reimplementation or an upgrade of an existing artifact.
+
+The motivation is to enlarge the set of shared artifacts within the RE community by including also those artifacts of state-of-the-art papers whose authors did not originally share any artifact (or did but the artifact was updated to meet the current research demands). Accepted artifacts in this case WILL NOT receive a “Badge”. Instead, the authors must submit a 2-page abstract describing the artifact. Upon the acceptance of the artifact, this abstract will appear in the proceedings.
+
+Following the tradition in RE, ALL accepted artifacts will be presented during the conference.
+
+Best Artifact Award
+All accepted artifacts, whether they are associated with RE’24 or previous related papers or not, will compete for the best artifact award. The goal of the award is to recognize the effort of authors creating and sharing outstanding research artifacts. The best artifact will be selected by the program committee during the review process.
+Submission Instructions
+Eligibility and Evaluation Criteria
+The purpose of this section is to communicate submission expectations to authors and reviewing guidelines for reviewers. Failure to meet these guidelines does not automatically mean rejection and adhering fully to these guidelines does not automatically mean acceptance. Ambiguity is certain to exist, so academic knowledge and skills must be used to fully consider the eligibility of submissions, and scientific integrity is key to a successful and amicable process. The Badges
+
+Like the previous edition of RE, there will be two badges: Available and Reusable.
+
+★ Available is awarded to publicly accessible artifacts with a DOI, with minimal documentation that ensures the runnability of the artifact.
+
+An artifact gets this badge only when it is permanently available for retrieval.
+The authors must place the artifact on a publicly accessible archival repository (such as Zenodo or FigShare).
+A DOI for the artifact is provided via these archival repositories and is referenced in the artifact and for papers accepted at RE’24 also in the paper.
+★ Reusable is awarded to well-documented artifacts that facilitate reuse and replication.
+
+An artifact is well-documented, exercisable, complete, and includes appropriate evidence of verification.
+The artifact with this badge should facilitate reuse and repurpose.
+Norms and standards of the research community for this artifact type should be strictly adhered to.
+The two badges build on each other. That is, an artifact that receives the Reusable badge needs to also fulfill the criteria for Available. We encourage the authors to apply to both badges. Exceptional cases due to confidentiality issues must be clearly explained by the authors.
+
+Submission Instructions for Authors
+★ Applying for the badge “Available”
+
+The artifact must be hosted online, considering the following criteria:
+The URL to access the artifact is immutable (cannot be altered by the author). [Tip: Use Zenodo or FigShare, and avoid services like Dropbox, Google Drive, One Drive, and institutional websites, as they can easily change URLs and the data behind them.]
+The artifact has a Digital Object Identifier (DOI) redirecting to the immutable URL. [Tip: If your artifact is on GitHub, follow these instructions to get a DOI for your code.]
+The artifact must contain a README.md file summarizing the following content:
+“Summary of Artifact” – Describe what the artifact does, the expected inputs and outputs, and the motivation for developing the artifact.
+“Authors Information” – List all authors and how to cite a work that uses this artifact Note: The AE track will employ a single-blind review. No need for the authors to anonymize their submissions.
+“Artifact Location” – Describe at which URL (or DOI) the artifact can be obtained.
+The artifact must contain a LICENSE.md file showing the license of the artifact. The license should be a proper open-source license. If there exists a license file under a different name, the LICENSE.md file must point to the actual license.
+Anyone must be able to access the artifact, without the need for registration.
+
+
+★ Applying for the badge “Reusable”
+
+Authors are strongly recommended to ask their colleagues to test the usability of their artifact on a fresh environment before submitting it.
+In almost all cases, the artifact must fulfill ALL the criteria for the “Available” badge listed above. Note that if confidentiality issues prevent the authors from publicly sharing the artifact, the “Reusable” badge can still be awarded. However, a clear statement of the motivations for not sharing the artifact publicly shall be provided in the README.md file.
+The artifact must contain an extended README.md file explaining the following content:
+○ Same fields explained for the “Available” badge.
+
+○ “Description of Artifact” - Describe each of the files in the artifact.
+
+○ “System Requirements” (For automated analyses or tools) – state the required system, programs, and libraries needed to successfully run the artifact
+
+○ “Installation Instructions” (For automated analyses or tools) – explain in detail how to run the artifact from scratch.
+
+○ For automated analyses or tools, there is an expectation that the submitted artifacts can be run on any machine. In cases where this is not possible, it is the responsibility of the authors to provide virtual environments from which to run the artifacts. For example, Python Virtual environments, Docker envs, VirtualBox VMs, etc.
+
+○ The artifact must be runnable within a maximum time of 60 minutes. If your installation time is longer than 60 minutes, you must make this clear in your Installation section and offer an explanation. Some scripts take a long time to produce results. In these cases, the authors must provide a minimum working example and the expected output. This can be done via a smaller dataset, intermediate script data saved by the authors, a truncated script, etc.
+
+○ “Usage Instructions” – Explain (preferably with a running example) how the artifact can be used
+
+For automated analyses or tools, this should include instructions on how to interact with the tool, API documentation, and all the information that enables other subjects to reuse the artifact.
+For non-executable artifacts, as, e.g., interview guides, protocols, codebooks, data collected from qualitative studies, or datasets in general, this should include explanations on how the artifacts can be reused by other researchers or practitioners.
+○ “Steps to Reproduce” (For automated analyses or tools) – provide instructions on how to generate the results presented in the paper. Known deviations from results presented in the paper should be explicitly outlined (e.g., when a table or figure is not produced, or the produced results are different from the results presented in the paper). The anticipated time for reproducing the results should not exceed 60 minutes. Otherwise, if reproduction time is longer, the authors must provide intermediate results that can be used to facilitate reproduction.
+
+★ No Badge - A Revamp of existing artifacts
+The artifact must fulfill ALL the criteria for either “Available” or “Reusable”.
+Authors of updated artifacts can be the same as the ones created the original artifact or others.
+
+How to submit
+What to submit
+In the abstract field of EasyChair, submit text describing:
+
+What badge is being applied for (even for previous submissions where the paper does not get a badge)
+Why the badge is appropriate
+Link to the repository with a readme page
+Whether the submission is for an old or new paper
+A link to the PDF or a supplementary material attachment of the PDF for the relevant old or new paper
+For those submitting artifacts for older papers: also submit a 2-page summary describing how the artifact builds on the previous paper, or a previous artifact. This should be in IEEE format and submitted as a paper in easychair along with the information described above in the abstract field. Accepted 2-page summaries will appear in the proceedings (note: artifact with papers accepted in RE’24 already have a paper in the proceedings, so do not need this additional document)
+
+How to submit
+The review process will be conducted via the RE’24 AE Track EasyChair. Please submit at this link. Make sure you select "RE’24 Artifacts”.
+
+After the submission, and before the notification date, the reviewers will interact with the authors using the Early Review Document of the artifact, and authors should be prepared to quickly reply to the reviewers. They may ask for updates to the artifact or clarifications. The goal is to allow the authors to fix minor issues and fully comply with the criteria of the AE Track.

@@ -1,0 +1,70 @@
+Call for Artifact Badging
+We invite authors of accepted papers in all tracks of the 31st SIGKDD Conference on Knowledge Discovery and Data Mining (KDD 2025) to apply for the “Artifacts Available” badge in the ACM Digital Library and on the conference website.
+
+We would like to encourage sharing, discovery, and reuse of artifacts, such as datasets, ML models, software associated with the conference papers. At this stage, we welcome submissions only from accepted papers. The artifact submissions will undergo a light review and will be awarded with “Artifacts Available” badge in the ACM Digital Library.
+If you would like to become an artifact badging reviewer at KDD 2025, or nominate someone else, please complete this form.
+
+Important Dates
+Submission deadline: please submit your artifacts at the same time as the camera-ready version of your paper.
+
+For August cycle accepted papers: January 19.
+All submission deadlines are end-of-day in the Anywhere on Earth (AoE) time zone.
+
+Scope
+We welcome submissions of artifacts used or produced by accepted papers in both research and applied data science tracks of the main proceedings of KDD 2025.
+
+Submission Guidelines
+You can apply for the “Artifacts Available” badge if you release a new dataset, new code, or a similar artifact associated with your paper. Authors of accepted papers will receive a link to submit their artifacts.
+
+Your artifact DOI must be included in your camera-ready version paper. To insert your DOI, please use the following LaTeX commands before the first section (i.e, Introduction) and after \maketitle of your document:
+
+\maketitle
+
+\newcommand\kddavailabilityurl{https://doi.org/xxxx}
+
+\ifdefempty{\kddavailabilityurl}{}{
+\begingroup\small\noindent\raggedright\textbf{KDD Availability Link:}\\
+% please change the following context to include multiple artifacts if necessary.
+The source code of this paper has been made publicly available at \url{\kddavailabilityurl}.
+\endgroup
+}
+Additional requirements:
+
+You must host the artifact in a publicly available, archival repository for research artifacts
+The artifact must have unique dereferenceable identifiers, such as a Digital Object Identifier (DOI). Most archival research repositories provide DOIs (e.g.,  Zenodo, Kaggle, Figshare, DataDryad, etc.).
+For GitHub-hosted artifacts please follow the approach presented here to obtain a persistent identifier for your repository: https://docs.github.com/en/repositories/archiving-a-github-repository/referencing-and-citing-content as follows:
+
+Referencing and citing content
+You can use third-party tools to cite and reference content on GitHub.
+
+In this article
+Issuing a persistent identifier for your repository with Zenodo
+Publicizing and citing research material with Figshare
+Issuing a persistent identifier for your repository with Zenodo
+To make your repositories easier to reference in academic literature, you can create persistent identifiers, also known as Digital Object Identifiers (DOIs). You can use the data archiving tool Zenodo to archive a repository on GitHub and issue a DOI for the archive.
+
+Tip
+
+Zenodo can only access public repositories, so make sure the repository you want to archive is public.
+If you want to archive a repository that belongs to an organization, the organization owner may need to approve access for the Zenodo application.
+Make sure to include a license in your repository so readers know how they can reuse your work.
+Navigate to the login page for Zenodo.
+Click Log in with GitHub.
+Review the information about access permissions, then click Authorize zenodo.
+Navigate to the Zenodo GitHub page.
+To the right of the name of the repository you want to archive, toggle the button to On.
+Zenodo archives your repository and issues a new DOI each time you create a new GitHub release. Follow the steps at Managing releases in a repository to create a new one.
+
+Publicizing and citing research material with Figshare
+Academics can use the data management service Figshare to publicize and cite research material. For more information, see Figshare's support site.
+
+
+Reviewing Process
+A conference review committee of volunteers will verify that artifacts are indeed available in a publicly accessible archival repository at the link that you specify.
+
+Artifact Badging Co-Chairs
+Xupeng Miao (Purdue University)
+
+Daniel Garijo (Universidad Politécnica de Madrid)
+
+Contact : KDD25-artifact-badging-chairs@acm.org

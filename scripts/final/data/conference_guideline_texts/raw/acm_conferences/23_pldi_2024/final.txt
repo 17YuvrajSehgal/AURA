@@ -1,0 +1,126 @@
+Background
+A paper consists of a constellation of artifacts that extend beyond the document itself: software, proofs, models, test suites, benchmarks, and so on. In some cases, the quality of these artifacts is as important as that of the document itself, yet most of our conferences offer no formal means to submit and evaluate anything but the paper.
+
+Following a trend in our community over the past many years, PLDI 2024 includes an Artifact Evaluation process, which allows authors of accepted papers to optionally submit supporting artifacts. The goal of artifact evaluation is two-fold: to probe further into the claims and results presented in a paper, and to reward authors who take the trouble to create useful artifacts to accompany the work in their paper. Artifact evaluation is optional, but highly encouraged, and authors may choose to submit their artifact for evaluation only after their paper has been accepted.
+
+The evaluation and dissemination of artifacts improves reproducibility, and enables authors to build on top of each other’s work. Beyond helping the community as a whole, the evaluation and dissemination of artifacts confers several direct and indirect benefits to the authors themselves.
+
+The ideal outcome for the artifact evaluation process is to accept every artifact that is submitted, provided it meets the evaluation criteria listed below. We will strive to remain as close as possible to that ideal goal. However, even though some artifacts may not pass muster and may be rejected, we will evaluate in earnest and make our best attempt to follow authors’ evaluation instructions.
+
+Evaluation Criteria
+The artifact evaluation committee will read each artifact’s paper and judge how well the submitted artifact conforms to the expectations set by the paper. The specific artifact evaluation criteria are:
+
+Consistency: the artifact should be relevant to the paper and can in principle reproduce the main results reported in the paper.
+Completeness: the artifact can in principle reproduce all the results that the paper reports, and should include everything (code, tools, 3rd party libraries, etc.) required to do so.
+Documentation: the artifact should be well documented so that generating the results is easy and transparent.
+Ease of reuse: the artifact provides everything needed to build on top of the original work, including source files together with a working build process that can recreate the binaries provided.
+Note that artifacts will be evaluated with respect to the claims and presentation in the submitted version of the paper, not the camera-ready version.
+
+Badges
+The artifact evaluation committee evaluates each artifact for the awarding of one or two badges:
+
+Functional: This is the basic “accepted” outcome for an artifact. An artifact can be awarded a functional badge if the artifact supports all claims made in the paper, possibly excluding some minor claims if there are very good reasons they cannot be supported. In the ideal case, an artifact with this designation includes all relevant code, dependencies, input data (e.g., benchmarks), and the artifact’s documentation is sufficient, in principle, for reviewers to reproduce the exact results described in the paper. If the artifact claims to outperform a related system in some way (in time, accuracy, etc.) and the other system was used to generate new numbers for the paper (e.g., an existing tool was run on new benchmarks not considered by the corresponding publication), artifacts should include a version of that related system, and instructions for reproducing the numbers used for comparison as well. If the alternative tool crashes on a subset of the inputs, simply note this expected behavior.
+
+Deviations from this ideal must be for good reason. A non-exclusive list of justifiable deviations includes:
+
+Some benchmark code is subject to licensing or intellectual property restrictions and cannot legally be shared with reviewers (e.g., licensed benchmark suites like SPEC, or when a tool is applied to private proprietary code). In such cases, all available benchmarks should be included. If all benchmark data from the paper falls into this case, alternative data should be supplied: providing a tool with no meaningful inputs to evaluate on is not sufficient to justify claims that the artifact works.
+Some of the results are performance data, and therefore exact numbers depend on the particular hardware. In this case, artifacts should explain how to recognize when experiments on other hardware reproduce the high-level results (e.g., that a certain optimization exhibits a particular trend, or that comparing two tools one outperforms the other in a certain class of cases).
+In some cases repeating the evaluation may take a long time. Reviewers may not reproduce full results in such cases.
+In some cases, the artifact may require specialized hardware (e.g., a CPU with a particular new feature, or a specific class of GPU, or a cluster of GPUs). For such cases, authors should contact the Artifact Evaluation Co-Chairs (Manuel Rigger and Ningning Xie) as soon as possible to work out how to make these possible to evaluate. In past years one outcome was that an artifact requiring specialized hardware paid for a cloud instance with the hardware, which reviewers could access remotely.
+
+Reusable: This badge may only be awarded to artifacts judged functional. A Reusable badge is given when reviewers feel the artifact is particularly well packaged, documented, designed, etc. to support future research that might build on the artifact. For example, if it seems relatively easy for others to reuse this directly as the basis of a follow-on project, the AEC may award a Reusable badge.
+
+For binary-only artifacts to be considered Reusable, it must be possible for others to directly use the binary in their own research, such as a JAR file with very high quality client documentation for someone else to use it as a component of their own project.
+
+Artifacts with source can be considered Reusable:
+
+if they can be reused as components,
+
+if others can learn from the source and apply the knowledge elsewhere (e.g., learning an implementation or proof/formalization technique for use in a separate codebase), or
+
+if others can directly modify and/or extend the system to handle new or expanded use cases.
+
+Artifacts given one or both of the Functional and Reusable badges are generally referred to as accepted.
+
+After decisions on the Functional and Reusable badges have been made, authors of any artifacts (including those not reviewed by the AEC, and those reviewed but not found Functional during reviewing) can earn an additional badge for their artifact durably available:
+
+Available: This badge is automatically earned by artifacts that are made available publicly in an archival location. We require that artifacts that were evaluated as Functional archive the evaluated version. There are two routes for this:
+
+Authors upload a snapshot of the complete artifact to Zenodo, which provides a DOI specific to the artifact. Note that Github, etc. are not adequate for receiving this badge (see FAQ), and that Zenodo provides a way to make subsequent revisions of the artifact available and linked from the specific version.
+Authors can work with Conference Publishing to upload their artifacts directly to the ACM, where the artifact will be hosted alongside the paper.
+Process
+To maintain the separation of paper and artifact review, authors will only be asked to upload their artifacts after their papers have been accepted. Authors planning to submit to the artifact evaluation should prepare their artifacts well in advance of this date to ensure adequate time for packaging and documentation. This year, artifact evaluation will be single-anonymous, meaning that authors won’t know about reviewers’ identities (but artifacts can reveal the authors’ identities).
+
+The process consists of the following deadlines and phases:
+
+Artifact registration: All metadata except the artifact itself should be submitted. Artifact registration gives more time to authors, since bidding can start before the artifact has been submitted.
+Artifact submission: Artifacts should be uploaded to Zenodo.
+Response and communication period: Reviewers will be able to interact (anonymously) with authors for clarifications, system-specific patches, and other logistics help to make the artifact evaluable. The goal of continuous interaction is to prevent rejecting artifacts for minor issues, not research related at all, such as a “wrong library version”-type problem.
+Author notification: Authors will learn about the badges that their artifacts obtained. No camera-ready deadline is given, because Zenodo allows uploading new versions at any time.
+Types of Artifacts
+The artifact evaluation will accept any artifact that authors wish to submit, broadly defined. A submitted artifact might be:
+
+software
+mechanized proofs
+test suites
+data sets
+hardware (if absolutely necessary)
+a video of a difficult- or impossible-to-share system in use
+any other artifact described in a paper
+Artifact Evaluation Committee
+Other than the chairs, the AEC members are senior graduate students, postdocs, or recent PhD graduates, identified with the help of the PLDI PC and recent artifact evaluation committees.
+
+Among researchers, experienced graduate students are often in the best position to handle the diversity of systems expectations that the AEC will encounter. In addition, graduate students represent the future of the community, so involving them in the AEC process early will help push this process forward. The AEC chairs devote considerable attention to both mentoring and monitoring, helping to educate the students on their responsibilities and privileges.
+
+Call for Artifacts
+Submission
+Submit your artifact via HotCRP: https://pldi24ae.hotcrp.com/
+
+UPDATE: Artifact evaluation will be single-anonymous, meaning that your artifact may contain author-revealing information, if that’s helpful for the evaluation process.
+
+General Info
+A well-packaged artifact is more likely to be easily usable by the reviewers, saving them time and frustration, and more clearly conveying the value of your work during evaluation. A great way to package an artifact is as a Docker image or in a virtual machine that runs “out of the box” with very little system-specific configuration. We encourage authors to include pre-built binaries for all their code, so that reviewers can start with little effort; together with the source and build scripts that allow to regenerate those binaries, to guarantee maximum transparency. Providing pre-built VMs or docker containers is preferable to providing scripts (e.g. Docker or Vagrant configurations) that build the VM, since this alleviates reliance on external dependencies.
+
+Submission of an artifact does not imply automatic permission to make its content public. AEC members will be instructed that they may not publicize any part of the submitted artifacts during or after completing evaluation, and they will not retain any part of any artifact after evaluation. Thus, you are free to include models, data files, proprietary binaries, and similar items in your artifact.
+
+Artifact Submission
+Your submission to HotCRP should consist of three pieces:
+
+The submission version of your accepted paper (in *.pdf format).
+A Zenodo link pointing to your artifact with appropriate documentation (details below).
+Additional information such as bidding instructions.
+Documentation
+Your artifact should include a README in a common format such as Markdown, plain text, or PDF, which should consist of two parts:
+
+a Getting Started Guide and
+Step-by-Step Instructions for how you propose to evaluate your artifact (with appropriate connections to the relevant sections of your paper);
+The Getting Started Guide should contain setup instructions (including, for example, a pointer to the VM player software, its version, passwords if needed, etc.) and basic testing of your artifact that you expect a reviewer to be able to complete in 30 minutes. Reviewers will follow all the steps in the guide during an initial kick-the-tires phase. The Getting Started Guide should be as simple as possible, and yet it should stress the key elements of your artifact. Anyone who has followed the Getting Started Guide should have no technical difficulties with the rest of your artifact.
+
+The Step by Step Instructions explain how to reproduce any experiments or other activities that support the conclusions in your paper. Write this for readers who have a deep interest in your work and are studying it to improve it or compare against it. If your artifact runs for more than a few minutes, point this out and explain how to run it on smaller inputs.
+
+Where appropriate, include descriptions of and links to files (included in the archive) that represent expected outputs (e.g., the log files expected to be generated by your tool on the given inputs); if there are warnings that are safe to be ignored, explain which ones they are.
+
+The artifact’s documentation should include the following:
+
+A list of claims from the paper supported by the artifact, and how/why.
+A list of claims from the paper not supported by the artifact, and how/why.
+Example: Performance claims cannot be reproduced in VM, authors are not allowed to redistribute specific benchmarks, etc. Artifact reviewers can then center their reviews / evaluation around these specific claims.
+
+Zenodo link
+Please create a Zenodo (https://zenodo.org/) repository. If you intend to publish the artifact, which is the preferred option, you can choose Open Access for License. Please note that this would generate a Zenodo DOI that is permanently public. On the other hand, you can create a “private” repository by checking Restricted Access which would require you to grant permission to someone (in our case, the AEC members) who wanted to access the repository.
+
+For detailed instructions, please read the guide on How To Use Zenodo.
+
+Packaging the Artifact
+When packaging your artifact, please keep in mind: a) how accessible you are making your artifact to other researchers, and b) the fact that the AEC members will have a limited time in which to make an assessment of each artifact.
+
+Your artifact should have a container or a bootable virtual machine image with all of the necessary libraries installed.
+
+We strongly encourage to use a container (e.g., https://www.docker.com/).
+
+Using a container or a virtual machine image provides a way to make an easily reproducible environment — it is less susceptible to bit rot. It also helps the AEC have confidence that errors or other problems cannot cause harm to their machines.
+
+You should upload your artifact to zenodo and submit the zenodo link. Please use open formats for documents.
+
+Distinguished Artifacts
+Based on the reviews and discussion among the AEC, one or more artifacts will be selected for Distinguished Artifact awards.

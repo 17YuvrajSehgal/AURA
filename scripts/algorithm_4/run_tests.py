@@ -13,7 +13,7 @@ from test_framework import main
 
 if __name__ == "__main__":
     # Path to the artifact JSON file
-    artifact_path = "../../algo_outputs/algorithm_2_output/ml-image-classifier_analysis.json"
+    artifact_path = "../../algo_outputs/ml-image-classifier_analysis.json"
     
     # Run tests with full evaluation
     print("Running AURA Framework tests...")

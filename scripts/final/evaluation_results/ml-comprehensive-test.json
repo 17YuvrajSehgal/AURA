@@ -1,0 +1,147 @@
+{
+    "success": true,
+    "artifact_name": "comprehensive-vision-model",
+    "artifact_path": "https://github.com/example/comprehensive-vision-model",
+    "extracted_path": "../../temp_dir_for_git/comprehensive-vision-model",
+    "extraction_method": "git_clone",
+    "repo_size_mb": 102.3,
+    "documentation_files": [
+        {
+            "path": "README.md",
+            "content": [
+                "# Vision Model Toolkit",
+                "A modular pipeline for image classification using PyTorch and Docker.",
+                "## Installation",
+                "Use `pip install -r requirements.txt` or Docker.",
+                "## Dataset",
+                "We use the CIFAR-10 dataset located in `data/cifar10.tar.gz`.",
+                "## Training",
+                "Run `python src/train.py` to train the CNN model.",
+                "## Evaluation",
+                "Use `python src/evaluate.py` or the `tests/test_model.py` to validate accuracy.",
+                "## Build and Run",
+                "Build image using `docker build -t vision .` and run with `docker run vision`.",
+                "## License",
+                "Licensed under MIT License."
+            ]
+        }
+    ],
+    "code_files": [
+        {
+            "path": "src/train.py",
+            "content": [
+                "import torch",
+                "from torchvision import datasets, transforms",
+                "from model import CNN",
+                "def train():",
+                "    dataset = datasets.CIFAR10(root='data/', download=True)",
+                "    model = CNN()",
+                "    torch.save(model.state_dict(), 'model.pth')"
+            ]
+        },
+        {
+            "path": "src/evaluate.py",
+            "content": [
+                "import torch",
+                "from torchvision import datasets, transforms",
+                "from model import CNN",
+                "def evaluate():",
+                "    model = CNN()"
+            ]
+        },
+        {
+            "path": "src/model.py",
+            "content": [
+                "import torch.nn as nn",
+                "class CNN(nn.Module):",
+                "    def __init__(self): super().__init__()",
+                "    def forward(self, x): return x"
+            ]
+        },
+        {
+            "path": "scripts/run_pipeline.sh",
+            "content": [
+                "#!/bin/bash",
+                "docker build -t vision .",
+                "docker run vision"
+            ]
+        },
+        {
+            "path": "tests/test_model.py",
+            "content": [
+                "from src.model import CNN",
+                "def test_shape(): assert CNN() is not None"
+            ]
+        }
+    ],
+    "docker_files": [
+        {
+            "path": "Dockerfile",
+            "content": [
+                "FROM python:3.8",
+                "COPY requirements.txt .",
+                "RUN pip install -r requirements.txt",
+                "COPY . .",
+                "CMD [\"python\", \"src/train.py\"]"
+            ]
+        }
+    ],
+    "build_files": [
+        {
+            "path": "requirements.txt",
+            "content": [
+                "torch>=1.10.0",
+                "torchvision>=0.12.0",
+                "numpy",
+                "pandas"
+            ]
+        }
+    ],
+    "data_files": [
+        {
+            "name": "cifar10.tar.gz",
+            "path": "data/cifar10.tar.gz",
+            "size_kb": 51200,
+            "mime_type": "application/gzip"
+        }
+    ],
+    "license_files": [
+        {
+            "path": "LICENSE",
+            "content": [
+                "MIT License",
+                "Permission is hereby granted, free of charge, to any person obtaining a copy...",
+                "THE SOFTWARE IS PROVIDED \"AS IS\" WITHOUT WARRANTY OF ANY KIND..."
+            ]
+        }
+    ],
+    "tree_structure": [
+        "comprehensive-vision-model/",
+        "├── Dockerfile",
+        "├── LICENSE",
+        "├── README.md",
+        "├── requirements.txt",
+        "├── data/",
+        "│   └── cifar10.tar.gz",
+        "├── scripts/",
+        "│   └── run_pipeline.sh",
+        "├── src/",
+        "│   ├── train.py",
+        "│   ├── evaluate.py",
+        "│   └── model.py",
+        "└── tests/",
+        "    └── test_model.py"
+    ],
+    "config_files": [
+        {
+            "path": "requirements.txt",
+            "content": [
+                "torch",
+                "torchvision",
+                "numpy",
+                "pandas"
+            ]
+        }
+    ],
+    "analysis_performed": true
+}

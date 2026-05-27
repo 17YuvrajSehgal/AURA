@@ -1,0 +1,81 @@
+Call for Artifacts
+Asiacrypt 2024 aims to support open and reproducible research within the field of cryptography. As such, authors of accepted papers are invited to submit artifacts associated with their papers, such as software or datasets, for review, in a collaborative process between authors and the artifact review committee. The goal of the process is not just to evaluate artifacts, but also to improve them. Artifacts that pass successfully through the artifact review process will be publicly archived by the IACR at https://artifacts.iacr.org/.
+
+Scope and aims
+The two main goals of the artifact review process are to improve functionality and reusability of artifacts to enable reproduction and extension by the scientific community.
+
+Reproducibility, in the context of computational experiments, means that the scientific results claimed can be obtained by a different team using the original authors' artifacts. The artifact review process does not include attempting to reproduce the experiment and to verify the scientific claims in the accepted paper. Rather, the artifact review process aims at ensuring sufficient functionality of the artifact to enable a research team to attempt to reproduce the results.
+
+Examples of this in the field of cryptography include:
+
+Software implementations (performance, formal verification, etc.): The source code of the implementation; a list of all dependencies required; the test harness; instructions on how to build and run the software and the test harness; a description of the platform on which the results in the paper were obtained; and instructions or scripts to process the output of the test harness into appropriate summary statistics.
+Hardware implementations, physical attacks against implementations: A precise description of any physical equipment used in the setup; the source code of any software developed for the experiment; a list of all dependencies required; instructions on how to build the software and run the device or carry out the attack; instructions or scripts to process the output and interpret the results.
+Data or other non-code artifacts: Documents or reports in a widely used non-proprietary format, such as PDF, ODF, HTML, text; data in machine-readable format such as CSV, JSON, XML, with appropriate metadata describing the schema; scripts used to process the data into summary form. Where non-standard data formats cannot be avoided, authors should include suitable viewing software.
+Where possible, such as in software-based artifacts relying solely on open-source components, the artifact review process will aim to run the artifact and test harness, and see that it produces outputs that would be required to assess the artifact against results in the paper. For artifacts that depend on commercial tools or specialized physical hardware, the goal of the artifact review process will be to confirm that the artifacts are functional, and could plausibly be used by someone with access to the appropriate tools to reproduce the results.
+
+Reusability means that the artifacts are not just functional, but of sufficient quality that they could be extended and reused by others. Reusable artifacts have clear user and developer documentation, and are well-structured in ways that make them easy to modify or extend.
+
+Timeline and process
+The artifact review process begins after the paper has been accepted for publication. Only papers accepted to Asiacrypt 2024 will be considered under the artifact review process.
+
+Following notification of acceptance (or acceptance with minor revisions) to Asiacrypt 2024, the artifact may be submitted for review.
+
+Once the artifact is submitted, two or more members of the artifact review committee will be assigned to review the artifact. The artifact review process will be a continuous process, and may involve requests from the reviewers for additional help on how to run the artifact, interpret its results, etc. It is acceptable (and expected) that the interaction between the reviewers and the authors leads to the artifact being updated during the review process. Updates that affect scientific characteristics reported in the paper (such as changes to performance) should be clearly documented.
+
+Authors of artifacts that are accepted for archiving will be provided instructions on how to submit the archival version of their artifact.
+
+Conflicts of interest
+The Asiacrypt 2024 artifact review process follows the same conflict of interest policy as Asiacrypt, which is the IACR policy with respect to conflicts of interest, available from https://www.iacr.org/docs/. There is also a more detailed version on the paper submission page.
+
+A conflict of interest is considered to occur automatically whenever an author of a submitted paper and a reviewer:
+
+were advisee/advisor at any time;
+have been affiliated with the same institution in the past 2 years
+have published 2 or more jointly authored papers in the past 3 years; and/or
+are immediate family members.
+Conflicts may also arise for reasons other than those just listed. Examples include closely related technical work, cooperation in the form of joint projects or grant applications, business relationships, close personal friendships, instances of personal enmity. Authors will be asked to identify conflicts of interest with the committee members at time of artifact registration.
+
+Confidentiality
+The artifact review process will be single-blinded: the authors of the paper and artifact are not anonymous, but the reviewers will be anonymous. Communication between the authors and the reviewers will be facilitated via the HotCRP review site. Authors should not attempt to learn the identities of the reviewers, for example by embedding analytics or tracking elements in the artifact or a website; if you cannot comply with this for some reason out of your control, please notify the chairs immediately to discuss.
+
+Copyright & licensing conditions
+If your artifact is accepted, you will be required to grant the IACR a non-exclusive, irrevocable license to distribute the artifact, via an open source license, such as an OSI-approved license; examples are the Apache License 2.0, 2- & 3-clause BSD license, GPL, LGPL, MIT license, MPL 2.0, CDDL and EPL. If your artifact also contains third-party material that you did not create, you must ensure that you have permission to redistribute that material, for example because it is also open source or because you have obtained the appropriate permissions.
+
+It is not a requirement that any patent rights be granted.
+
+Submission Instructions and Format
+Artifacts shall be registered and submitted via the IACR HotCRP server. The details will be provided soon.
+
+A submission shall include:
+
+the title and abstract of the accepted paper;
+the authors of the accepted paper and their affiliations;
+email addresses for the contact authors for the artifact;
+the PDF of the submitted paper, or an updated/camera-ready version, if available;
+a brief description of the artifact;
+if the artifact is less than 20MB: a .zip or .tar.gz containing the artifact;
+if the artifact is larger than 20MB: instructions on how to obtain the artifact;
+a link to a Github repository or similar for the artifact, if available, along with the commit/tag of the submission
+The artifact itself shall include at least the following files:
+
+LICENSE: The license(s) under which the artifact is released;
+README: The main starting point for anyone attempting to use the artifact. It should include instructions on:
+dependencies required to build and run the artifact, including specific version numbers of dependencies;
+instructions for building and running the artifact;
+options on configuring the artifact to run in different modes, if applicable;
+instructions on how to interpret the output of the artifact, including which scripts to run if appropriate;
+an explanation of how the source code is organized
+Files such as LICENSE and README can be plain text files or Markdown files.
+
+Source code files within the artifact are encouraged to be organized, formatted, and documented using best practices and conventions appropriate to the programming language in question. For example, formatted using a consistent style such as PEP8 for Python; documentation of APIs using JavaDoc for Java or Doxygen for C; unit tests using an appropriate framework.
+
+Packaging of the artifact
+The primary form of the artifact should be as source code, with suitable build scripts and instructions on how to install the appropriate dependencies.
+
+For artifacts with complex dependencies or build requirements, the authors are encouraged to also package the artifact in the manner that makes it most amenable to successful execution. Potential formats include:
+
+A virtual machine image (Virtualbox, Docker, etc) containing the artifact and all dependencies already installed, and the artifact compiled, configured, and ready to run. It is preferable to also include the Dockerfile or script used to create the image if possible.
+A binary installable package, such as an .rpm or .deb package on Linux, or an MSI Installer on Windows.
+A video demonstrating the use of the artifact and the results, especially in the case of an artifact that requires commercial software, specialized hardware, or long computation times.
+A “live notebook” (Jupyter, Sage, etc) for demonstrating a sequence of mathematical calculations, especially of data artifacts.
+When in doubt, imagine a first-year grad student in 2029 who is told by their supervisor “See if you can change this artifact from Asiacrypt 2024 to do X.” We want to give them the best chance of success with the least amount of pain.
